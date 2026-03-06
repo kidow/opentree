@@ -1,0 +1,15 @@
+{
+  "name": "opentree",
+  "version": "0.1.0",
+  "description": "CLI for bootstrapping an opentree profile site",
+  "bin": {
+    "opentree": "./bin/opentree.js"
+  },
+  "scripts": {
+    "start": "node ./bin/opentree.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

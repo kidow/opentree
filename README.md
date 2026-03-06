@@ -1,5 +1,20 @@
 # opentree 구현 계획서
 
+## 현재 부트스트랩 상태
+
+아래 최소 CLI 스캐폴드가 동작한다.
+
+```bash
+node ./bin/opentree.js init
+```
+
+패키지 바이너리로 연결하면 아래 형태를 바로 테스트할 수 있다.
+
+```bash
+npm link
+opentree init
+```
+
 ## 1. 프로젝트 개요
 
 ### 1.1 프로젝트명
