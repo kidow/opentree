@@ -27,7 +27,8 @@
   },
   "scripts": {
     "start": "node ./bin/opentree.js",
-    "test": "node --test"
+    "test": "node --test",
+    "test:smoke": "node ./scripts/cli-smoke.js"
   },
   "engines": {
     "node": ">=22.12.0"
