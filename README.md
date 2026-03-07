@@ -9,12 +9,14 @@
 ```bash
 npm install -g opentree-cli
 opentree init --name "Kidow" --bio "CLI-first profile" --site-url "https://links.example.com" --title "Kidow Links"
+opentree init --json
 opentree validate
 opentree validate --json
 opentree build
 opentree build --json
 opentree build --output public/site
 opentree dev
+opentree dev --json
 opentree deploy
 opentree deploy --json
 opentree deploy --preview
@@ -41,6 +43,7 @@ opentree theme set --accent-color "#0f766e"
 ```
 
 `opentree init`를 실행하면 현재 디렉터리에 `opentree.config.json`이 생성된다.
+`opentree init --json`은 생성 결과, `configPath`, 생성된 설정 내용을 JSON으로 출력한다.
 `opentree validate`는 그 설정 파일이 다음 단계로 넘어가도 되는지 검증한다.
 `opentree validate --json`은 검증 결과와 validation issue 목록을 JSON으로 출력한다.
 `opentree build`는 검증된 설정으로 기본적으로 `dist/index.html` 정적 페이지를 생성한다.
@@ -49,6 +52,7 @@ opentree theme set --accent-color "#0f766e"
 생성된 설정에는 `siteUrl`과 `metadata` 기본 필드도 포함되며, 이 값들은 canonical URL, Open Graph, Twitter 카드 메타 태그 생성에 사용된다.
 `siteUrl`이 설정되어 있으면 `opentree build`는 `dist/sitemap.xml`과 `dist/robots.txt`도 함께 생성한다.
 `opentree dev`는 로컬 미리보기 서버를 띄우고, 설정 파일 수정 내용을 새로고침만으로 반영한다.
+`opentree dev --json`은 시작된 preview 서버의 URL과 포트를 JSON으로 출력한다.
 `opentree vercel link`는 프로젝트 루트에 `.vercel/project.json`을 만들고, 이후 배포가 같은 Vercel 프로젝트를 계속 재사용할 수 있게 한다.
 `opentree vercel unlink`는 루트와 기본 `dist` 출력 경로의 local project link를 제거하고, 원격 Vercel 프로젝트 자체는 건드리지 않는다.
 `opentree deploy`는 먼저 `dist`를 빌드한 뒤, 루트의 Vercel project link를 `dist/.vercel/project.json`으로 동기화하고 Vercel CLI로 그 결과물을 배포한다.

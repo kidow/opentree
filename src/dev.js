@@ -1,7 +1,25 @@
 const http = require("node:http");
+const path = require("node:path");
 const { CONFIG_FILE_NAME } = require("./init");
 const { loadConfig, validateConfig } = require("./config");
 const { renderHtml } = require("./build");
+
+function writeJsonReport(stdout, report) {
+  stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+}
+
+function createDevReport(cwd) {
+  return {
+    command: "dev",
+    configPath: path.join(cwd, CONFIG_FILE_NAME),
+    cwd,
+    issues: [],
+    message: "",
+    ok: false,
+    result: null,
+    stage: "args"
+  };
+}
 
 function escapeHtml(value) {
   return String(value)
@@ -13,10 +31,23 @@ function escapeHtml(value) {
 }
 
 function parsePort(args, env = process.env) {
+  return parseDevArgs(args, env).port;
+}
+
+function parseDevArgs(args, env = process.env) {
+  const options = {
+    json: false
+  };
+
   let portValue;
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
+
+    if (arg === "--json") {
+      options.json = true;
+      continue;
+    }
 
     if (arg === "--port" || arg === "-p") {
       const nextValue = args[index + 1];
@@ -43,7 +74,10 @@ function parsePort(args, env = process.env) {
     throw new Error("port must be an integer between 0 and 65535");
   }
 
-  return port;
+  return {
+    json: options.json,
+    port
+  };
 }
 
 async function readPreviewState(cwd) {
@@ -180,27 +214,43 @@ async function runDev(io, args = []) {
   const cwd = io.cwd ?? process.cwd();
   const stdout = io.stdout ?? process.stdout;
   const stderr = io.stderr ?? process.stderr;
+  const requestedJson = args.includes("--json");
+  const report = createDevReport(cwd);
+  const signalProcess = io.signalProcess ?? process;
+  const createServer = io.createServer ?? http.createServer;
 
-  let port;
+  let options;
   try {
-    port = parsePort(args, io.env ?? process.env);
+    options = parseDevArgs(args, io.env ?? process.env);
   } catch (error) {
+    report.message = error.message;
     stderr.write(`[opentree] ${error.message}\n`);
+    if (requestedJson) {
+      writeJsonReport(stdout, report);
+    }
     return 1;
   }
 
+  const { json, port } = options;
+  const devStdout = json ? stderr : stdout;
   const initialState = await readPreviewState(cwd);
   if (!initialState.ok) {
+    report.stage = "load";
+    report.message = `cannot start dev server because ${initialState.title}`;
+    report.issues = initialState.messages;
     stderr.write(`[opentree] cannot start dev server\n`);
     stderr.write(`[opentree] ${initialState.title}\n`);
     initialState.messages.forEach((message) => {
       stderr.write(`- ${message}\n`);
     });
+    if (json) {
+      writeJsonReport(stdout, report);
+    }
     return 1;
   }
 
   return await new Promise((resolve, reject) => {
-    const server = http.createServer((req, res) => {
+    const server = createServer((req, res) => {
       handleRequest(req, res, cwd).catch((error) => {
         stderr.write("[opentree] failed to render preview\n");
         stderr.write(`${error.stack ?? error}\n`);
@@ -210,20 +260,25 @@ async function runDev(io, args = []) {
     });
 
     const onSignal = () => {
-      stdout.write("\n[opentree] stopping dev server\n");
+      devStdout.write("\n[opentree] stopping dev server\n");
       server.close(() => {
-        process.off("SIGINT", onSignal);
-        process.off("SIGTERM", onSignal);
+        signalProcess.off("SIGINT", onSignal);
+        signalProcess.off("SIGTERM", onSignal);
         resolve(0);
       });
     };
 
     server.on("error", (error) => {
-      process.off("SIGINT", onSignal);
-      process.off("SIGTERM", onSignal);
+      signalProcess.off("SIGINT", onSignal);
+      signalProcess.off("SIGTERM", onSignal);
+      report.stage = "listen";
 
       if (error && error.code === "EADDRINUSE") {
+        report.message = `port ${port} is already in use`;
         stderr.write(`[opentree] port ${port} is already in use\n`);
+        if (json) {
+          writeJsonReport(stdout, report);
+        }
         resolve(1);
         return;
       }
@@ -235,18 +290,33 @@ async function runDev(io, args = []) {
       const address = server.address();
       const activePort =
         address && typeof address === "object" ? address.port : port;
+      const url = `http://127.0.0.1:${activePort}`;
 
-      stdout.write(`[opentree] dev server running at http://127.0.0.1:${activePort}\n`);
-      stdout.write(`[opentree] reload the page after editing ${CONFIG_FILE_NAME}\n`);
+      report.ok = true;
+      report.stage = "listen";
+      report.message = `dev server running at ${url}`;
+      report.result = {
+        host: "127.0.0.1",
+        port: activePort,
+        url
+      };
 
-      process.on("SIGINT", onSignal);
-      process.on("SIGTERM", onSignal);
+      devStdout.write(`[opentree] dev server running at ${url}\n`);
+      devStdout.write(`[opentree] reload the page after editing ${CONFIG_FILE_NAME}\n`);
+      if (json) {
+        writeJsonReport(stdout, report);
+      }
+
+      signalProcess.on("SIGINT", onSignal);
+      signalProcess.on("SIGTERM", onSignal);
     });
   });
 }
 
 module.exports = {
+  createDevReport,
   handleRequest,
+  parseDevArgs,
   parsePort,
   readPreviewState,
   runDev

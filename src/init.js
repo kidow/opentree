@@ -3,6 +3,24 @@ const path = require("node:path");
 
 const CONFIG_FILE_NAME = "opentree.config.json";
 
+function writeJsonReport(stdout, report) {
+  stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+}
+
+function createInitReport(cwd) {
+  return {
+    command: "init",
+    config: null,
+    configPath: path.join(cwd, CONFIG_FILE_NAME),
+    cwd,
+    issues: [],
+    message: "",
+    ok: false,
+    result: null,
+    stage: "args"
+  };
+}
+
 function createDefaultConfig() {
   return {
     profile: {
@@ -164,18 +182,46 @@ function parseInitArgs(args) {
   return overrides;
 }
 
+function parseInitCommandArgs(args) {
+  const filteredArgs = [];
+  let json = false;
+
+  args.forEach((arg) => {
+    if (arg === "--json") {
+      json = true;
+      return;
+    }
+
+    filteredArgs.push(arg);
+  });
+
+  return {
+    json,
+    overrides: parseInitArgs(filteredArgs)
+  };
+}
+
 async function runInit(io, args = []) {
   const cwd = io.cwd ?? process.cwd();
   const configPath = path.join(cwd, CONFIG_FILE_NAME);
-  let overrides;
+  const stdout = io.stdout ?? process.stdout;
+  const stderr = io.stderr ?? process.stderr;
+  const requestedJson = args.includes("--json");
+  const report = createInitReport(cwd);
+  let options;
 
   try {
-    overrides = parseInitArgs(args);
+    options = parseInitCommandArgs(args);
   } catch (error) {
-    io.stderr.write(`[opentree] ${error.message}\n`);
+    report.message = error.message;
+    stderr.write(`[opentree] ${error.message}\n`);
+    if (requestedJson) {
+      writeJsonReport(stdout, report);
+    }
     return 1;
   }
 
+  const { json, overrides } = options;
   const config = createDefaultConfig();
   config.profile = {
     ...config.profile,
@@ -187,25 +233,47 @@ async function runInit(io, args = []) {
     ...overrides.metadata
   };
 
-  io.stdout.write("[opentree] init command received\n");
-  io.stdout.write(`[opentree] target directory: ${cwd}\n`);
+  if (!json) {
+    stdout.write("[opentree] init command received\n");
+    stdout.write(`[opentree] target directory: ${cwd}\n`);
+  }
 
   try {
     await fs.writeFile(`${configPath}`, JSON.stringify(config, null, 2) + "\n", {
       flag: "wx"
     });
   } catch (error) {
+    report.stage = "write";
+
     if (error && error.code === "EEXIST") {
-      io.stderr.write(`[opentree] ${CONFIG_FILE_NAME} already exists\n`);
-      io.stderr.write("[opentree] init aborted to avoid overwriting your config\n");
+      report.message = `init aborted because ${CONFIG_FILE_NAME} already exists`;
+      report.issues = [`${CONFIG_FILE_NAME} already exists`];
+      stderr.write(`[opentree] ${CONFIG_FILE_NAME} already exists\n`);
+      stderr.write("[opentree] init aborted to avoid overwriting your config\n");
+      if (json) {
+        writeJsonReport(stdout, report);
+      }
       return 1;
     }
 
     throw error;
   }
 
-  io.stdout.write(`[opentree] created ${CONFIG_FILE_NAME}\n`);
-  io.stdout.write("[opentree] edit the generated config and continue with the next commands\n");
+  report.ok = true;
+  report.stage = "write";
+  report.message = `created ${CONFIG_FILE_NAME}`;
+  report.config = config;
+  report.result = {
+    created: true
+  };
+
+  if (json) {
+    writeJsonReport(stdout, report);
+    return 0;
+  }
+
+  stdout.write(`[opentree] created ${CONFIG_FILE_NAME}\n`);
+  stdout.write("[opentree] edit the generated config and continue with the next commands\n");
 
   return 0;
 }
@@ -213,6 +281,8 @@ async function runInit(io, args = []) {
 module.exports = {
   CONFIG_FILE_NAME,
   createDefaultConfig,
+  createInitReport,
   parseInitArgs,
+  parseInitCommandArgs,
   runInit
 };

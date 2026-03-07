@@ -6,7 +6,7 @@ const os = require("node:os");
 const { spawnSync } = require("node:child_process");
 const { EventEmitter } = require("node:events");
 const { PassThrough, Writable } = require("node:stream");
-const { handleRequest } = require("../src/dev");
+const { handleRequest, runDev } = require("../src/dev");
 const { runDeploy } = require("../src/deploy");
 const { runDoctor } = require("../src/doctor");
 const { createDefaultConfig } = require("../src/init");
@@ -49,6 +49,33 @@ function createFakeChildProcess({ stdout = "", stderr = "", exitCode = 0, error 
   });
 
   return child;
+}
+
+function createFakeServer({ activePort = 43123 } = {}) {
+  const server = new EventEmitter();
+  server.listenCalls = [];
+  server.closed = false;
+
+  server.listen = (port, host, callback) => {
+    server.listenCalls.push({ host, port });
+    server.activePort = port === 0 ? activePort : port;
+    process.nextTick(callback);
+  };
+
+  server.address = () => ({
+    address: "127.0.0.1",
+    family: "IPv4",
+    port: server.activePort ?? activePort
+  });
+
+  server.close = (callback) => {
+    server.closed = true;
+    process.nextTick(() => {
+      callback?.();
+    });
+  };
+
+  return server;
 }
 
 function createConfig(overrides = {}) {
@@ -203,6 +230,29 @@ test("init accepts profile and metadata overrides from flags", async () => {
   });
 });
 
+test("init supports structured json output", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-init-json-"));
+  const expectedConfigPath = path.join(await fs.realpath(tempDir), configFilePath);
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "init", "--name", "Kidow", "--json"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(report.ok, true);
+  assert.equal(report.command, "init");
+  assert.equal(report.stage, "write");
+  assert.equal(report.message, "created opentree.config.json");
+  assert.equal(report.result.created, true);
+  assert.equal(report.config.profile.name, "Kidow");
+  assert.equal(report.configPath, expectedConfigPath);
+});
+
 test("init rejects invalid metadata overrides", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-init-invalid-"));
   const result = spawnSync(
@@ -216,6 +266,25 @@ test("init rejects invalid metadata overrides", async () => {
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /\[opentree\] --og-image-url must be an http or https URL/);
+});
+
+test("init supports structured json output for argument failures", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-init-invalid-json-"));
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "init", "--og-image-url", "ftp://example.com/og.png", "--json"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 1);
+  assert.equal(report.ok, false);
+  assert.equal(report.command, "init");
+  assert.equal(report.stage, "args");
+  assert.equal(report.message, "--og-image-url must be an http or https URL");
 });
 
 test("init fails when config already exists", async () => {
@@ -233,6 +302,27 @@ test("init fails when config already exists", async () => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /\[opentree\] opentree\.config\.json already exists/);
   assert.match(result.stderr, /avoid overwriting your config/);
+});
+
+test("init supports structured json output when config already exists", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-init-existing-json-"));
+  await fs.writeFile(
+    path.join(tempDir, configFilePath),
+    JSON.stringify({ profile: { name: "Existing" } }, null, 2) + "\n"
+  );
+
+  const result = spawnSync(process.execPath, [cliPath, "init", "--json"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 1);
+  assert.equal(report.ok, false);
+  assert.equal(report.command, "init");
+  assert.equal(report.stage, "write");
+  assert.equal(report.message, "init aborted because opentree.config.json already exists");
+  assert.deepEqual(report.issues, ["opentree.config.json already exists"]);
 });
 
 test("validate passes for the starter config", async () => {
@@ -1483,6 +1573,74 @@ test("dev fails fast when the config file is missing", async () => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /\[opentree\] cannot start dev server/);
   assert.match(result.stderr, /\[opentree\] opentree\.config\.json was not found/);
+});
+
+test("dev supports structured json output", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-dev-json-"));
+  await writeConfigFile(tempDir);
+
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+  const signalProcess = new EventEmitter();
+  const server = createFakeServer({ activePort: 43123 });
+
+  const exitPromise = runDev(
+    {
+      createServer: () => server,
+      cwd: tempDir,
+      signalProcess,
+      stderr,
+      stdout
+    },
+    ["--json", "--port", "0"]
+  );
+
+  for (let attempt = 0; attempt < 20 && stdout.buffer.length === 0; attempt += 1) {
+    await new Promise((resolve) => {
+      setTimeout(resolve, 5);
+    });
+  }
+
+  const report = JSON.parse(stdout.buffer);
+
+  assert.equal(report.ok, true);
+  assert.equal(report.command, "dev");
+  assert.equal(report.stage, "listen");
+  assert.equal(report.message, "dev server running at http://127.0.0.1:43123");
+  assert.deepEqual(report.result, {
+    host: "127.0.0.1",
+    port: 43123,
+    url: "http://127.0.0.1:43123"
+  });
+  assert.deepEqual(server.listenCalls, [
+    {
+      host: "127.0.0.1",
+      port: 0
+    }
+  ]);
+  assert.match(stderr.buffer, /\[opentree\] dev server running at http:\/\/127\.0\.0\.1:43123/);
+
+  signalProcess.emit("SIGTERM");
+  const exitCode = await exitPromise;
+
+  assert.equal(exitCode, 0);
+  assert.equal(server.closed, true);
+});
+
+test("dev supports structured json output for startup failures", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-dev-missing-json-"));
+  const result = spawnSync(process.execPath, [cliPath, "dev", "--json"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 1);
+  assert.equal(report.ok, false);
+  assert.equal(report.command, "dev");
+  assert.equal(report.stage, "load");
+  assert.match(report.message, /cannot start dev server because opentree\.config\.json was not found/);
+  assert.deepEqual(report.issues, ["Run `opentree init` first to create a starter config."]);
 });
 
 test("dev request returns a problem page when the config becomes invalid", async () => {
