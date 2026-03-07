@@ -1976,6 +1976,77 @@ test("vercel unlink supports structured json output when no local link exists", 
   });
 });
 
+test("vercel status reports healthy local link and auth state", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-vercel-status-ok-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+  await writeVercelProjectFile(tempDir);
+
+  const exitCode = await runVercelCommand(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr,
+      env: { ...process.env }
+    },
+    ["status"],
+    {
+      spawn: (_command, args) => {
+        if (args[0] === "whoami") {
+          return createFakeChildProcess({
+            stdout: "kidow\n"
+          });
+        }
+
+        throw new Error("unexpected spawn call");
+      }
+    }
+  );
+
+  assert.equal(exitCode, 0);
+  assert.equal(stderr.buffer, "");
+  assert.match(stdout.buffer, /\[opentree\] vercel status/);
+  assert.match(stdout.buffer, /\[pass\] vercel: CLI is installed/);
+  assert.match(stdout.buffer, /\[pass\] vercel auth: logged in as kidow/);
+  assert.match(stdout.buffer, /\[pass\] vercel link: project root is linked to opentree \(prj_123\)/);
+  assert.match(stdout.buffer, /\[opentree\] vercel status found no issues/);
+});
+
+test("vercel status supports structured json output for failing state", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-vercel-status-fail-json-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+
+  const exitCode = await runVercelCommand(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr,
+      env: { ...process.env }
+    },
+    ["status", "--json"],
+    {
+      spawn: () =>
+        createFakeChildProcess({
+          error: Object.assign(new Error("vercel not found"), { code: "ENOENT" })
+        })
+    }
+  );
+  const report = JSON.parse(stdout.buffer);
+
+  assert.equal(exitCode, 1);
+  assert.equal(stderr.buffer, "");
+  assert.equal(report.ok, false);
+  assert.equal(report.command, "vercel status");
+  assert.equal(report.stage, "status");
+  assert.equal(report.issueCount, 2);
+  assert.equal(report.result.cli.installed, false);
+  assert.equal(report.result.auth.checked, false);
+  assert.equal(report.result.link.linked, false);
+  assert.equal(report.result.link.kind, "missing");
+  assert.equal(report.message, "[opentree] vercel status found 2 issue(s)");
+});
+
 test("deploy runs build first and forwards the deployment url", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-deploy-"));
   const stdout = new MemoryWritable();

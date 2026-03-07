@@ -34,6 +34,7 @@ function buildHelpText() {
     "  theme set     Update theme fields in opentree.config.json (--json supported)",
     "  validate  Validate opentree.config.json (--json supported)",
     "  vercel link    Link the project root to a reusable Vercel project (--json supported)",
+    "  vercel status  Inspect local Vercel link and CLI auth state (--json supported)",
     "  vercel unlink  Remove local reusable Vercel project linkage (--json supported)",
     "  help      Show this message",
     "",

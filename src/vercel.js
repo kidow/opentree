@@ -24,6 +24,32 @@ function createVercelReport(cwd, command) {
   };
 }
 
+function createStatusCheck(id, status, message, hints = [], details = []) {
+  return {
+    details,
+    hints,
+    id,
+    message,
+    status
+  };
+}
+
+function renderVercelStatusReport(stdout, report) {
+  stdout.write("[opentree] vercel status\n");
+
+  report.checks.forEach((check) => {
+    stdout.write(`[${check.status}] ${check.id}: ${check.message}\n`);
+    check.hints.forEach((hint) => {
+      stdout.write(`  hint: ${hint}\n`);
+    });
+    check.details.forEach((detail) => {
+      stdout.write(`  - ${detail}\n`);
+    });
+  });
+
+  stdout.write(`${report.message}\n`);
+}
+
 function getVercelProjectFilePath(baseDir = process.cwd()) {
   return path.join(baseDir, VERCEL_DIR_NAME, VERCEL_PROJECT_FILE_NAME);
 }
@@ -194,6 +220,21 @@ function parseVercelUnlinkArgs(args) {
     }
 
     throw new Error("usage: opentree vercel unlink [--json]");
+  }
+
+  return { json };
+}
+
+function parseVercelStatusArgs(args) {
+  let json = false;
+
+  for (const arg of args) {
+    if (arg === "--json") {
+      json = true;
+      continue;
+    }
+
+    throw new Error("usage: opentree vercel status [--json]");
   }
 
   return { json };
@@ -461,6 +502,171 @@ async function runVercelUnlink(io, args = [], deps = {}) {
   return 0;
 }
 
+async function createVercelStatusReport(cwd, env, deps = {}) {
+  const spawnImpl = deps.spawn ?? spawn;
+  const inspectAuthImpl = deps.inspectVercelAuth ?? inspectVercelAuth;
+  const inspectLinkImpl = deps.inspectVercelProjectLink ?? inspectVercelProjectLink;
+  const checks = [];
+  const issues = [];
+  let issueCount = 0;
+
+  const vercelState = await inspectAuthImpl({
+    cwd,
+    env,
+    spawnImpl
+  });
+
+  const result = {
+    auth: {
+      authenticated: false,
+      checked: false,
+      installed: false,
+      username: ""
+    },
+    cli: {
+      installed: false
+    },
+    link: {
+      kind: "missing",
+      linked: false,
+      project: null,
+      projectFilePath: getVercelProjectFilePath(cwd)
+    }
+  };
+
+  if (!vercelState.installed) {
+    issueCount += 1;
+    issues.push("Vercel CLI is not installed");
+    checks.push(
+      createStatusCheck("vercel", "fail", "CLI is not installed", [
+        "install it with `npm install -g vercel`"
+      ])
+    );
+    checks.push(
+      createStatusCheck(
+        "vercel auth",
+        "skip",
+        "could not be checked because the Vercel CLI is unavailable"
+      )
+    );
+  } else {
+    result.cli.installed = true;
+    result.auth.installed = true;
+    result.auth.checked = true;
+    checks.push(createStatusCheck("vercel", "pass", "CLI is installed"));
+
+    if (vercelState.authenticated) {
+      result.auth.authenticated = true;
+      result.auth.username = vercelState.username ?? "";
+      const username = vercelState.username ? ` as ${vercelState.username}` : "";
+      checks.push(createStatusCheck("vercel auth", "pass", `logged in${username}`));
+    } else {
+      issueCount += 1;
+      result.auth.authenticated = false;
+      issues.push("Vercel CLI is not logged in");
+      checks.push(
+        createStatusCheck(
+          "vercel auth",
+          "fail",
+          "CLI is not logged in",
+          [
+            ...(vercelState.message ? [vercelState.message] : []),
+            "run `vercel login`"
+          ]
+        )
+      );
+    }
+  }
+
+  const linkState = await inspectLinkImpl(cwd);
+  result.link.projectFilePath = linkState.projectFilePath ?? result.link.projectFilePath;
+
+  if (linkState.ok) {
+    result.link.kind = "linked";
+    result.link.linked = true;
+    result.link.project = linkState.project;
+    const linkedProject = linkState.project.projectName
+      ? `${linkState.project.projectName} (${linkState.project.projectId})`
+      : linkState.project.projectId;
+    checks.push(
+      createStatusCheck(
+        "vercel link",
+        "pass",
+        `project root is linked to ${linkedProject}`
+      )
+    );
+  } else {
+    issueCount += 1;
+    result.link.kind = linkState.kind ?? "missing";
+    result.link.linked = false;
+    result.link.project = null;
+    const hints = ["run `opentree vercel link` to create a reusable root-level project link"];
+
+    if (linkState.kind === "invalid_json" || linkState.kind === "invalid") {
+      issues.push("root Vercel project link is invalid");
+      checks.push(
+        createStatusCheck(
+          "vercel link",
+          "fail",
+          "root Vercel project link is invalid",
+          hints,
+          linkState.message ? [linkState.message] : []
+        )
+      );
+    } else {
+      issues.push("root Vercel project link was not found");
+      checks.push(
+        createStatusCheck(
+          "vercel link",
+          "fail",
+          "root Vercel project link was not found",
+          hints
+        )
+      );
+    }
+  }
+
+  return {
+    checks,
+    command: "vercel status",
+    cwd,
+    issueCount,
+    issues,
+    message:
+      issueCount === 0
+        ? "[opentree] vercel status found no issues"
+        : `[opentree] vercel status found ${issueCount} issue(s)`,
+    ok: issueCount === 0,
+    result,
+    stage: "status"
+  };
+}
+
+async function runVercelStatus(io, args = [], deps = {}) {
+  const cwd = io.cwd ?? process.cwd();
+  const stdout = io.stdout ?? process.stdout;
+  const stderr = io.stderr ?? process.stderr;
+  const env = io.env ?? process.env;
+  let options;
+
+  try {
+    options = parseVercelStatusArgs(args);
+  } catch (error) {
+    stderr.write(`[opentree] ${error.message}\n`);
+    return 1;
+  }
+
+  const report = await createVercelStatusReport(cwd, env, deps);
+
+  if (options.json) {
+    writeJsonReport(stdout, report);
+  } else {
+    renderVercelStatusReport(stdout, report);
+  }
+
+  return report.ok ? 0 : 1;
+}
+
 async function runVercelCommand(io, args = [], deps = {}) {
   const stderr = io.stderr ?? process.stderr;
   const [subcommand, ...rest] = args;
@@ -473,7 +679,11 @@ async function runVercelCommand(io, args = [], deps = {}) {
     return runVercelUnlink(io, rest, deps);
   }
 
-  stderr.write("[opentree] usage: opentree vercel <link|unlink>\n");
+  if (subcommand === "status") {
+    return runVercelStatus(io, rest, deps);
+  }
+
+  stderr.write("[opentree] usage: opentree vercel <link|unlink|status>\n");
   return 1;
 }
 
@@ -486,8 +696,10 @@ module.exports = {
   removeOptionalVercelProjectLink,
   runVercelCommand,
   runVercelLink,
+  runVercelStatus,
   runVercelUnlink,
   sanitizeVercelProjectLink,
   saveVercelProjectLink,
-  syncVercelProjectLink
+  syncVercelProjectLink,
+  createVercelStatusReport
 };
