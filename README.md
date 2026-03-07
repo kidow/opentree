@@ -15,6 +15,8 @@ opentree dev
 opentree deploy
 opentree config show
 opentree profile set --name "Kidow"
+opentree site set --url "https://links.example.com"
+opentree meta set --title "Kidow Links" --description "Find my work." --og-image-url "https://cdn.example.com/og.png"
 opentree link list
 opentree link add --title "Docs" --url "https://example.com/docs"
 opentree link update --index 1 --title "GitHub Profile"
@@ -30,7 +32,7 @@ opentree theme set --accent-color "#0f766e"
 `opentree dev`는 로컬 미리보기 서버를 띄우고, 설정 파일 수정 내용을 새로고침만으로 반영한다.
 `opentree deploy`는 먼저 `dist`를 빌드한 뒤 Vercel CLI로 그 결과물을 배포한다.
 `opentree config show`는 현재 설정 파일 내용을 그대로 출력한다.
-`opentree profile set`, `opentree link add`, `opentree link update`, `opentree link move`, `opentree link remove`, `opentree theme set`은 설정 파일 수정을 CLI로 대체한다.
+`opentree profile set`, `opentree site set`, `opentree meta set`, `opentree link add`, `opentree link update`, `opentree link move`, `opentree link remove`, `opentree theme set`은 설정 파일 수정을 CLI로 대체한다.
 `opentree link list`는 현재 링크 순서와 1-based 인덱스를 보여준다.
 
 `opentree deploy`를 쓰려면 먼저 Vercel CLI가 필요하다.

@@ -2,7 +2,7 @@ const packageJson = require("../package.json");
 const { runBuild } = require("./build");
 const { runDev } = require("./dev");
 const { runDeploy } = require("./deploy");
-const { runLinkCommand, runProfileCommand, runThemeCommand } = require("./edit");
+const { runLinkCommand, runMetaCommand, runProfileCommand, runSiteCommand, runThemeCommand } = require("./edit");
 const { runConfigCommand } = require("./show");
 const { runInit } = require("./init");
 const { runValidate } = require("./validate");
@@ -25,7 +25,9 @@ function buildHelpText() {
     "  link move     Move a link entry by index",
     "  link remove   Remove a link entry by index",
     "  link update   Update a link entry by index",
+    "  meta set      Update metadata fields in opentree.config.json",
     "  profile set   Update profile fields in opentree.config.json",
+    "  site set      Update site fields in opentree.config.json",
     "  theme set     Update theme fields in opentree.config.json",
     "  validate  Validate opentree.config.json",
     "  help      Show this message",
@@ -74,6 +76,14 @@ async function run(argv = process.argv.slice(2), io = {}) {
 
   if (command === "profile") {
     return runProfileCommand(context, argv.slice(1));
+  }
+
+  if (command === "site") {
+    return runSiteCommand(context, argv.slice(1));
+  }
+
+  if (command === "meta") {
+    return runMetaCommand(context, argv.slice(1));
   }
 
   if (command === "link") {

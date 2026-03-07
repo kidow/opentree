@@ -269,6 +269,67 @@ function parseThemeArgs(args) {
   return updates;
 }
 
+function parseSiteArgs(args) {
+  if (args.length === 0) {
+    throw new Error("missing required option --url");
+  }
+
+  if (args.length !== 2 || args[0] !== "--url") {
+    throw new Error("usage: opentree site set --url <value>");
+  }
+
+  return {
+    siteUrl: args[1]
+  };
+}
+
+function parseMetaArgs(args) {
+  const updates = {};
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    const nextValue = args[index + 1];
+
+    if (arg === "--title") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --title");
+      }
+
+      updates.title = nextValue;
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--description") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --description");
+      }
+
+      updates.description = nextValue;
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--og-image-url") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --og-image-url");
+      }
+
+      updates.ogImageUrl = nextValue;
+      index += 1;
+      continue;
+    }
+
+    throw new Error(`unknown option: ${arg}`);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    throw new Error("provide at least one of --title, --description, or --og-image-url");
+  }
+
+  return updates;
+}
+
 async function loadEditableConfig(io) {
   const cwd = io.cwd ?? process.cwd();
 
@@ -610,8 +671,91 @@ async function runThemeCommand(io, args = []) {
   return 0;
 }
 
+async function runSiteCommand(io, args = []) {
+  const [subcommand, ...restArgs] = args;
+
+  if (subcommand !== "set") {
+    io.stderr.write("[opentree] usage: opentree site set --url <value>\n");
+    return 1;
+  }
+
+  let updates;
+  try {
+    updates = parseSiteArgs(restArgs);
+  } catch (error) {
+    io.stderr.write(`[opentree] ${error.message}\n`);
+    return 1;
+  }
+
+  const loadedConfig = await loadEditableConfig(io);
+  if (!loadedConfig) {
+    return 1;
+  }
+
+  const nextConfig = {
+    ...loadedConfig.config,
+    ...updates
+  };
+  const errors = validateConfig(nextConfig);
+
+  if (errors.length > 0) {
+    reportInvalidConfig(io, "site update", errors);
+    return 1;
+  }
+
+  await saveConfig(io.cwd ?? process.cwd(), nextConfig);
+
+  io.stdout.write("[opentree] updated site fields: siteUrl\n");
+  return 0;
+}
+
+async function runMetaCommand(io, args = []) {
+  const [subcommand, ...restArgs] = args;
+
+  if (subcommand !== "set") {
+    io.stderr.write(
+      "[opentree] usage: opentree meta set [--title <value>] [--description <value>] [--og-image-url <value>]\n"
+    );
+    return 1;
+  }
+
+  let updates;
+  try {
+    updates = parseMetaArgs(restArgs);
+  } catch (error) {
+    io.stderr.write(`[opentree] ${error.message}\n`);
+    return 1;
+  }
+
+  const loadedConfig = await loadEditableConfig(io);
+  if (!loadedConfig) {
+    return 1;
+  }
+
+  const nextConfig = {
+    ...loadedConfig.config,
+    metadata: {
+      ...(isObject(loadedConfig.config.metadata) ? loadedConfig.config.metadata : {}),
+      ...updates
+    }
+  };
+  const errors = validateConfig(nextConfig);
+
+  if (errors.length > 0) {
+    reportInvalidConfig(io, "meta update", errors);
+    return 1;
+  }
+
+  await saveConfig(io.cwd ?? process.cwd(), nextConfig);
+
+  io.stdout.write(`[opentree] updated metadata fields: ${Object.keys(updates).join(", ")}\n`);
+  return 0;
+}
+
 module.exports = {
   runLinkCommand,
+  runMetaCommand,
   runProfileCommand,
+  runSiteCommand,
   runThemeCommand
 };

@@ -440,6 +440,109 @@ test("profile set rejects invalid updates", async () => {
   assert.match(result.stderr, /profile\.avatarUrl must be an http or https URL/);
 });
 
+test("site set updates the site url", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-site-set-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "site", "set", "--url", "https://links.example.com"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const config = JSON.parse(await fs.readFile(path.join(tempDir, configFilePath), "utf8"));
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /\[opentree\] updated site fields: siteUrl/);
+  assert.equal(config.siteUrl, "https://links.example.com");
+});
+
+test("site set rejects invalid urls", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-site-invalid-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "site", "set", "--url", "ftp://links.example.com"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /\[opentree\] site update aborted because the config would be invalid/);
+  assert.match(result.stderr, /siteUrl must be an http or https URL when provided/);
+});
+
+test("meta set updates metadata fields", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-meta-set-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      cliPath,
+      "meta",
+      "set",
+      "--title",
+      "Kidow Links",
+      "--description",
+      "Find my work across the internet.",
+      "--og-image-url",
+      "https://cdn.example.com/og.png"
+    ],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const config = JSON.parse(await fs.readFile(path.join(tempDir, configFilePath), "utf8"));
+
+  assert.equal(result.status, 0);
+  assert.match(
+    result.stdout,
+    /\[opentree\] updated metadata fields: title, description, ogImageUrl/
+  );
+  assert.deepEqual(config.metadata, {
+    title: "Kidow Links",
+    description: "Find my work across the internet.",
+    ogImageUrl: "https://cdn.example.com/og.png"
+  });
+});
+
+test("meta set rejects invalid og image urls", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-meta-invalid-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "meta", "set", "--og-image-url", "ftp://cdn.example.com/og.png"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /\[opentree\] meta update aborted because the config would be invalid/);
+  assert.match(result.stderr, /metadata\.ogImageUrl must be an http or https URL when provided/);
+});
+
 test("config show prints the current config json", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-config-show-"));
   spawnSync(process.execPath, [cliPath, "init"], {
