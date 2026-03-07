@@ -241,6 +241,161 @@ test("build fails when the config is invalid", async () => {
   assert.match(result.stderr, /links\[0\]\.url must be an http or https URL/);
 });
 
+test("profile set updates the profile fields in config", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-profile-set-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "profile", "set", "--name", "Kidow", "--bio", "Shipping links.", "--avatar-url", "https://example.com/avatar.png"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const config = JSON.parse(await fs.readFile(path.join(tempDir, configFilePath), "utf8"));
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /\[opentree\] updated profile fields: name, bio, avatarUrl/);
+  assert.equal(config.profile.name, "Kidow");
+  assert.equal(config.profile.bio, "Shipping links.");
+  assert.equal(config.profile.avatarUrl, "https://example.com/avatar.png");
+});
+
+test("profile set rejects invalid updates", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-profile-invalid-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "profile", "set", "--avatar-url", "ftp://example.com/avatar.png"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /\[opentree\] profile update aborted because the config would be invalid/);
+  assert.match(result.stderr, /profile\.avatarUrl must be an http or https URL/);
+});
+
+test("link add appends a new link", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-link-add-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "link", "add", "--title", "Docs", "--url", "https://example.com/docs"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const config = JSON.parse(await fs.readFile(path.join(tempDir, configFilePath), "utf8"));
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /\[opentree\] added link #3: Docs/);
+  assert.equal(config.links.length, 3);
+  assert.equal(config.links[2].title, "Docs");
+  assert.equal(config.links[2].url, "https://example.com/docs");
+});
+
+test("link add can insert at a 1-based index", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-link-insert-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "link", "add", "--title", "Blog", "--url", "https://example.com/blog", "--index", "1"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const config = JSON.parse(await fs.readFile(path.join(tempDir, configFilePath), "utf8"));
+
+  assert.equal(result.status, 0);
+  assert.equal(config.links[0].title, "Blog");
+  assert.equal(config.links[1].title, "GitHub");
+});
+
+test("link remove deletes a link by 1-based index", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-link-remove-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "link", "remove", "--index", "1"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const config = JSON.parse(await fs.readFile(path.join(tempDir, configFilePath), "utf8"));
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /\[opentree\] removed link #1: GitHub/);
+  assert.equal(config.links.length, 1);
+  assert.equal(config.links[0].title, "Website");
+});
+
+test("link remove rejects deleting the last link", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-link-remove-last-"));
+  await fs.writeFile(
+    path.join(tempDir, configFilePath),
+    JSON.stringify(
+      {
+        profile: {
+          name: "Kidow",
+          bio: "Only one link left.",
+          avatarUrl: ""
+        },
+        links: [
+          {
+            title: "Only Link",
+            url: "https://example.com"
+          }
+        ],
+        theme: {
+          accentColor: "#166534",
+          backgroundColor: "#f0fdf4",
+          textColor: "#052e16"
+        }
+      },
+      null,
+      2
+    ) + "\n"
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "link", "remove", "--index", "1"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /cannot remove the last link/);
+});
+
 test("dev serves the preview and reloads config changes without restart", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-dev-"));
   const initResult = spawnSync(process.execPath, [cliPath, "init"], {

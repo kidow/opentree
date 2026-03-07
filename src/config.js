@@ -33,6 +33,16 @@ async function loadConfig(cwd = process.cwd()) {
   };
 }
 
+async function saveConfig(cwd = process.cwd(), config) {
+  const configPath = path.join(cwd, CONFIG_FILE_NAME);
+  await fs.writeFile(configPath, JSON.stringify(config, null, 2) + "\n", "utf8");
+
+  return {
+    configPath,
+    config
+  };
+}
+
 function validateConfig(config) {
   const errors = [];
 
@@ -98,5 +108,6 @@ function validateConfig(config) {
 
 module.exports = {
   loadConfig,
+  saveConfig,
   validateConfig
 };
