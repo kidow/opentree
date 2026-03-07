@@ -13,6 +13,7 @@ opentree validate
 opentree build
 opentree dev
 opentree deploy
+opentree doctor
 opentree config show
 opentree profile set --name "Kidow"
 opentree site set --url "https://links.example.com"
@@ -32,14 +33,17 @@ opentree theme set --accent-color "#0f766e"
 `siteUrl`이 설정되어 있으면 `opentree build`는 `dist/sitemap.xml`과 `dist/robots.txt`도 함께 생성한다.
 `opentree dev`는 로컬 미리보기 서버를 띄우고, 설정 파일 수정 내용을 새로고침만으로 반영한다.
 `opentree deploy`는 먼저 `dist`를 빌드한 뒤 Vercel CLI로 그 결과물을 배포한다.
+`opentree doctor`는 config 유효성, `siteUrl`, Vercel CLI 설치 여부, 로그인 상태를 한 번에 점검한다.
 `opentree config show`는 현재 설정 파일 내용을 그대로 출력한다.
 `opentree profile set`, `opentree site set`, `opentree meta set`, `opentree link add`, `opentree link update`, `opentree link move`, `opentree link remove`, `opentree theme set`은 설정 파일 수정을 CLI로 대체한다.
 `opentree link list`는 현재 링크 순서와 1-based 인덱스를 보여준다.
 
 `opentree deploy`를 쓰려면 먼저 Vercel CLI가 필요하다.
+또한 `siteUrl`이 설정되어 있어야 하고, `vercel login`이 완료되어 있어야 한다.
 
 ```bash
 npm install -g vercel
+opentree site set --url "https://links.example.com"
 vercel login
 opentree deploy
 ```

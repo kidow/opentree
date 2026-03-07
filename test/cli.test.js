@@ -8,6 +8,8 @@ const { EventEmitter } = require("node:events");
 const { PassThrough, Writable } = require("node:stream");
 const { handleRequest } = require("../src/dev");
 const { runDeploy } = require("../src/deploy");
+const { runDoctor } = require("../src/doctor");
+const { createDefaultConfig } = require("../src/init");
 
 const cliPath = path.join(__dirname, "..", "bin", "opentree.js");
 const configFilePath = "opentree.config.json";
@@ -44,6 +46,34 @@ function createFakeChildProcess({ stdout = "", stderr = "", exitCode = 0, error 
   });
 
   return child;
+}
+
+function createConfig(overrides = {}) {
+  const baseConfig = createDefaultConfig();
+
+  return {
+    ...baseConfig,
+    ...overrides,
+    profile: {
+      ...baseConfig.profile,
+      ...(overrides.profile ?? {})
+    },
+    links: overrides.links ?? baseConfig.links,
+    theme: {
+      ...baseConfig.theme,
+      ...(overrides.theme ?? {})
+    },
+    metadata: {
+      ...baseConfig.metadata,
+      ...(overrides.metadata ?? {})
+    }
+  };
+}
+
+async function writeConfigFile(cwd, overrides = {}) {
+  const config = createConfig(overrides);
+  await fs.writeFile(path.join(cwd, configFilePath), JSON.stringify(config, null, 2) + "\n");
+  return config;
 }
 
 async function renderDevResponse(cwd, requestUrl = "/") {
@@ -1007,6 +1037,9 @@ test("deploy runs build first and forwards the deployment url", async () => {
   const stderr = new MemoryWritable();
   const spawnCalls = [];
   const buildCalls = [];
+  await writeConfigFile(tempDir, {
+    siteUrl: "https://links.example.com"
+  });
 
   const exitCode = await runDeploy(
     {
@@ -1023,6 +1056,13 @@ test("deploy runs build first and forwards the deployment url", async () => {
       },
       spawn: (command, args, options) => {
         spawnCalls.push({ command, args, options });
+
+        if (args[0] === "whoami") {
+          return createFakeChildProcess({
+            stdout: "kidow\n"
+          });
+        }
+
         return createFakeChildProcess({
           stdout: "https://opentree-demo.vercel.app\n",
           stderr: "Inspect: https://vercel.com/kidow/opentree\n"
@@ -1034,11 +1074,15 @@ test("deploy runs build first and forwards the deployment url", async () => {
   assert.equal(exitCode, 0);
   assert.equal(buildCalls.length, 1);
   assert.equal(buildCalls[0].stdout, stderr);
-  assert.equal(spawnCalls.length, 1);
+  assert.equal(spawnCalls.length, 2);
   assert.equal(spawnCalls[0].command, "vercel");
-  assert.deepEqual(spawnCalls[0].args, ["--cwd", path.join(tempDir, "dist"), "--prod"]);
+  assert.deepEqual(spawnCalls[0].args, ["whoami"]);
   assert.equal(spawnCalls[0].options.cwd, tempDir);
+  assert.equal(spawnCalls[1].command, "vercel");
+  assert.deepEqual(spawnCalls[1].args, ["--cwd", path.join(tempDir, "dist"), "--prod"]);
+  assert.equal(spawnCalls[1].options.cwd, tempDir);
   assert.match(stdout.buffer, /https:\/\/opentree-demo\.vercel\.app/);
+  assert.match(stderr.buffer, /\[opentree\] Vercel CLI authenticated as kidow/);
   assert.match(stderr.buffer, /Inspect: https:\/\/vercel\.com\/kidow\/opentree/);
   assert.match(stderr.buffer, /\[opentree\] deployment ready: https:\/\/opentree-demo\.vercel\.app/);
 });
@@ -1047,6 +1091,9 @@ test("deploy reports a missing vercel cli", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-deploy-missing-cli-"));
   const stdout = new MemoryWritable();
   const stderr = new MemoryWritable();
+  await writeConfigFile(tempDir, {
+    siteUrl: "https://links.example.com"
+  });
 
   const exitCode = await runDeploy(
     {
@@ -1057,7 +1104,9 @@ test("deploy reports a missing vercel cli", async () => {
     },
     [],
     {
-      runBuild: async () => 0,
+      runBuild: async () => {
+        throw new Error("runBuild should not be called when vercel is unavailable");
+      },
       spawn: () => createFakeChildProcess({ error: { code: "ENOENT" } })
     }
   );
@@ -1065,6 +1114,188 @@ test("deploy reports a missing vercel cli", async () => {
   assert.equal(exitCode, 1);
   assert.equal(stdout.buffer, "");
   assert.match(stderr.buffer, /Vercel CLI not found/);
+});
+
+test("deploy requires siteUrl before running build", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-deploy-site-url-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+  await writeConfigFile(tempDir);
+
+  const exitCode = await runDeploy(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr,
+      env: { ...process.env }
+    },
+    [],
+    {
+      runBuild: async () => {
+        throw new Error("runBuild should not be called when siteUrl is missing");
+      },
+      spawn: () => {
+        throw new Error("spawn should not be called when siteUrl is missing");
+      }
+    }
+  );
+
+  assert.equal(exitCode, 1);
+  assert.equal(stdout.buffer, "");
+  assert.match(stderr.buffer, /deploy preflight failed because siteUrl is missing/);
+  assert.match(stderr.buffer, /opentree site set --url <your-production-url>/);
+});
+
+test("deploy reports when vercel login is missing", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-deploy-login-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+  await writeConfigFile(tempDir, {
+    siteUrl: "https://links.example.com"
+  });
+
+  const exitCode = await runDeploy(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr,
+      env: { ...process.env }
+    },
+    [],
+    {
+      runBuild: async () => {
+        throw new Error("runBuild should not be called when vercel login is missing");
+      },
+      spawn: () =>
+        createFakeChildProcess({
+          stderr: "Error: Not logged in\n",
+          exitCode: 1
+        })
+    }
+  );
+
+  assert.equal(exitCode, 1);
+  assert.equal(stdout.buffer, "");
+  assert.match(stderr.buffer, /checking Vercel authentication/);
+  assert.match(stderr.buffer, /Error: Not logged in/);
+  assert.match(stderr.buffer, /Vercel CLI is not logged in\. Run `vercel login` and try again/);
+});
+
+test("doctor reports a healthy project and vercel session", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-doctor-ok-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+  await writeConfigFile(tempDir, {
+    siteUrl: "https://links.example.com"
+  });
+
+  const exitCode = await runDoctor(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr,
+      env: { ...process.env }
+    },
+    [],
+    {
+      spawn: () =>
+        createFakeChildProcess({
+          stdout: "kidow\n"
+        })
+    }
+  );
+
+  assert.equal(exitCode, 0);
+  assert.equal(stderr.buffer, "");
+  assert.match(stdout.buffer, /\[pass\] config: opentree\.config\.json is valid/);
+  assert.match(stdout.buffer, /\[pass\] siteUrl: configured as https:\/\/links\.example\.com/);
+  assert.match(stdout.buffer, /\[pass\] vercel: CLI is installed/);
+  assert.match(stdout.buffer, /\[pass\] vercel auth: logged in as kidow/);
+  assert.match(stdout.buffer, /\[opentree\] doctor found no issues/);
+});
+
+test("doctor reports missing config and missing vercel cli", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-doctor-missing-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+
+  const exitCode = await runDoctor(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr,
+      env: { ...process.env }
+    },
+    [],
+    {
+      spawn: () => createFakeChildProcess({ error: { code: "ENOENT" } })
+    }
+  );
+
+  assert.equal(exitCode, 1);
+  assert.equal(stderr.buffer, "");
+  assert.match(stdout.buffer, /\[fail\] config: opentree\.config\.json was not found/);
+  assert.match(stdout.buffer, /\[skip\] siteUrl: could not be checked because the config is unavailable/);
+  assert.match(stdout.buffer, /\[fail\] vercel: CLI is not installed/);
+  assert.match(stdout.buffer, /\[skip\] vercel auth: could not be checked because the Vercel CLI is unavailable/);
+  assert.match(stdout.buffer, /\[opentree\] doctor found 2 issue\(s\)/);
+});
+
+test("doctor reports invalid config and missing vercel login", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-doctor-invalid-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+  await fs.writeFile(
+    path.join(tempDir, configFilePath),
+    JSON.stringify(
+      {
+        profile: {
+          name: "Kidow",
+          bio: "broken",
+          avatarUrl: ""
+        },
+        links: [
+          {
+            title: "Broken",
+            url: "mailto:test@example.com"
+          }
+        ],
+        theme: {
+          accentColor: "#166534",
+          backgroundColor: "#f0fdf4",
+          textColor: "#052e16"
+        }
+      },
+      null,
+      2
+    ) + "\n"
+  );
+
+  const exitCode = await runDoctor(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr,
+      env: { ...process.env }
+    },
+    [],
+    {
+      spawn: () =>
+        createFakeChildProcess({
+          stderr: "Error: Not logged in\n",
+          exitCode: 1
+        })
+    }
+  );
+
+  assert.equal(exitCode, 1);
+  assert.equal(stderr.buffer, "");
+  assert.match(stdout.buffer, /\[fail\] config: opentree\.config\.json has validation issues/);
+  assert.match(stdout.buffer, /links\[0\]\.url must be an http or https URL/);
+  assert.match(stdout.buffer, /\[fail\] siteUrl: missing from opentree\.config\.json/);
+  assert.match(stdout.buffer, /\[pass\] vercel: CLI is installed/);
+  assert.match(stdout.buffer, /\[fail\] vercel auth: CLI is not logged in/);
+  assert.match(stdout.buffer, /\[opentree\] doctor found 3 issue\(s\)/);
 });
 
 test("deploy rejects a custom cwd override", async () => {
@@ -1086,7 +1317,7 @@ test("deploy rejects a custom cwd override", async () => {
 });
 
 test("deploy fails when build cannot produce a valid deploy bundle", () => {
-  const tempDir = fs.mkdtemp(path.join(os.tmpdir(), "opentree-deploy-missing-config-"));
+  const tempDir = fs.mkdtemp(path.join(os.tmpdir(), "opentree-deploy-preflight-config-"));
   return tempDir.then((resolvedTempDir) => {
     const result = spawnSync(process.execPath, [cliPath, "deploy"], {
       cwd: resolvedTempDir,

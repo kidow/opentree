@@ -1,5 +1,6 @@
 const packageJson = require("../package.json");
 const { runBuild } = require("./build");
+const { runDoctor } = require("./doctor");
 const { runDev } = require("./dev");
 const { runDeploy } = require("./deploy");
 const { runLinkCommand, runMetaCommand, runProfileCommand, runSiteCommand, runThemeCommand } = require("./edit");
@@ -18,6 +19,7 @@ function buildHelpText() {
     "  build     Generate a static site into dist/index.html",
     "  config show   Print the current opentree.config.json",
     "  deploy    Build and deploy the dist output with Vercel CLI",
+    "  doctor    Check config, siteUrl, and Vercel readiness",
     "  dev       Start a local preview server",
     "  init      Create a starter opentree.config.json",
     "  link add      Add a link entry to opentree.config.json",
@@ -68,6 +70,10 @@ async function run(argv = process.argv.slice(2), io = {}) {
 
   if (command === "deploy") {
     return runDeploy(context, argv.slice(1));
+  }
+
+  if (command === "doctor") {
+    return runDoctor(context, argv.slice(1));
   }
 
   if (command === "config") {
