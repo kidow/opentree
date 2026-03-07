@@ -10,12 +10,15 @@ const { handleRequest } = require("../src/dev");
 const { runDeploy } = require("../src/deploy");
 const { runDoctor } = require("../src/doctor");
 const { createDefaultConfig } = require("../src/init");
+const { runVercelCommand } = require("../src/vercel");
 
 const cliPath = path.join(__dirname, "..", "bin", "opentree.js");
 const configFilePath = "opentree.config.json";
 const buildFilePath = path.join("dist", "index.html");
 const robotsFilePath = path.join("dist", "robots.txt");
 const sitemapFilePath = path.join("dist", "sitemap.xml");
+const rootVercelProjectFilePath = path.join(".vercel", "project.json");
+const distVercelProjectFilePath = path.join("dist", ".vercel", "project.json");
 
 class MemoryWritable extends Writable {
   constructor() {
@@ -74,6 +77,23 @@ async function writeConfigFile(cwd, overrides = {}) {
   const config = createConfig(overrides);
   await fs.writeFile(path.join(cwd, configFilePath), JSON.stringify(config, null, 2) + "\n");
   return config;
+}
+
+async function writeVercelProjectFile(cwd, overrides = {}) {
+  const project = {
+    projectId: "prj_123",
+    orgId: "team_456",
+    projectName: "opentree",
+    ...overrides
+  };
+
+  await fs.mkdir(path.join(cwd, ".vercel"), { recursive: true });
+  await fs.writeFile(
+    path.join(cwd, rootVercelProjectFilePath),
+    JSON.stringify(project, null, 2) + "\n"
+  );
+
+  return project;
 }
 
 async function renderDevResponse(cwd, requestUrl = "/") {
@@ -1091,6 +1111,102 @@ test("dev request returns a problem page when the config becomes invalid", async
   assert.match(response.body, /links\[0\]\.url must be an http or https URL/);
 });
 
+test("vercel link stores a sanitized root project link", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-vercel-link-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+  const spawnCalls = [];
+  await writeConfigFile(tempDir, {
+    siteUrl: "https://links.example.com"
+  });
+
+  const exitCode = await runVercelCommand(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr,
+      env: { ...process.env }
+    },
+    ["link"],
+    {
+      inspectVercelProjectLink: async () => ({
+        ok: true,
+        linked: true,
+        project: {
+          projectId: "prj_123",
+          orgId: "team_456",
+          projectName: "opentree",
+          extraField: "should-not-survive"
+        },
+        projectFilePath: path.join(tempDir, rootVercelProjectFilePath)
+      }),
+      spawn: (command, args, options) => {
+        spawnCalls.push({ command, args, options });
+
+        if (args[0] === "whoami") {
+          return createFakeChildProcess({
+            stdout: "kidow\n"
+          });
+        }
+
+        return createFakeChildProcess({});
+      }
+    }
+  );
+
+  const linkedProject = JSON.parse(
+    await fs.readFile(path.join(tempDir, rootVercelProjectFilePath), "utf8")
+  );
+
+  assert.equal(exitCode, 0);
+  assert.equal(spawnCalls.length, 2);
+  assert.deepEqual(spawnCalls[0].args, ["whoami"]);
+  assert.deepEqual(spawnCalls[1].args, ["link"]);
+  assert.equal(spawnCalls[1].options.cwd, tempDir);
+  assert.match(stderr.buffer, /\[opentree\] linking project root with Vercel CLI/);
+  assert.match(stdout.buffer, /\[opentree\] stored Vercel project link at \.vercel\/project\.json/);
+  assert.deepEqual(linkedProject, {
+    projectId: "prj_123",
+    orgId: "team_456",
+    projectName: "opentree"
+  });
+});
+
+test("vercel link fails when the reusable root link is missing", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-vercel-link-missing-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+  await writeConfigFile(tempDir, {
+    siteUrl: "https://links.example.com"
+  });
+
+  const exitCode = await runVercelCommand(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr,
+      env: { ...process.env }
+    },
+    ["link"],
+    {
+      spawn: (command, args) => {
+        if (args[0] === "whoami") {
+          return createFakeChildProcess({
+            stdout: "kidow\n"
+          });
+        }
+
+        return createFakeChildProcess({});
+      }
+    }
+  );
+
+  assert.equal(exitCode, 1);
+  assert.equal(stdout.buffer, "");
+  assert.match(stderr.buffer, /no reusable project link was found/);
+  assert.match(stderr.buffer, /expected `\.vercel\/project\.json` to be created/);
+});
+
 test("deploy runs build first and forwards the deployment url", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-deploy-"));
   const stdout = new MemoryWritable();
@@ -1100,6 +1216,7 @@ test("deploy runs build first and forwards the deployment url", async () => {
   await writeConfigFile(tempDir, {
     siteUrl: "https://links.example.com"
   });
+  await writeVercelProjectFile(tempDir);
 
   const exitCode = await runDeploy(
     {
@@ -1135,16 +1252,69 @@ test("deploy runs build first and forwards the deployment url", async () => {
   assert.equal(buildCalls.length, 1);
   assert.equal(buildCalls[0].stdout, stderr);
   assert.equal(spawnCalls.length, 2);
+  assert.match(stderr.buffer, /\[opentree\] deploy mode: prod/);
   assert.equal(spawnCalls[0].command, "vercel");
   assert.deepEqual(spawnCalls[0].args, ["whoami"]);
   assert.equal(spawnCalls[0].options.cwd, tempDir);
   assert.equal(spawnCalls[1].command, "vercel");
   assert.deepEqual(spawnCalls[1].args, ["--cwd", path.join(tempDir, "dist"), "--prod"]);
   assert.equal(spawnCalls[1].options.cwd, tempDir);
+  assert.deepEqual(
+    JSON.parse(await fs.readFile(path.join(tempDir, distVercelProjectFilePath), "utf8")),
+    {
+      projectId: "prj_123",
+      orgId: "team_456",
+      projectName: "opentree"
+    }
+  );
   assert.match(stdout.buffer, /https:\/\/opentree-demo\.vercel\.app/);
   assert.match(stderr.buffer, /\[opentree\] Vercel CLI authenticated as kidow/);
+  assert.match(stderr.buffer, /\[opentree\] synced Vercel project link to dist\/\.vercel\/project\.json/);
   assert.match(stderr.buffer, /Inspect: https:\/\/vercel\.com\/kidow\/opentree/);
   assert.match(stderr.buffer, /\[opentree\] deployment ready: https:\/\/opentree-demo\.vercel\.app/);
+});
+
+test("deploy supports explicit preview mode without forwarding --prod", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-deploy-preview-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+  const spawnCalls = [];
+  await writeConfigFile(tempDir, {
+    siteUrl: "https://links.example.com"
+  });
+  await writeVercelProjectFile(tempDir);
+
+  const exitCode = await runDeploy(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr,
+      env: { ...process.env }
+    },
+    ["--preview"],
+    {
+      runBuild: async () => 0,
+      spawn: (command, args, options) => {
+        spawnCalls.push({ command, args, options });
+
+        if (args[0] === "whoami") {
+          return createFakeChildProcess({
+            stdout: "kidow\n"
+          });
+        }
+
+        return createFakeChildProcess({
+          stdout: "https://opentree-preview.vercel.app\n"
+        });
+      }
+    }
+  );
+
+  assert.equal(exitCode, 0);
+  assert.equal(spawnCalls.length, 2);
+  assert.match(stderr.buffer, /\[opentree\] deploy mode: preview/);
+  assert.deepEqual(spawnCalls[1].args, ["--cwd", path.join(tempDir, "dist")]);
+  assert.match(stdout.buffer, /https:\/\/opentree-preview\.vercel\.app/);
 });
 
 test("deploy reports a missing vercel cli", async () => {
@@ -1241,6 +1411,77 @@ test("deploy reports when vercel login is missing", async () => {
   assert.match(stderr.buffer, /Vercel CLI is not logged in\. Run `vercel login` and try again/);
 });
 
+test("deploy requires a reusable root Vercel project link", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-deploy-link-missing-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+  await writeConfigFile(tempDir, {
+    siteUrl: "https://links.example.com"
+  });
+
+  const exitCode = await runDeploy(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr,
+      env: { ...process.env }
+    },
+    [],
+    {
+      runBuild: async () => {
+        throw new Error("runBuild should not be called when the Vercel project link is missing");
+      },
+      spawn: (command, args) => {
+        if (args[0] === "whoami") {
+          return createFakeChildProcess({
+            stdout: "kidow\n"
+          });
+        }
+
+        throw new Error("deploy should not start when the Vercel project link is missing");
+      }
+    }
+  );
+
+  assert.equal(exitCode, 1);
+  assert.equal(stdout.buffer, "");
+  assert.match(stderr.buffer, /project is not linked to Vercel/);
+  assert.match(stderr.buffer, /run `opentree vercel link` and try again/);
+});
+
+test("deploy rejects unsupported or conflicting mode flags", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-deploy-mode-invalid-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+
+  const unknownOptionExitCode = await runDeploy(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr
+    },
+    ["--target", "prod"]
+  );
+
+  assert.equal(unknownOptionExitCode, 1);
+  assert.match(stderr.buffer, /\[opentree\] unknown option: --target/);
+
+  stderr.buffer = "";
+  stdout.buffer = "";
+
+  const conflictingModeExitCode = await runDeploy(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr
+    },
+    ["--prod", "--preview"]
+  );
+
+  assert.equal(conflictingModeExitCode, 1);
+  assert.match(stderr.buffer, /\[opentree\] choose only one deploy mode: --prod or --preview/);
+});
+
 test("doctor reports a healthy project and vercel session", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-doctor-ok-"));
   const stdout = new MemoryWritable();
@@ -1248,6 +1489,7 @@ test("doctor reports a healthy project and vercel session", async () => {
   await writeConfigFile(tempDir, {
     siteUrl: "https://links.example.com"
   });
+  await writeVercelProjectFile(tempDir);
 
   const exitCode = await runDoctor(
     {
@@ -1271,6 +1513,7 @@ test("doctor reports a healthy project and vercel session", async () => {
   assert.match(stdout.buffer, /\[pass\] siteUrl: configured as https:\/\/links\.example\.com/);
   assert.match(stdout.buffer, /\[pass\] vercel: CLI is installed/);
   assert.match(stdout.buffer, /\[pass\] vercel auth: logged in as kidow/);
+  assert.match(stdout.buffer, /\[pass\] vercel link: project root is linked to opentree \(prj_123\)/);
   assert.match(stdout.buffer, /\[opentree\] doctor found no issues/);
 });
 
@@ -1281,6 +1524,7 @@ test("doctor supports json output for healthy projects", async () => {
   await writeConfigFile(tempDir, {
     siteUrl: "https://links.example.com"
   });
+  await writeVercelProjectFile(tempDir);
 
   const exitCode = await runDoctor(
     {
@@ -1306,14 +1550,15 @@ test("doctor supports json output for healthy projects", async () => {
   assert.equal(report.issueCount, 0);
   assert.equal(report.cwd, tempDir);
   assert.equal(report.summary, "[opentree] doctor found no issues");
-  assert.equal(report.checks.length, 4);
+  assert.equal(report.checks.length, 5);
   assert.deepEqual(
     report.checks.map((check) => [check.id, check.status]),
     [
       ["config", "pass"],
       ["siteUrl", "pass"],
       ["vercel", "pass"],
-      ["vercel auth", "pass"]
+      ["vercel auth", "pass"],
+      ["vercel link", "pass"]
     ]
   );
 });
@@ -1342,7 +1587,8 @@ test("doctor reports missing config and missing vercel cli", async () => {
   assert.match(stdout.buffer, /\[skip\] siteUrl: could not be checked because the config is unavailable/);
   assert.match(stdout.buffer, /\[fail\] vercel: CLI is not installed/);
   assert.match(stdout.buffer, /\[skip\] vercel auth: could not be checked because the Vercel CLI is unavailable/);
-  assert.match(stdout.buffer, /\[opentree\] doctor found 2 issue\(s\)/);
+  assert.match(stdout.buffer, /\[fail\] vercel link: root Vercel project link was not found/);
+  assert.match(stdout.buffer, /\[opentree\] doctor found 3 issue\(s\)/);
 });
 
 test("doctor reports invalid config and missing vercel login", async () => {
@@ -1374,6 +1620,7 @@ test("doctor reports invalid config and missing vercel login", async () => {
       2
     ) + "\n"
   );
+  await writeVercelProjectFile(tempDir);
 
   const exitCode = await runDoctor(
     {
@@ -1399,6 +1646,7 @@ test("doctor reports invalid config and missing vercel login", async () => {
   assert.match(stdout.buffer, /\[fail\] siteUrl: missing from opentree\.config\.json/);
   assert.match(stdout.buffer, /\[pass\] vercel: CLI is installed/);
   assert.match(stdout.buffer, /\[fail\] vercel auth: CLI is not logged in/);
+  assert.match(stdout.buffer, /\[pass\] vercel link: project root is linked to opentree \(prj_123\)/);
   assert.match(stdout.buffer, /\[opentree\] doctor found 3 issue\(s\)/);
 });
 
@@ -1425,15 +1673,16 @@ test("doctor supports json output for failing projects", async () => {
   assert.equal(exitCode, 1);
   assert.equal(stderr.buffer, "");
   assert.equal(report.ok, false);
-  assert.equal(report.issueCount, 2);
-  assert.equal(report.summary, "[opentree] doctor found 2 issue(s)");
+  assert.equal(report.issueCount, 3);
+  assert.equal(report.summary, "[opentree] doctor found 3 issue(s)");
   assert.deepEqual(
     report.checks.map((check) => [check.id, check.status]),
     [
       ["config", "fail"],
       ["siteUrl", "skip"],
       ["vercel", "fail"],
-      ["vercel auth", "skip"]
+      ["vercel auth", "skip"],
+      ["vercel link", "fail"]
     ]
   );
   assert.match(report.checks[0].message, /opentree\.config\.json was not found/);

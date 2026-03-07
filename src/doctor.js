@@ -1,5 +1,6 @@
 const { spawn } = require("node:child_process");
 const { CONFIG_FILE_NAME, hasSiteUrl, inspectVercelAuth, loadValidatedConfig } = require("./preflight");
+const { inspectVercelProjectLink } = require("./vercel");
 
 function parseDoctorArgs(args) {
   if (args.length === 0) {
@@ -42,6 +43,7 @@ function renderTextReport(stdout, report) {
 async function createDoctorReport(cwd, env, deps = {}) {
   const loadConfigImpl = deps.loadConfig;
   const spawnImpl = deps.spawn ?? spawn;
+  const inspectLinkImpl = deps.inspectVercelProjectLink ?? inspectVercelProjectLink;
   const checks = [];
   let failureCount = 0;
 
@@ -139,6 +141,44 @@ async function createDoctorReport(cwd, env, deps = {}) {
             ...(vercelState.message ? [vercelState.message] : []),
             "run `vercel login`"
           ]
+        )
+      );
+    }
+  }
+
+  const linkState = await inspectLinkImpl(cwd);
+  if (linkState.ok) {
+    const linkedProject = linkState.project.projectName
+      ? `${linkState.project.projectName} (${linkState.project.projectId})`
+      : linkState.project.projectId;
+    checks.push(
+      createCheck(
+        "vercel link",
+        "pass",
+        `project root is linked to ${linkedProject}`
+      )
+    );
+  } else {
+    failureCount += 1;
+    const hints = ["run `opentree vercel link` to create a reusable root-level project link"];
+
+    if (linkState.kind === "invalid_json" || linkState.kind === "invalid") {
+      checks.push(
+        createCheck(
+          "vercel link",
+          "fail",
+          "root Vercel project link is invalid",
+          hints,
+          linkState.message ? [linkState.message] : []
+        )
+      );
+    } else {
+      checks.push(
+        createCheck(
+          "vercel link",
+          "fail",
+          "root Vercel project link was not found",
+          hints
         )
       );
     }

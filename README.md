@@ -14,8 +14,11 @@ opentree build
 opentree build --output public/site
 opentree dev
 opentree deploy
+opentree deploy --preview
+opentree deploy --prod
 opentree doctor
 opentree doctor --json
+opentree vercel link
 opentree config show
 opentree profile set --name "Kidow"
 opentree site set --url "https://links.example.com"
@@ -35,21 +38,27 @@ opentree theme set --accent-color "#0f766e"
 생성된 설정에는 `siteUrl`과 `metadata` 기본 필드도 포함되며, 이 값들은 canonical URL, Open Graph, Twitter 카드 메타 태그 생성에 사용된다.
 `siteUrl`이 설정되어 있으면 `opentree build`는 `dist/sitemap.xml`과 `dist/robots.txt`도 함께 생성한다.
 `opentree dev`는 로컬 미리보기 서버를 띄우고, 설정 파일 수정 내용을 새로고침만으로 반영한다.
-`opentree deploy`는 먼저 `dist`를 빌드한 뒤 Vercel CLI로 그 결과물을 배포한다.
-`opentree doctor`는 config 유효성, `siteUrl`, Vercel CLI 설치 여부, 로그인 상태를 한 번에 점검한다.
+`opentree vercel link`는 프로젝트 루트에 `.vercel/project.json`을 만들고, 이후 배포가 같은 Vercel 프로젝트를 계속 재사용할 수 있게 한다.
+`opentree deploy`는 먼저 `dist`를 빌드한 뒤, 루트의 Vercel project link를 `dist/.vercel/project.json`으로 동기화하고 Vercel CLI로 그 결과물을 배포한다.
+기본 모드는 preview이고, `--prod` 또는 `--preview`로 배포 모드를 명시할 수 있다.
+`opentree doctor`는 config 유효성, `siteUrl`, Vercel CLI 설치 여부, 로그인 상태, 루트 Vercel link 상태를 한 번에 점검한다.
 `opentree doctor --json`은 같은 진단 결과를 CI나 스크립트에서 읽기 쉬운 JSON으로 출력한다.
 `opentree config show`는 현재 설정 파일 내용을 그대로 출력한다.
 `opentree profile set`, `opentree site set`, `opentree meta set`, `opentree link add`, `opentree link update`, `opentree link move`, `opentree link remove`, `opentree theme set`은 설정 파일 수정을 CLI로 대체한다.
 `opentree link list`는 현재 링크 순서와 1-based 인덱스를 보여준다.
 
 `opentree deploy`를 쓰려면 먼저 Vercel CLI가 필요하다.
-또한 `siteUrl`이 설정되어 있어야 하고, `vercel login`이 완료되어 있어야 한다.
+또한 `siteUrl`이 설정되어 있어야 하고, `vercel login`이 완료되어 있어야 하며, 한 번은 `opentree vercel link`를 실행해 루트 project link를 만들어야 한다.
+루트 `.vercel/project.json`에는 auth token을 저장하지 않고, 재배포에 필요한 project/org linkage만 저장한다. 이 디렉터리는 기본적으로 git에 올라가지 않는다.
 
 ```bash
 npm install -g vercel
 opentree site set --url "https://links.example.com"
 vercel login
+opentree vercel link
+opentree deploy --preview
 opentree deploy
+opentree deploy --prod
 ```
 
 ### 로컬 개발 실행
@@ -586,6 +595,7 @@ Vercel 배포
 
 ```bash
 opentree deploy
+opentree deploy --preview
 opentree deploy --prod
 ```
 
@@ -593,8 +603,10 @@ opentree deploy --prod
 
 - `vercel` CLI 존재 여부 확인
 - 없으면 설치 안내
+- preview/prod 모드 결정
 - build 수행
-- `vercel` 또는 `vercel --prod` 실행
+- preview: `vercel`
+- production: `vercel --prod`
 
 ### `opentree doctor`
 

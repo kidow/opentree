@@ -7,6 +7,7 @@ const { runLinkCommand, runMetaCommand, runProfileCommand, runSiteCommand, runTh
 const { runConfigCommand } = require("./show");
 const { runInit } = require("./init");
 const { runValidate } = require("./validate");
+const { runVercelCommand } = require("./vercel");
 
 function buildHelpText() {
   return [
@@ -18,7 +19,7 @@ function buildHelpText() {
     "Commands:",
     "  build     Generate a static site into dist/index.html (--output <dir> supported)",
     "  config show   Print the current opentree.config.json",
-    "  deploy    Build and deploy the dist output with Vercel CLI",
+    "  deploy    Build and deploy with explicit --preview or --prod mode",
     "  doctor    Check config, siteUrl, and Vercel readiness (--json supported)",
     "  dev       Start a local preview server",
     "  init      Create a starter opentree.config.json",
@@ -32,6 +33,7 @@ function buildHelpText() {
     "  site set      Update site fields in opentree.config.json",
     "  theme set     Update theme fields in opentree.config.json",
     "  validate  Validate opentree.config.json",
+    "  vercel link  Link the project root to a reusable Vercel project",
     "  help      Show this message",
     "",
     "Options:",
@@ -102,6 +104,10 @@ async function run(argv = process.argv.slice(2), io = {}) {
 
   if (command === "validate") {
     return runValidate(context);
+  }
+
+  if (command === "vercel") {
+    return runVercelCommand(context, argv.slice(1));
   }
 
   stderr.write(`[opentree] unknown command: ${command}\n`);
