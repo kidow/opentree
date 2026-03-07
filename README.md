@@ -10,10 +10,14 @@
 npm install -g opentree-cli
 opentree init
 opentree validate
+opentree build
+opentree dev
 ```
 
 `opentree init`를 실행하면 현재 디렉터리에 `opentree.config.json`이 생성된다.
 `opentree validate`는 그 설정 파일이 다음 단계로 넘어가도 되는지 검증한다.
+`opentree build`는 검증된 설정으로 `dist/index.html` 정적 페이지를 생성한다.
+`opentree dev`는 로컬 미리보기 서버를 띄우고, 설정 파일 수정 내용을 새로고침만으로 반영한다.
 
 ### 로컬 개발 실행
 

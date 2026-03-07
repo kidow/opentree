@@ -1,4 +1,6 @@
 const packageJson = require("../package.json");
+const { runBuild } = require("./build");
+const { runDev } = require("./dev");
 const { runInit } = require("./init");
 const { runValidate } = require("./validate");
 
@@ -10,6 +12,8 @@ function buildHelpText() {
     "  opentree <command>",
     "",
     "Commands:",
+    "  build     Generate a static site into dist/index.html",
+    "  dev       Start a local preview server",
     "  init      Create a starter opentree.config.json",
     "  validate  Validate opentree.config.json",
     "  help      Show this message",
@@ -38,6 +42,14 @@ async function run(argv = process.argv.slice(2), io = {}) {
 
   if (command === "init") {
     return runInit(context);
+  }
+
+  if (command === "build") {
+    return runBuild(context);
+  }
+
+  if (command === "dev") {
+    return runDev(context, argv.slice(1));
   }
 
   if (command === "validate") {
