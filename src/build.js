@@ -8,6 +8,10 @@ const OUTPUT_FILE_NAME = "index.html";
 const ROBOTS_FILE_NAME = "robots.txt";
 const SITEMAP_FILE_NAME = "sitemap.xml";
 
+function writeJsonReport(stdout, report) {
+  stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -158,17 +162,18 @@ async function removeOptionalFile(filePath) {
 }
 
 function parseBuildArgs(args) {
-  if (args.length === 0) {
-    return {
-      outputDir: OUTPUT_DIR_NAME
-    };
-  }
-
-  const options = {};
+  const options = {
+    json: false
+  };
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     const nextValue = args[index + 1];
+
+    if (arg === "--json") {
+      options.json = true;
+      continue;
+    }
 
     if (arg === "--output" || arg === "-o") {
       if (nextValue === undefined) {
@@ -188,6 +193,7 @@ function parseBuildArgs(args) {
   }
 
   return {
+    json: options.json,
     outputDir: options.outputDir ?? OUTPUT_DIR_NAME
   };
 }
@@ -338,35 +344,71 @@ function renderHtml(config) {
 
 async function runBuild(io, args = []) {
   const cwd = io.cwd ?? process.cwd();
+  const stdout = io.stdout ?? process.stdout;
+  const stderr = io.stderr ?? process.stderr;
+  const requestedJson = args.includes("--json");
   let options;
+  let report = {
+    configPath: path.join(cwd, CONFIG_FILE_NAME),
+    cwd,
+    files: {
+      indexHtml: null,
+      robots: null,
+      sitemap: null
+    },
+    message: "",
+    metadata: null,
+    ok: false,
+    outputDir: path.resolve(cwd, OUTPUT_DIR_NAME),
+    stage: "args"
+  };
 
   try {
     options = parseBuildArgs(args);
   } catch (error) {
-    io.stderr.write(`[opentree] ${error.message}\n`);
+    report.message = error.message;
+    stderr.write(`[opentree] ${error.message}\n`);
+    if (requestedJson) {
+      writeJsonReport(stdout, report);
+    }
     return 1;
   }
 
+  report.outputDir = path.resolve(cwd, options.outputDir);
+  const buildStdout = options.json ? stderr : stdout;
   const outputDir = path.resolve(cwd, options.outputDir);
   const outputPath = path.join(outputDir, OUTPUT_FILE_NAME);
   const robotsPath = path.join(outputDir, ROBOTS_FILE_NAME);
   const sitemapPath = path.join(outputDir, SITEMAP_FILE_NAME);
 
-  io.stdout.write(`[opentree] building from ${CONFIG_FILE_NAME}\n`);
+  buildStdout.write(`[opentree] building from ${CONFIG_FILE_NAME}\n`);
 
   let loadedConfig;
   try {
     loadedConfig = await loadConfig(cwd);
   } catch (error) {
+    report.stage = "load";
+
     if (error && error.code === "ENOENT") {
-      io.stderr.write(`[opentree] ${CONFIG_FILE_NAME} was not found in ${cwd}\n`);
-      io.stderr.write("[opentree] run `opentree init` first to create a starter config\n");
+      report.message = `${CONFIG_FILE_NAME} was not found in ${cwd}`;
+      stderr.write(`[opentree] ${CONFIG_FILE_NAME} was not found in ${cwd}\n`);
+      stderr.write("[opentree] run `opentree init` first to create a starter config\n");
+      if (options.json) {
+        writeJsonReport(stdout, report);
+      }
       return 1;
     }
 
     if (error instanceof SyntaxError) {
-      io.stderr.write(`[opentree] ${CONFIG_FILE_NAME} is not valid JSON\n`);
-      io.stderr.write(`[opentree] ${error.message}\n`);
+      report.message = `${CONFIG_FILE_NAME} is not valid JSON`;
+      stderr.write(`[opentree] ${CONFIG_FILE_NAME} is not valid JSON\n`);
+      stderr.write(`[opentree] ${error.message}\n`);
+      if (options.json) {
+        writeJsonReport(stdout, {
+          ...report,
+          details: [error.message]
+        });
+      }
       return 1;
     }
 
@@ -375,29 +417,48 @@ async function runBuild(io, args = []) {
 
   const errors = validateConfig(loadedConfig.config);
   if (errors.length > 0) {
-    io.stderr.write("[opentree] build aborted because the config is invalid\n");
+    report.stage = "validate";
+    report.message = "build aborted because the config is invalid";
+    stderr.write("[opentree] build aborted because the config is invalid\n");
     errors.forEach((error) => {
-      io.stderr.write(`- ${error}\n`);
+      stderr.write(`- ${error}\n`);
     });
+    if (options.json) {
+      writeJsonReport(stdout, {
+        ...report,
+        details: errors
+      });
+    }
     return 1;
   }
 
+  report.stage = "write";
   const metadata = resolvePageMetadata(loadedConfig.config);
+  report.metadata = metadata;
 
   await fs.mkdir(outputDir, { recursive: true });
   await fs.writeFile(outputPath, renderHtml(loadedConfig.config), "utf8");
+  report.files.indexHtml = outputPath;
 
-  io.stdout.write(`[opentree] wrote ${path.relative(cwd, outputPath)}\n`);
+  buildStdout.write(`[opentree] wrote ${path.relative(cwd, outputPath)}\n`);
 
   if (metadata.siteUrl) {
     await fs.writeFile(sitemapPath, renderSitemapXml(metadata.siteUrl), "utf8");
     await fs.writeFile(robotsPath, renderRobotsTxt(metadata.siteUrl), "utf8");
+    report.files.sitemap = sitemapPath;
+    report.files.robots = robotsPath;
 
-    io.stdout.write(`[opentree] wrote ${path.relative(cwd, sitemapPath)}\n`);
-    io.stdout.write(`[opentree] wrote ${path.relative(cwd, robotsPath)}\n`);
+    buildStdout.write(`[opentree] wrote ${path.relative(cwd, sitemapPath)}\n`);
+    buildStdout.write(`[opentree] wrote ${path.relative(cwd, robotsPath)}\n`);
   } else {
     await removeOptionalFile(sitemapPath);
     await removeOptionalFile(robotsPath);
+  }
+
+  report.ok = true;
+  report.message = `build completed: ${path.relative(cwd, outputPath)}`;
+  if (options.json) {
+    writeJsonReport(stdout, report);
   }
 
   return 0;

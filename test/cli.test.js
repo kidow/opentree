@@ -407,6 +407,54 @@ test("build supports a custom output directory", async () => {
   await assert.rejects(fs.readFile(path.join(tempDir, buildFilePath), "utf8"), { code: "ENOENT" });
 });
 
+test("build supports structured json output", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-build-json-"));
+  const outputDir = path.join("public", "site");
+  await writeConfigFile(tempDir, {
+    profile: {
+      name: "Kidow",
+      bio: "Shipping links.",
+      avatarUrl: "https://cdn.example.com/avatar.png"
+    },
+    siteUrl: "https://links.example.com",
+    metadata: {
+      title: "Kidow Links",
+      description: "Find my work across the internet.",
+      ogImageUrl: "https://cdn.example.com/og.png"
+    }
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "build", "--json", "--output", outputDir],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+
+  const report = JSON.parse(result.stdout);
+  const resolvedOutputDir = await fs.realpath(path.join(tempDir, outputDir));
+  const resolvedIndexHtml = await fs.realpath(path.join(tempDir, outputDir, "index.html"));
+  const resolvedSitemap = await fs.realpath(path.join(tempDir, outputDir, "sitemap.xml"));
+  const resolvedRobots = await fs.realpath(path.join(tempDir, outputDir, "robots.txt"));
+
+  assert.equal(result.status, 0);
+  assert.equal(report.ok, true);
+  assert.equal(report.stage, "write");
+  assert.equal(report.outputDir, resolvedOutputDir);
+  assert.equal(report.files.indexHtml, resolvedIndexHtml);
+  assert.equal(report.files.sitemap, resolvedSitemap);
+  assert.equal(report.files.robots, resolvedRobots);
+  assert.equal(report.metadata.title, "Kidow Links");
+  assert.equal(report.metadata.description, "Find my work across the internet.");
+  assert.equal(report.metadata.siteUrl, "https://links.example.com");
+  assert.equal(report.metadata.imageUrl, "https://cdn.example.com/og.png");
+  assert.equal(report.metadata.twitterCard, "summary_large_image");
+  assert.match(result.stderr, /\[opentree\] building from opentree\.config\.json/);
+  assert.match(result.stderr, /\[opentree\] wrote public\/site\/index\.html/);
+});
+
 test("build rejects unknown or incomplete output options", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-build-output-invalid-"));
   spawnSync(process.execPath, [cliPath, "init"], {
@@ -435,6 +483,29 @@ test("build rejects unknown or incomplete output options", async () => {
   assert.match(missingValueResult.stderr, /\[opentree\] missing value for --output/);
   assert.equal(unknownOptionResult.status, 1);
   assert.match(unknownOptionResult.stderr, /\[opentree\] unknown option: --target/);
+});
+
+test("build supports structured json output for argument failures", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-build-json-invalid-"));
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "build", "--json", "--target", "public"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 1);
+  assert.equal(report.ok, false);
+  assert.equal(report.stage, "args");
+  assert.equal(report.message, "unknown option: --target");
+  assert.equal(report.files.indexHtml, null);
+  assert.equal(report.metadata, null);
+  assert.match(result.stderr, /\[opentree\] unknown option: --target/);
 });
 
 test("build injects canonical and social image tags from metadata", async () => {

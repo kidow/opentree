@@ -11,6 +11,7 @@ npm install -g opentree-cli
 opentree init --name "Kidow" --bio "CLI-first profile" --site-url "https://links.example.com" --title "Kidow Links"
 opentree validate
 opentree build
+opentree build --json
 opentree build --output public/site
 opentree dev
 opentree deploy
@@ -36,6 +37,7 @@ opentree theme set --accent-color "#0f766e"
 `opentree init`를 실행하면 현재 디렉터리에 `opentree.config.json`이 생성된다.
 `opentree validate`는 그 설정 파일이 다음 단계로 넘어가도 되는지 검증한다.
 `opentree build`는 검증된 설정으로 기본적으로 `dist/index.html` 정적 페이지를 생성한다.
+`opentree build --json`은 생성된 출력 파일 경로와 메타데이터 상태를 JSON으로 출력한다.
 `--output <dir>`를 주면 다른 출력 디렉터리로도 빌드할 수 있다.
 생성된 설정에는 `siteUrl`과 `metadata` 기본 필드도 포함되며, 이 값들은 canonical URL, Open Graph, Twitter 카드 메타 태그 생성에 사용된다.
 `siteUrl`이 설정되어 있으면 `opentree build`는 `dist/sitemap.xml`과 `dist/robots.txt`도 함께 생성한다.
