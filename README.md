@@ -8,7 +8,7 @@
 
 ```bash
 npm install -g opentree-cli
-opentree init --name "Kidow" --bio "CLI-first profile"
+opentree init --name "Kidow" --bio "CLI-first profile" --site-url "https://links.example.com" --title "Kidow Links"
 opentree validate
 opentree build
 opentree dev
@@ -29,6 +29,7 @@ opentree theme set --accent-color "#0f766e"
 `opentree validate`는 그 설정 파일이 다음 단계로 넘어가도 되는지 검증한다.
 `opentree build`는 검증된 설정으로 `dist/index.html` 정적 페이지를 생성한다.
 생성된 설정에는 `siteUrl`과 `metadata` 기본 필드도 포함되며, 이 값들은 canonical URL, Open Graph, Twitter 카드 메타 태그 생성에 사용된다.
+`siteUrl`이 설정되어 있으면 `opentree build`는 `dist/sitemap.xml`과 `dist/robots.txt`도 함께 생성한다.
 `opentree dev`는 로컬 미리보기 서버를 띄우고, 설정 파일 수정 내용을 새로고침만으로 반영한다.
 `opentree deploy`는 먼저 `dist`를 빌드한 뒤 Vercel CLI로 그 결과물을 배포한다.
 `opentree config show`는 현재 설정 파일 내용을 그대로 출력한다.

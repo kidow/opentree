@@ -5,6 +5,8 @@ const { loadConfig, validateConfig } = require("./config");
 
 const OUTPUT_DIR_NAME = "dist";
 const OUTPUT_FILE_NAME = "index.html";
+const ROBOTS_FILE_NAME = "robots.txt";
+const SITEMAP_FILE_NAME = "sitemap.xml";
 
 function escapeHtml(value) {
   return String(value)
@@ -13,6 +15,15 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function escapeXml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
 }
 
 function renderAvatar(profile) {
@@ -100,6 +111,50 @@ function renderMetaTags(config) {
   }
 
   return tags.join("\n    ");
+}
+
+function buildSiteAssetUrl(siteUrl, fileName) {
+  const baseUrl = new URL(siteUrl);
+  baseUrl.search = "";
+  baseUrl.hash = "";
+
+  if (!baseUrl.pathname.endsWith("/")) {
+    baseUrl.pathname = `${baseUrl.pathname}/`;
+  }
+
+  return new URL(fileName, baseUrl).href;
+}
+
+function renderSitemapXml(siteUrl) {
+  const pageUrl = new URL(siteUrl);
+  pageUrl.hash = "";
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${escapeXml(pageUrl.href)}</loc>
+  </url>
+</urlset>
+`;
+}
+
+function renderRobotsTxt(siteUrl) {
+  return `User-agent: *
+Allow: /
+Sitemap: ${buildSiteAssetUrl(siteUrl, SITEMAP_FILE_NAME)}
+`;
+}
+
+async function removeOptionalFile(filePath) {
+  try {
+    await fs.unlink(filePath);
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      return;
+    }
+
+    throw error;
+  }
 }
 
 function renderHtml(config) {
@@ -250,6 +305,8 @@ async function runBuild(io) {
   const cwd = io.cwd ?? process.cwd();
   const outputDir = path.join(cwd, OUTPUT_DIR_NAME);
   const outputPath = path.join(outputDir, OUTPUT_FILE_NAME);
+  const robotsPath = path.join(outputDir, ROBOTS_FILE_NAME);
+  const sitemapPath = path.join(outputDir, SITEMAP_FILE_NAME);
 
   io.stdout.write(`[opentree] building from ${CONFIG_FILE_NAME}\n`);
 
@@ -281,16 +338,34 @@ async function runBuild(io) {
     return 1;
   }
 
+  const metadata = resolvePageMetadata(loadedConfig.config);
+
   await fs.mkdir(outputDir, { recursive: true });
   await fs.writeFile(outputPath, renderHtml(loadedConfig.config), "utf8");
 
   io.stdout.write(`[opentree] wrote ${path.relative(cwd, outputPath)}\n`);
+
+  if (metadata.siteUrl) {
+    await fs.writeFile(sitemapPath, renderSitemapXml(metadata.siteUrl), "utf8");
+    await fs.writeFile(robotsPath, renderRobotsTxt(metadata.siteUrl), "utf8");
+
+    io.stdout.write(`[opentree] wrote ${path.relative(cwd, sitemapPath)}\n`);
+    io.stdout.write(`[opentree] wrote ${path.relative(cwd, robotsPath)}\n`);
+  } else {
+    await removeOptionalFile(sitemapPath);
+    await removeOptionalFile(robotsPath);
+  }
+
   return 0;
 }
 
 module.exports = {
   OUTPUT_DIR_NAME,
   OUTPUT_FILE_NAME,
+  ROBOTS_FILE_NAME,
+  SITEMAP_FILE_NAME,
   renderHtml,
+  renderRobotsTxt,
+  renderSitemapXml,
   runBuild
 };

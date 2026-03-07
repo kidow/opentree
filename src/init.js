@@ -48,7 +48,10 @@ function isValidUrl(value) {
 }
 
 function parseInitArgs(args) {
-  const overrides = {};
+  const overrides = {
+    metadata: {},
+    profile: {}
+  };
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -59,7 +62,7 @@ function parseInitArgs(args) {
         throw new Error("missing value for --name");
       }
 
-      overrides.name = nextValue;
+      overrides.profile.name = nextValue;
       index += 1;
       continue;
     }
@@ -69,7 +72,7 @@ function parseInitArgs(args) {
         throw new Error("missing value for --bio");
       }
 
-      overrides.bio = nextValue;
+      overrides.profile.bio = nextValue;
       index += 1;
       continue;
     }
@@ -79,7 +82,47 @@ function parseInitArgs(args) {
         throw new Error("missing value for --avatar-url");
       }
 
-      overrides.avatarUrl = nextValue;
+      overrides.profile.avatarUrl = nextValue;
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--site-url") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --site-url");
+      }
+
+      overrides.siteUrl = nextValue;
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--title") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --title");
+      }
+
+      overrides.metadata.title = nextValue;
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--description") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --description");
+      }
+
+      overrides.metadata.description = nextValue;
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--og-image-url") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --og-image-url");
+      }
+
+      overrides.metadata.ogImageUrl = nextValue;
       index += 1;
       continue;
     }
@@ -87,16 +130,35 @@ function parseInitArgs(args) {
     throw new Error(`unknown option: ${arg}`);
   }
 
-  if (overrides.name !== undefined && overrides.name.trim().length === 0) {
+  if (
+    overrides.profile.name !== undefined &&
+    overrides.profile.name.trim().length === 0
+  ) {
     throw new Error("--name must be a non-empty string");
   }
 
   if (
-    overrides.avatarUrl !== undefined &&
-    overrides.avatarUrl !== "" &&
-    !isValidUrl(overrides.avatarUrl)
+    overrides.profile.avatarUrl !== undefined &&
+    overrides.profile.avatarUrl !== "" &&
+    !isValidUrl(overrides.profile.avatarUrl)
   ) {
     throw new Error("--avatar-url must be an http or https URL");
+  }
+
+  if (
+    overrides.siteUrl !== undefined &&
+    overrides.siteUrl !== "" &&
+    !isValidUrl(overrides.siteUrl)
+  ) {
+    throw new Error("--site-url must be an http or https URL");
+  }
+
+  if (
+    overrides.metadata.ogImageUrl !== undefined &&
+    overrides.metadata.ogImageUrl !== "" &&
+    !isValidUrl(overrides.metadata.ogImageUrl)
+  ) {
+    throw new Error("--og-image-url must be an http or https URL");
   }
 
   return overrides;
@@ -117,7 +179,12 @@ async function runInit(io, args = []) {
   const config = createDefaultConfig();
   config.profile = {
     ...config.profile,
-    ...overrides
+    ...overrides.profile
+  };
+  config.siteUrl = overrides.siteUrl ?? config.siteUrl;
+  config.metadata = {
+    ...config.metadata,
+    ...overrides.metadata
   };
 
   io.stdout.write("[opentree] init command received\n");

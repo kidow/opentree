@@ -12,6 +12,8 @@ const { runDeploy } = require("../src/deploy");
 const cliPath = path.join(__dirname, "..", "bin", "opentree.js");
 const configFilePath = "opentree.config.json";
 const buildFilePath = path.join("dist", "index.html");
+const robotsFilePath = path.join("dist", "robots.txt");
+const sitemapFilePath = path.join("dist", "sitemap.xml");
 
 class MemoryWritable extends Writable {
   constructor() {
@@ -93,7 +95,7 @@ test("init creates starter config in the current directory", async () => {
   });
 });
 
-test("init accepts profile overrides from flags", async () => {
+test("init accepts profile and metadata overrides from flags", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-init-overrides-"));
   const result = spawnSync(
     process.execPath,
@@ -105,7 +107,15 @@ test("init accepts profile overrides from flags", async () => {
       "--bio",
       "CLI-native profile",
       "--avatar-url",
-      "https://example.com/avatar.png"
+      "https://example.com/avatar.png",
+      "--site-url",
+      "https://links.example.com",
+      "--title",
+      "Kidow Links",
+      "--description",
+      "Find my work across the internet.",
+      "--og-image-url",
+      "https://cdn.example.com/og.png"
     ],
     {
       cwd: tempDir,
@@ -118,13 +128,19 @@ test("init accepts profile overrides from flags", async () => {
   assert.equal(config.profile.name, "Kidow");
   assert.equal(config.profile.bio, "CLI-native profile");
   assert.equal(config.profile.avatarUrl, "https://example.com/avatar.png");
+  assert.equal(config.siteUrl, "https://links.example.com");
+  assert.deepEqual(config.metadata, {
+    title: "Kidow Links",
+    description: "Find my work across the internet.",
+    ogImageUrl: "https://cdn.example.com/og.png"
+  });
 });
 
-test("init rejects invalid profile overrides", async () => {
+test("init rejects invalid metadata overrides", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-init-invalid-"));
   const result = spawnSync(
     process.execPath,
-    [cliPath, "init", "--avatar-url", "ftp://example.com/avatar.png"],
+    [cliPath, "init", "--og-image-url", "ftp://example.com/og.png"],
     {
       cwd: tempDir,
       encoding: "utf8"
@@ -132,7 +148,7 @@ test("init rejects invalid profile overrides", async () => {
   );
 
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /\[opentree\] --avatar-url must be an http or https URL/);
+  assert.match(result.stderr, /\[opentree\] --og-image-url must be an http or https URL/);
 });
 
 test("init fails when config already exists", async () => {
@@ -277,6 +293,8 @@ test("build creates a static html page in dist", async () => {
     encoding: "utf8"
   });
   const html = await fs.readFile(path.join(tempDir, buildFilePath), "utf8");
+  await assert.rejects(fs.readFile(path.join(tempDir, sitemapFilePath), "utf8"), { code: "ENOENT" });
+  await assert.rejects(fs.readFile(path.join(tempDir, robotsFilePath), "utf8"), { code: "ENOENT" });
 
   assert.equal(initResult.status, 0);
   assert.equal(buildResult.status, 0);
@@ -331,18 +349,47 @@ test("build injects canonical and social image tags from metadata", async () => 
     encoding: "utf8"
   });
   const html = await fs.readFile(path.join(tempDir, buildFilePath), "utf8");
+  const sitemap = await fs.readFile(path.join(tempDir, sitemapFilePath), "utf8");
+  const robots = await fs.readFile(path.join(tempDir, robotsFilePath), "utf8");
 
   assert.equal(buildResult.status, 0);
+  assert.match(buildResult.stdout, /\[opentree\] wrote dist\/sitemap\.xml/);
+  assert.match(buildResult.stdout, /\[opentree\] wrote dist\/robots\.txt/);
   assert.match(html, /<title>Kidow Links<\/title>/);
   assert.match(html, /<link rel="canonical" href="https:\/\/links\.example\.com" \/>/);
   assert.match(html, /<meta property="og:url" content="https:\/\/links\.example\.com" \/>/);
   assert.match(html, /<meta property="og:image" content="https:\/\/cdn\.example\.com\/og\.png" \/>/);
   assert.match(html, /<meta name="twitter:card" content="summary_large_image" \/>/);
   assert.match(html, /<meta name="twitter:title" content="Kidow Links" \/>/);
+  assert.match(sitemap, /<loc>https:\/\/links\.example\.com\/<\/loc>/);
+  assert.match(robots, /User-agent: \*/);
+  assert.match(robots, /Allow: \//);
+  assert.match(robots, /Sitemap: https:\/\/links\.example\.com\/sitemap\.xml/);
   assert.match(
     html,
     /<meta name="twitter:description" content="Find my work across the internet\." \/>/
   );
+});
+
+test("build removes stale sitemap and robots outputs when siteUrl is empty", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-build-clean-"));
+  await fs.mkdir(path.join(tempDir, "dist"), { recursive: true });
+  await fs.writeFile(path.join(tempDir, sitemapFilePath), "<stale />\n");
+  await fs.writeFile(path.join(tempDir, robotsFilePath), "stale\n");
+
+  const initResult = spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+  const buildResult = spawnSync(process.execPath, [cliPath, "build"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  assert.equal(initResult.status, 0);
+  assert.equal(buildResult.status, 0);
+  await assert.rejects(fs.readFile(path.join(tempDir, sitemapFilePath), "utf8"), { code: "ENOENT" });
+  await assert.rejects(fs.readFile(path.join(tempDir, robotsFilePath), "utf8"), { code: "ENOENT" });
 });
 
 test("build fails when the config file is missing", async () => {
