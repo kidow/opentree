@@ -103,6 +103,42 @@ function validateConfig(config) {
     }
   }
 
+  if (config.siteUrl !== undefined) {
+    if (typeof config.siteUrl !== "string") {
+      errors.push("siteUrl must be a string.");
+    } else if (config.siteUrl !== "" && !isValidUrl(config.siteUrl)) {
+      errors.push("siteUrl must be an http or https URL when provided.");
+    }
+  }
+
+  if (config.metadata !== undefined) {
+    if (!config.metadata || typeof config.metadata !== "object" || Array.isArray(config.metadata)) {
+      errors.push("metadata must be an object.");
+    } else {
+      if (config.metadata.title !== undefined && typeof config.metadata.title !== "string") {
+        errors.push("metadata.title must be a string.");
+      }
+
+      if (
+        config.metadata.description !== undefined &&
+        typeof config.metadata.description !== "string"
+      ) {
+        errors.push("metadata.description must be a string.");
+      }
+
+      if (config.metadata.ogImageUrl !== undefined) {
+        if (typeof config.metadata.ogImageUrl !== "string") {
+          errors.push("metadata.ogImageUrl must be a string.");
+        } else if (
+          config.metadata.ogImageUrl !== "" &&
+          !isValidUrl(config.metadata.ogImageUrl)
+        ) {
+          errors.push("metadata.ogImageUrl must be an http or https URL when provided.");
+        }
+      }
+    }
+  }
+
   return errors;
 }
 

@@ -48,16 +48,69 @@ function renderLinks(links) {
     .join("");
 }
 
+function getOptionalString(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function resolvePageMetadata(config) {
+  const siteUrl = getOptionalString(config.siteUrl);
+  const metadata =
+    config.metadata && typeof config.metadata === "object" && !Array.isArray(config.metadata)
+      ? config.metadata
+      : {};
+  const title = getOptionalString(metadata.title) || `${config.profile.name} | opentree`;
+  const description = getOptionalString(metadata.description) || config.profile.bio;
+  const imageUrl = getOptionalString(metadata.ogImageUrl) || getOptionalString(config.profile.avatarUrl);
+
+  return {
+    description,
+    imageUrl,
+    siteUrl,
+    title,
+    twitterCard: imageUrl ? "summary_large_image" : "summary"
+  };
+}
+
+function renderMetaTags(config) {
+  const metadata = resolvePageMetadata(config);
+  const tags = [
+    `<title>${escapeHtml(metadata.title)}</title>`,
+    `<meta name="description" content="${escapeHtml(metadata.description)}" />`,
+    `<meta name="theme-color" content="${escapeHtml(config.theme.accentColor)}" />`,
+    `<meta property="og:type" content="website" />`,
+    `<meta property="og:site_name" content="${escapeHtml(config.profile.name)}" />`,
+    `<meta property="og:title" content="${escapeHtml(metadata.title)}" />`,
+    `<meta property="og:description" content="${escapeHtml(metadata.description)}" />`,
+    `<meta name="twitter:card" content="${escapeHtml(metadata.twitterCard)}" />`,
+    `<meta name="twitter:title" content="${escapeHtml(metadata.title)}" />`,
+    `<meta name="twitter:description" content="${escapeHtml(metadata.description)}" />`
+  ];
+
+  if (metadata.siteUrl) {
+    tags.push(`<link rel="canonical" href="${escapeHtml(metadata.siteUrl)}" />`);
+    tags.push(`<meta property="og:url" content="${escapeHtml(metadata.siteUrl)}" />`);
+  }
+
+  if (metadata.imageUrl) {
+    tags.push(`<meta property="og:image" content="${escapeHtml(metadata.imageUrl)}" />`);
+    tags.push(
+      `<meta property="og:image:alt" content="${escapeHtml(config.profile.name)} profile image" />`
+    );
+    tags.push(`<meta name="twitter:image" content="${escapeHtml(metadata.imageUrl)}" />`);
+  }
+
+  return tags.join("\n    ");
+}
+
 function renderHtml(config) {
-  const title = `${config.profile.name} | opentree`;
+  const metadata = resolvePageMetadata(config);
 
   return `<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${escapeHtml(title)}</title>
-    <meta name="description" content="${escapeHtml(config.profile.bio)}" />
+    ${renderMetaTags(config)}
     <style>
       :root {
         --accent: ${config.theme.accentColor};

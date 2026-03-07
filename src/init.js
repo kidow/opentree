@@ -24,6 +24,12 @@ function createDefaultConfig() {
       accentColor: "#166534",
       backgroundColor: "#f0fdf4",
       textColor: "#052e16"
+    },
+    siteUrl: "",
+    metadata: {
+      title: "",
+      description: "",
+      ogImageUrl: ""
     }
   };
 }

@@ -85,6 +85,12 @@ test("init creates starter config in the current directory", async () => {
   assert.equal(config.profile.name, "Your Name");
   assert.equal(config.links.length, 2);
   assert.equal(config.theme.accentColor, "#166534");
+  assert.equal(config.siteUrl, "");
+  assert.deepEqual(config.metadata, {
+    title: "",
+    description: "",
+    ogImageUrl: ""
+  });
 });
 
 test("init accepts profile overrides from flags", async () => {
@@ -213,6 +219,53 @@ test("validate reports schema errors for malformed config", async () => {
   assert.match(result.stderr, /theme\.backgroundColor must be a hex color/);
 });
 
+test("validate reports metadata errors for malformed site metadata", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-validate-meta-invalid-"));
+  await fs.writeFile(
+    path.join(tempDir, configFilePath),
+    JSON.stringify(
+      {
+        profile: {
+          name: "Kidow",
+          bio: "Shipping links.",
+          avatarUrl: ""
+        },
+        links: [
+          {
+            title: "GitHub",
+            url: "https://github.com/kidow"
+          }
+        ],
+        theme: {
+          accentColor: "#166534",
+          backgroundColor: "#f0fdf4",
+          textColor: "#052e16"
+        },
+        siteUrl: "not-a-url",
+        metadata: {
+          title: 123,
+          description: null,
+          ogImageUrl: "ftp://example.com/og.png"
+        }
+      },
+      null,
+      2
+    ) + "\n"
+  );
+
+  const result = spawnSync(process.execPath, [cliPath, "validate"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /\[opentree\] found 4 validation issue\(s\)/);
+  assert.match(result.stderr, /siteUrl must be an http or https URL when provided/);
+  assert.match(result.stderr, /metadata\.title must be a string/);
+  assert.match(result.stderr, /metadata\.description must be a string/);
+  assert.match(result.stderr, /metadata\.ogImageUrl must be an http or https URL when provided/);
+});
+
 test("build creates a static html page in dist", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-build-"));
   const initResult = spawnSync(process.execPath, [cliPath, "init"], {
@@ -230,7 +283,66 @@ test("build creates a static html page in dist", async () => {
   assert.match(buildResult.stdout, /\[opentree\] wrote dist\/index\.html/);
   assert.match(html, /<title>Your Name \| opentree<\/title>/);
   assert.match(html, /Add a short bio for your opentree page\./);
+  assert.match(html, /<meta property="og:title" content="Your Name \| opentree" \/>/);
+  assert.match(
+    html,
+    /<meta property="og:description" content="Add a short bio for your opentree page\." \/>/
+  );
+  assert.match(html, /<meta name="twitter:card" content="summary" \/>/);
   assert.match(html, /https:\/\/github\.com\/your-handle/);
+});
+
+test("build injects canonical and social image tags from metadata", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-build-meta-"));
+  await fs.writeFile(
+    path.join(tempDir, configFilePath),
+    JSON.stringify(
+      {
+        profile: {
+          name: "Kidow",
+          bio: "Shipping links.",
+          avatarUrl: "https://cdn.example.com/avatar.png"
+        },
+        links: [
+          {
+            title: "GitHub",
+            url: "https://github.com/kidow"
+          }
+        ],
+        theme: {
+          accentColor: "#166534",
+          backgroundColor: "#f0fdf4",
+          textColor: "#052e16"
+        },
+        siteUrl: "https://links.example.com",
+        metadata: {
+          title: "Kidow Links",
+          description: "Find my work across the internet.",
+          ogImageUrl: "https://cdn.example.com/og.png"
+        }
+      },
+      null,
+      2
+    ) + "\n"
+  );
+
+  const buildResult = spawnSync(process.execPath, [cliPath, "build"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+  const html = await fs.readFile(path.join(tempDir, buildFilePath), "utf8");
+
+  assert.equal(buildResult.status, 0);
+  assert.match(html, /<title>Kidow Links<\/title>/);
+  assert.match(html, /<link rel="canonical" href="https:\/\/links\.example\.com" \/>/);
+  assert.match(html, /<meta property="og:url" content="https:\/\/links\.example\.com" \/>/);
+  assert.match(html, /<meta property="og:image" content="https:\/\/cdn\.example\.com\/og\.png" \/>/);
+  assert.match(html, /<meta name="twitter:card" content="summary_large_image" \/>/);
+  assert.match(html, /<meta name="twitter:title" content="Kidow Links" \/>/);
+  assert.match(
+    html,
+    /<meta name="twitter:description" content="Find my work across the internet\." \/>/
+  );
 });
 
 test("build fails when the config file is missing", async () => {
@@ -661,6 +773,12 @@ test("dev serves the preview and reloads config changes without restart", async 
       accentColor: "#14532d",
       backgroundColor: "#ecfdf5",
       textColor: "#052e16"
+    },
+    siteUrl: "https://links.example.com",
+    metadata: {
+      title: "Kidow Links",
+      description: "A rebuilt profile preview.",
+      ogImageUrl: "https://cdn.example.com/og.png"
     }
   };
 
@@ -673,9 +791,10 @@ test("dev serves the preview and reloads config changes without restart", async 
   const secondHtml = secondResponse.body;
 
   assert.equal(secondResponse.statusCode, 200);
-  assert.match(secondHtml, /Kidow/);
+  assert.match(secondHtml, /<title>Kidow Links<\/title>/);
   assert.match(secondHtml, /A rebuilt profile preview\./);
   assert.match(secondHtml, /https:\/\/example\.com\/blog/);
+  assert.match(secondHtml, /<meta property="og:url" content="https:\/\/links\.example\.com" \/>/);
 });
 
 test("dev fails fast when the config file is missing", async () => {
