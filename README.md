@@ -14,6 +14,7 @@ opentree build
 opentree build --output public/site
 opentree dev
 opentree deploy
+opentree deploy --json
 opentree deploy --preview
 opentree deploy --prod
 opentree doctor
@@ -42,6 +43,7 @@ opentree theme set --accent-color "#0f766e"
 `opentree vercel link`는 프로젝트 루트에 `.vercel/project.json`을 만들고, 이후 배포가 같은 Vercel 프로젝트를 계속 재사용할 수 있게 한다.
 `opentree vercel unlink`는 루트와 기본 `dist` 출력 경로의 local project link를 제거하고, 원격 Vercel 프로젝트 자체는 건드리지 않는다.
 `opentree deploy`는 먼저 `dist`를 빌드한 뒤, 루트의 Vercel project link를 `dist/.vercel/project.json`으로 동기화하고 Vercel CLI로 그 결과물을 배포한다.
+`opentree deploy --json`은 배포 URL, 배포 모드, 재사용된 Vercel project 정보를 JSON으로 출력한다.
 기본 모드는 preview이고, `--prod` 또는 `--preview`로 배포 모드를 명시할 수 있다.
 `opentree doctor`는 config 유효성, `siteUrl`, Vercel CLI 설치 여부, 로그인 상태, 루트 Vercel link 상태를 한 번에 점검한다.
 `opentree doctor --json`은 같은 진단 결과를 CI나 스크립트에서 읽기 쉬운 JSON으로 출력한다.
@@ -58,6 +60,7 @@ npm install -g vercel
 opentree site set --url "https://links.example.com"
 vercel login
 opentree vercel link
+opentree deploy --json
 opentree deploy --preview
 opentree deploy
 opentree deploy --prod

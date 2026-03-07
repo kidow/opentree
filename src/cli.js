@@ -19,7 +19,7 @@ function buildHelpText() {
     "Commands:",
     "  build     Generate a static site into dist/index.html (--output <dir> supported)",
     "  config show   Print the current opentree.config.json",
-    "  deploy    Build and deploy with explicit --preview or --prod mode",
+    "  deploy    Build and deploy with explicit --preview or --prod mode (--json supported)",
     "  doctor    Check config, siteUrl, and Vercel readiness (--json supported)",
     "  dev       Start a local preview server",
     "  init      Create a starter opentree.config.json",

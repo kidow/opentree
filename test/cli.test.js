@@ -1384,6 +1384,57 @@ test("deploy supports explicit preview mode without forwarding --prod", async ()
   assert.match(stdout.buffer, /https:\/\/opentree-preview\.vercel\.app/);
 });
 
+test("deploy supports structured json output on success", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-deploy-json-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+  await writeConfigFile(tempDir, {
+    siteUrl: "https://links.example.com"
+  });
+  await writeVercelProjectFile(tempDir);
+
+  const exitCode = await runDeploy(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr,
+      env: { ...process.env }
+    },
+    ["--prod", "--json"],
+    {
+      runBuild: async () => 0,
+      spawn: (_command, args) => {
+        if (args[0] === "whoami") {
+          return createFakeChildProcess({
+            stdout: "kidow\n"
+          });
+        }
+
+        return createFakeChildProcess({
+          stdout: "https://opentree-json.vercel.app\n",
+          stderr: "Inspect: https://vercel.com/kidow/opentree-json\n"
+        });
+      }
+    }
+  );
+
+  const report = JSON.parse(stdout.buffer);
+
+  assert.equal(exitCode, 0);
+  assert.equal(report.ok, true);
+  assert.equal(report.mode, "prod");
+  assert.equal(report.stage, "deploy");
+  assert.equal(report.cwd, tempDir);
+  assert.equal(report.outputDir, path.join(tempDir, "dist"));
+  assert.equal(report.deploymentUrl, "https://opentree-json.vercel.app");
+  assert.equal(report.inspectUrl, "https://vercel.com/kidow/opentree-json");
+  assert.equal(report.project.projectId, "prj_123");
+  assert.equal(report.project.orgId, "team_456");
+  assert.equal(report.project.projectName, "opentree");
+  assert.equal(report.projectFilePath, path.join(tempDir, "dist", ".vercel", "project.json"));
+  assert.match(stderr.buffer, /\[opentree\] deployment ready: https:\/\/opentree-json\.vercel\.app/);
+});
+
 test("deploy reports a missing vercel cli", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-deploy-missing-cli-"));
   const stdout = new MemoryWritable();
@@ -1476,6 +1527,32 @@ test("deploy reports when vercel login is missing", async () => {
   assert.match(stderr.buffer, /checking Vercel authentication/);
   assert.match(stderr.buffer, /Error: Not logged in/);
   assert.match(stderr.buffer, /Vercel CLI is not logged in\. Run `vercel login` and try again/);
+});
+
+test("deploy supports structured json output for argument failures", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-deploy-json-fail-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+
+  const exitCode = await runDeploy(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr
+    },
+    ["--json", "--target", "prod"]
+  );
+
+  const report = JSON.parse(stdout.buffer);
+
+  assert.equal(exitCode, 1);
+  assert.equal(report.ok, false);
+  assert.equal(report.stage, "args");
+  assert.equal(report.mode, "preview");
+  assert.equal(report.deploymentUrl, null);
+  assert.equal(report.project, null);
+  assert.equal(report.message, "unknown option: --target");
+  assert.match(stderr.buffer, /\[opentree\] unknown option: --target/);
 });
 
 test("deploy requires a reusable root Vercel project link", async () => {
