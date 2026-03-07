@@ -1059,6 +1059,80 @@ test("link list prints indexed links in their current order", async () => {
   assert.match(result.stdout, /^3\. Website -> https:\/\/example\.com/m);
 });
 
+test("link list supports structured json output", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-link-list-json-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+  spawnSync(
+    process.execPath,
+    [cliPath, "link", "add", "--title", "Docs", "--url", "https://example.com/docs"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  spawnSync(
+    process.execPath,
+    [cliPath, "link", "move", "--from", "3", "--to", "1"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+
+  const result = spawnSync(process.execPath, [cliPath, "link", "list", "--json"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(report.ok, true);
+  assert.equal(report.command, "link list");
+  assert.equal(report.stage, "load");
+  assert.equal(report.message, "listed 3 links");
+  assert.equal(report.result.linksCount, 3);
+  assert.deepEqual(report.result.links[0], {
+    index: 1,
+    title: "Docs",
+    url: "https://example.com/docs"
+  });
+  assert.equal(report.config.links[0].title, "Docs");
+});
+
+test("link list supports structured json output for missing config", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-link-list-missing-json-"));
+  const result = spawnSync(process.execPath, [cliPath, "link", "list", "--json"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 1);
+  assert.equal(report.ok, false);
+  assert.equal(report.command, "link list");
+  assert.equal(report.stage, "load");
+  assert.match(report.message, /opentree\.config\.json was not found/);
+});
+
+test("link list rejects unknown options", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-link-list-invalid-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(process.execPath, [cliPath, "link", "list", "--yaml"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /\[opentree\] usage: opentree link list \[--json\]/);
+});
+
 test("link add can insert at a 1-based index", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-link-insert-"));
   spawnSync(process.execPath, [cliPath, "init"], {

@@ -440,13 +440,13 @@ function emitEditFailure(io, report, json, message, issues = []) {
   return 1;
 }
 
-function emitEditSuccess(io, report, json, message, result, savedConfig) {
+function emitReportSuccess(io, report, json, message, result, configState, stage = "save") {
   report.ok = true;
-  report.stage = "save";
+  report.stage = stage;
   report.message = message;
   report.result = result;
-  report.config = savedConfig.config;
-  report.configPath = savedConfig.configPath;
+  report.config = configState.config;
+  report.configPath = configState.configPath;
 
   if (json) {
     writeJsonReport(io.stdout ?? process.stdout, report);
@@ -457,8 +457,20 @@ function emitEditSuccess(io, report, json, message, result, savedConfig) {
   return 0;
 }
 
+function emitEditSuccess(io, report, json, message, result, savedConfig) {
+  return emitReportSuccess(io, report, json, message, result, savedConfig, "save");
+}
+
 function readLinks(config) {
   return Array.isArray(config.links) ? [...config.links] : [];
+}
+
+function createLinkListEntries(links) {
+  return links.map((link, index) => ({
+    index: index + 1,
+    title: isObject(link) && typeof link.title === "string" ? link.title : "(untitled)",
+    url: isObject(link) && typeof link.url === "string" ? link.url : "(missing url)"
+  }));
 }
 
 async function runProfileCommand(io, args = []) {
@@ -531,22 +543,52 @@ async function runLinkCommand(io, args = []) {
   const cwd = io.cwd ?? process.cwd();
 
   if (subcommand === "list") {
-    const loadedConfig = await loadEditableConfig(io);
-    if (!loadedConfig) {
-      return 1;
+    const report = createEditReport(cwd, "link list");
+    const { args: filteredArgs, json } = extractJsonFlag(restArgs);
+
+    if (filteredArgs.length > 0) {
+      const message = "usage: opentree link list [--json]";
+      io.stderr.write(`[opentree] ${message}\n`);
+      return emitEditFailure(io, report, json, message);
+    }
+
+    report.stage = "load";
+    const loadedConfig = await loadEditableConfigState(cwd);
+    if (!loadedConfig.ok) {
+      writeLoadEditableConfigError(io, loadedConfig);
+      const issues = loadedConfig.message ? [loadedConfig.message] : [];
+      const message =
+        loadedConfig.kind === "missing"
+          ? `${CONFIG_FILE_NAME} was not found in ${cwd}`
+          : `${CONFIG_FILE_NAME} is not valid JSON`;
+      return emitEditFailure(io, report, json, message, issues);
     }
 
     const links = readLinks(loadedConfig.config);
+    const entries = createLinkListEntries(links);
 
-    if (links.length === 0) {
+    if (json) {
+      return emitReportSuccess(
+        io,
+        report,
+        true,
+        entries.length === 0 ? "no links found" : `listed ${entries.length} links`,
+        {
+          links: entries,
+          linksCount: entries.length
+        },
+        loadedConfig,
+        "load"
+      );
+    }
+
+    if (entries.length === 0) {
       io.stdout.write("[opentree] no links found\n");
       return 0;
     }
 
-    links.forEach((link, index) => {
-      const title = isObject(link) && typeof link.title === "string" ? link.title : "(untitled)";
-      const url = isObject(link) && typeof link.url === "string" ? link.url : "(missing url)";
-      io.stdout.write(`${index + 1}. ${title} -> ${url}\n`);
+    entries.forEach((entry) => {
+      io.stdout.write(`${entry.index}. ${entry.title} -> ${entry.url}\n`);
     });
     return 0;
   }

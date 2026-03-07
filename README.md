@@ -31,6 +31,7 @@ opentree profile set --name "Kidow" --json
 opentree site set --url "https://links.example.com"
 opentree meta set --title "Kidow Links" --description "Find my work." --og-image-url "https://cdn.example.com/og.png"
 opentree link list
+opentree link list --json
 opentree link add --title "Docs" --url "https://example.com/docs"
 opentree link add --title "Docs" --url "https://example.com/docs" --json
 opentree link update --index 1 --title "GitHub Profile"
@@ -59,7 +60,7 @@ opentree theme set --accent-color "#0f766e"
 `opentree config show --json`은 compact JSON으로 출력하고, `--pretty`는 명시적으로 pretty JSON을 출력한다.
 `opentree profile set`, `opentree site set`, `opentree meta set`, `opentree link add`, `opentree link update`, `opentree link move`, `opentree link remove`, `opentree theme set`은 설정 파일 수정을 CLI로 대체한다.
 이들 명령은 `--json`을 지원하며, 적용된 변경 요약과 저장된 최신 설정을 JSON으로 출력한다.
-`opentree link list`는 현재 링크 순서와 1-based 인덱스를 보여준다.
+`opentree link list`는 현재 링크 순서와 1-based 인덱스를 보여주고, `--json`을 붙이면 기계가 읽기 쉬운 링크 목록과 설정 정보를 함께 출력한다.
 
 `opentree deploy`를 쓰려면 먼저 Vercel CLI가 필요하다.
 또한 `siteUrl`이 설정되어 있어야 하고, `vercel login`이 완료되어 있어야 하며, 한 번은 `opentree vercel link`를 실행해 루트 project link를 만들어야 한다.

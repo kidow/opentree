@@ -24,7 +24,7 @@ function buildHelpText() {
     "  dev       Start a local preview server",
     "  init      Create a starter opentree.config.json",
     "  link add      Add a link entry to opentree.config.json (--json supported)",
-    "  link list     Show link indexes and current values",
+    "  link list     Show link indexes and current values (--json supported)",
     "  link move     Move a link entry by index (--json supported)",
     "  link remove   Remove a link entry by index (--json supported)",
     "  link update   Update a link entry by index (--json supported)",
