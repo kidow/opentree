@@ -1,4 +1,6 @@
 const packageJson = require("../package.json");
+const { runInit } = require("./init");
+const { runValidate } = require("./validate");
 
 function buildHelpText() {
   return [
@@ -8,23 +10,14 @@ function buildHelpText() {
     "  opentree <command>",
     "",
     "Commands:",
-    "  init      Run the bootstrap placeholder flow",
+    "  init      Create a starter opentree.config.json",
+    "  validate  Validate opentree.config.json",
     "  help      Show this message",
     "",
     "Options:",
     "  -h, --help      Show help",
     "  -v, --version   Show version"
   ].join("\n");
-}
-
-function runInit(io) {
-  const cwd = io.cwd ?? process.cwd();
-
-  io.stdout.write("[opentree] init command received\n");
-  io.stdout.write(`[opentree] target directory: ${cwd}\n`);
-  io.stdout.write("[opentree] bootstrap scaffold is not implemented yet\n");
-
-  return 0;
 }
 
 async function run(argv = process.argv.slice(2), io = {}) {
@@ -45,6 +38,10 @@ async function run(argv = process.argv.slice(2), io = {}) {
 
   if (command === "init") {
     return runInit(context);
+  }
+
+  if (command === "validate") {
+    return runValidate(context);
   }
 
   stderr.write(`[opentree] unknown command: ${command}\n`);

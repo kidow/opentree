@@ -9,7 +9,11 @@
 ```bash
 npm install -g opentree-cli
 opentree init
+opentree validate
 ```
+
+`opentree init`를 실행하면 현재 디렉터리에 `opentree.config.json`이 생성된다.
+`opentree validate`는 그 설정 파일이 다음 단계로 넘어가도 되는지 검증한다.
 
 ### 로컬 개발 실행
 
