@@ -19,7 +19,7 @@ function buildHelpText() {
     "  build     Generate a static site into dist/index.html",
     "  config show   Print the current opentree.config.json",
     "  deploy    Build and deploy the dist output with Vercel CLI",
-    "  doctor    Check config, siteUrl, and Vercel readiness",
+    "  doctor    Check config, siteUrl, and Vercel readiness (--json supported)",
     "  dev       Start a local preview server",
     "  init      Create a starter opentree.config.json",
     "  link add      Add a link entry to opentree.config.json",

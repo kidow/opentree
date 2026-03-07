@@ -1214,6 +1214,50 @@ test("doctor reports a healthy project and vercel session", async () => {
   assert.match(stdout.buffer, /\[opentree\] doctor found no issues/);
 });
 
+test("doctor supports json output for healthy projects", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-doctor-json-ok-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+  await writeConfigFile(tempDir, {
+    siteUrl: "https://links.example.com"
+  });
+
+  const exitCode = await runDoctor(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr,
+      env: { ...process.env }
+    },
+    ["--json"],
+    {
+      spawn: () =>
+        createFakeChildProcess({
+          stdout: "kidow\n"
+        })
+    }
+  );
+
+  const report = JSON.parse(stdout.buffer);
+
+  assert.equal(exitCode, 0);
+  assert.equal(stderr.buffer, "");
+  assert.equal(report.ok, true);
+  assert.equal(report.issueCount, 0);
+  assert.equal(report.cwd, tempDir);
+  assert.equal(report.summary, "[opentree] doctor found no issues");
+  assert.equal(report.checks.length, 4);
+  assert.deepEqual(
+    report.checks.map((check) => [check.id, check.status]),
+    [
+      ["config", "pass"],
+      ["siteUrl", "pass"],
+      ["vercel", "pass"],
+      ["vercel auth", "pass"]
+    ]
+  );
+});
+
 test("doctor reports missing config and missing vercel cli", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-doctor-missing-"));
   const stdout = new MemoryWritable();
@@ -1296,6 +1340,43 @@ test("doctor reports invalid config and missing vercel login", async () => {
   assert.match(stdout.buffer, /\[pass\] vercel: CLI is installed/);
   assert.match(stdout.buffer, /\[fail\] vercel auth: CLI is not logged in/);
   assert.match(stdout.buffer, /\[opentree\] doctor found 3 issue\(s\)/);
+});
+
+test("doctor supports json output for failing projects", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-doctor-json-fail-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+
+  const exitCode = await runDoctor(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr,
+      env: { ...process.env }
+    },
+    ["--json"],
+    {
+      spawn: () => createFakeChildProcess({ error: { code: "ENOENT" } })
+    }
+  );
+
+  const report = JSON.parse(stdout.buffer);
+
+  assert.equal(exitCode, 1);
+  assert.equal(stderr.buffer, "");
+  assert.equal(report.ok, false);
+  assert.equal(report.issueCount, 2);
+  assert.equal(report.summary, "[opentree] doctor found 2 issue(s)");
+  assert.deepEqual(
+    report.checks.map((check) => [check.id, check.status]),
+    [
+      ["config", "fail"],
+      ["siteUrl", "skip"],
+      ["vercel", "fail"],
+      ["vercel auth", "skip"]
+    ]
+  );
+  assert.match(report.checks[0].message, /opentree\.config\.json was not found/);
 });
 
 test("deploy rejects a custom cwd override", async () => {
