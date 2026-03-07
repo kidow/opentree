@@ -130,6 +130,145 @@ function parseLinkRemoveArgs(args) {
   };
 }
 
+function parseLinkUpdateArgs(args) {
+  const options = {};
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    const nextValue = args[index + 1];
+
+    if (arg === "--index") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --index");
+      }
+
+      options.index = parseInteger(nextValue, "--index");
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--title") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --title");
+      }
+
+      options.title = nextValue;
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--url") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --url");
+      }
+
+      options.url = nextValue;
+      index += 1;
+      continue;
+    }
+
+    throw new Error(`unknown option: ${arg}`);
+  }
+
+  if (options.index === undefined) {
+    throw new Error("missing required option --index");
+  }
+
+  if (options.title === undefined && options.url === undefined) {
+    throw new Error("provide at least one of --title or --url");
+  }
+
+  return options;
+}
+
+function parseLinkMoveArgs(args) {
+  const options = {};
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    const nextValue = args[index + 1];
+
+    if (arg === "--from") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --from");
+      }
+
+      options.from = parseInteger(nextValue, "--from");
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--to") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --to");
+      }
+
+      options.to = parseInteger(nextValue, "--to");
+      index += 1;
+      continue;
+    }
+
+    throw new Error(`unknown option: ${arg}`);
+  }
+
+  if (options.from === undefined) {
+    throw new Error("missing required option --from");
+  }
+
+  if (options.to === undefined) {
+    throw new Error("missing required option --to");
+  }
+
+  return options;
+}
+
+function parseThemeArgs(args) {
+  const updates = {};
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    const nextValue = args[index + 1];
+
+    if (arg === "--accent-color") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --accent-color");
+      }
+
+      updates.accentColor = nextValue;
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--background-color") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --background-color");
+      }
+
+      updates.backgroundColor = nextValue;
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--text-color") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --text-color");
+      }
+
+      updates.textColor = nextValue;
+      index += 1;
+      continue;
+    }
+
+    throw new Error(`unknown option: ${arg}`);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    throw new Error("provide at least one of --accent-color, --background-color, or --text-color");
+  }
+
+  return updates;
+}
+
 async function loadEditableConfig(io) {
   const cwd = io.cwd ?? process.cwd();
 
@@ -157,6 +296,10 @@ function reportInvalidConfig(io, actionLabel, errors) {
   errors.forEach((error) => {
     io.stderr.write(`- ${error}\n`);
   });
+}
+
+function readLinks(config) {
+  return Array.isArray(config.links) ? [...config.links] : [];
 }
 
 async function runProfileCommand(io, args = []) {
@@ -203,6 +346,27 @@ async function runProfileCommand(io, args = []) {
 async function runLinkCommand(io, args = []) {
   const [subcommand, ...restArgs] = args;
 
+  if (subcommand === "list") {
+    const loadedConfig = await loadEditableConfig(io);
+    if (!loadedConfig) {
+      return 1;
+    }
+
+    const links = readLinks(loadedConfig.config);
+
+    if (links.length === 0) {
+      io.stdout.write("[opentree] no links found\n");
+      return 0;
+    }
+
+    links.forEach((link, index) => {
+      const title = isObject(link) && typeof link.title === "string" ? link.title : "(untitled)";
+      const url = isObject(link) && typeof link.url === "string" ? link.url : "(missing url)";
+      io.stdout.write(`${index + 1}. ${title} -> ${url}\n`);
+    });
+    return 0;
+  }
+
   if (subcommand === "add") {
     let options;
     try {
@@ -217,9 +381,7 @@ async function runLinkCommand(io, args = []) {
       return 1;
     }
 
-    const links = Array.isArray(loadedConfig.config.links)
-      ? [...loadedConfig.config.links]
-      : [];
+    const links = readLinks(loadedConfig.config);
     const insertIndex = options.index === undefined ? links.length : options.index - 1;
 
     if (insertIndex < 0 || insertIndex > links.length) {
@@ -249,6 +411,107 @@ async function runLinkCommand(io, args = []) {
     return 0;
   }
 
+  if (subcommand === "update") {
+    let options;
+    try {
+      options = parseLinkUpdateArgs(restArgs);
+    } catch (error) {
+      io.stderr.write(`[opentree] ${error.message}\n`);
+      return 1;
+    }
+
+    const loadedConfig = await loadEditableConfig(io);
+    if (!loadedConfig) {
+      return 1;
+    }
+
+    const links = readLinks(loadedConfig.config);
+
+    if (options.index > links.length) {
+      io.stderr.write(`[opentree] --index must be between 1 and ${links.length}\n`);
+      return 1;
+    }
+
+    const currentLink = links[options.index - 1];
+    if (!isObject(currentLink)) {
+      io.stderr.write(`[opentree] link #${options.index} is not editable\n`);
+      return 1;
+    }
+
+    links[options.index - 1] = {
+      ...currentLink,
+      ...(options.title === undefined ? {} : { title: options.title }),
+      ...(options.url === undefined ? {} : { url: options.url })
+    };
+
+    const nextConfig = {
+      ...loadedConfig.config,
+      links
+    };
+    const errors = validateConfig(nextConfig);
+
+    if (errors.length > 0) {
+      reportInvalidConfig(io, "link update", errors);
+      return 1;
+    }
+
+    await saveConfig(io.cwd ?? process.cwd(), nextConfig);
+
+    io.stdout.write(`[opentree] updated link #${options.index}\n`);
+    return 0;
+  }
+
+  if (subcommand === "move") {
+    let options;
+    try {
+      options = parseLinkMoveArgs(restArgs);
+    } catch (error) {
+      io.stderr.write(`[opentree] ${error.message}\n`);
+      return 1;
+    }
+
+    const loadedConfig = await loadEditableConfig(io);
+    if (!loadedConfig) {
+      return 1;
+    }
+
+    const links = readLinks(loadedConfig.config);
+
+    if (links.length === 0) {
+      io.stderr.write("[opentree] there are no links to move\n");
+      return 1;
+    }
+
+    if (options.from > links.length) {
+      io.stderr.write(`[opentree] --from must be between 1 and ${links.length}\n`);
+      return 1;
+    }
+
+    if (options.to > links.length) {
+      io.stderr.write(`[opentree] --to must be between 1 and ${links.length}\n`);
+      return 1;
+    }
+
+    const [movedLink] = links.splice(options.from - 1, 1);
+    links.splice(options.to - 1, 0, movedLink);
+
+    const nextConfig = {
+      ...loadedConfig.config,
+      links
+    };
+    const errors = validateConfig(nextConfig);
+
+    if (errors.length > 0) {
+      reportInvalidConfig(io, "link move", errors);
+      return 1;
+    }
+
+    await saveConfig(io.cwd ?? process.cwd(), nextConfig);
+
+    io.stdout.write(`[opentree] moved link from #${options.from} to #${options.to}\n`);
+    return 0;
+  }
+
   if (subcommand === "remove") {
     let options;
     try {
@@ -263,9 +526,7 @@ async function runLinkCommand(io, args = []) {
       return 1;
     }
 
-    const links = Array.isArray(loadedConfig.config.links)
-      ? [...loadedConfig.config.links]
-      : [];
+    const links = readLinks(loadedConfig.config);
 
     if (links.length === 0) {
       io.stderr.write("[opentree] there are no links to remove\n");
@@ -301,11 +562,56 @@ async function runLinkCommand(io, args = []) {
   }
 
   io.stderr.write("[opentree] usage: opentree link add --title <value> --url <value> [--index <number>]\n");
+  io.stderr.write("[opentree]        opentree link list\n");
+  io.stderr.write("[opentree]        opentree link update --index <number> [--title <value>] [--url <value>]\n");
+  io.stderr.write("[opentree]        opentree link move --from <number> --to <number>\n");
   io.stderr.write("[opentree]        opentree link remove --index <number>\n");
   return 1;
 }
 
+async function runThemeCommand(io, args = []) {
+  const [subcommand, ...restArgs] = args;
+
+  if (subcommand !== "set") {
+    io.stderr.write("[opentree] usage: opentree theme set [--accent-color <hex>] [--background-color <hex>] [--text-color <hex>]\n");
+    return 1;
+  }
+
+  let updates;
+  try {
+    updates = parseThemeArgs(restArgs);
+  } catch (error) {
+    io.stderr.write(`[opentree] ${error.message}\n`);
+    return 1;
+  }
+
+  const loadedConfig = await loadEditableConfig(io);
+  if (!loadedConfig) {
+    return 1;
+  }
+
+  const nextConfig = {
+    ...loadedConfig.config,
+    theme: {
+      ...(isObject(loadedConfig.config.theme) ? loadedConfig.config.theme : {}),
+      ...updates
+    }
+  };
+  const errors = validateConfig(nextConfig);
+
+  if (errors.length > 0) {
+    reportInvalidConfig(io, "theme update", errors);
+    return 1;
+  }
+
+  await saveConfig(io.cwd ?? process.cwd(), nextConfig);
+
+  io.stdout.write(`[opentree] updated theme fields: ${Object.keys(updates).join(", ")}\n`);
+  return 0;
+}
+
 module.exports = {
   runLinkCommand,
-  runProfileCommand
+  runProfileCommand,
+  runThemeCommand
 };

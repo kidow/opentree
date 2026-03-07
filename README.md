@@ -8,14 +8,19 @@
 
 ```bash
 npm install -g opentree-cli
-opentree init
+opentree init --name "Kidow" --bio "CLI-first profile"
 opentree validate
 opentree build
 opentree dev
 opentree deploy
+opentree config show
 opentree profile set --name "Kidow"
+opentree link list
 opentree link add --title "Docs" --url "https://example.com/docs"
+opentree link update --index 1 --title "GitHub Profile"
+opentree link move --from 3 --to 1
 opentree link remove --index 1
+opentree theme set --accent-color "#0f766e"
 ```
 
 `opentree init`를 실행하면 현재 디렉터리에 `opentree.config.json`이 생성된다.
@@ -23,7 +28,9 @@ opentree link remove --index 1
 `opentree build`는 검증된 설정으로 `dist/index.html` 정적 페이지를 생성한다.
 `opentree dev`는 로컬 미리보기 서버를 띄우고, 설정 파일 수정 내용을 새로고침만으로 반영한다.
 `opentree deploy`는 먼저 `dist`를 빌드한 뒤 Vercel CLI로 그 결과물을 배포한다.
-`opentree profile set`, `opentree link add`, `opentree link remove`는 설정 파일 수정을 CLI로 대체한다.
+`opentree config show`는 현재 설정 파일 내용을 그대로 출력한다.
+`opentree profile set`, `opentree link add`, `opentree link update`, `opentree link move`, `opentree link remove`, `opentree theme set`은 설정 파일 수정을 CLI로 대체한다.
+`opentree link list`는 현재 링크 순서와 1-based 인덱스를 보여준다.
 
 `opentree deploy`를 쓰려면 먼저 Vercel CLI가 필요하다.
 

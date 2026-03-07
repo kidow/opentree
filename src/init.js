@@ -28,10 +28,91 @@ function createDefaultConfig() {
   };
 }
 
-async function runInit(io) {
+function isValidUrl(value) {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function parseInitArgs(args) {
+  const overrides = {};
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    const nextValue = args[index + 1];
+
+    if (arg === "--name") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --name");
+      }
+
+      overrides.name = nextValue;
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--bio") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --bio");
+      }
+
+      overrides.bio = nextValue;
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--avatar-url") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --avatar-url");
+      }
+
+      overrides.avatarUrl = nextValue;
+      index += 1;
+      continue;
+    }
+
+    throw new Error(`unknown option: ${arg}`);
+  }
+
+  if (overrides.name !== undefined && overrides.name.trim().length === 0) {
+    throw new Error("--name must be a non-empty string");
+  }
+
+  if (
+    overrides.avatarUrl !== undefined &&
+    overrides.avatarUrl !== "" &&
+    !isValidUrl(overrides.avatarUrl)
+  ) {
+    throw new Error("--avatar-url must be an http or https URL");
+  }
+
+  return overrides;
+}
+
+async function runInit(io, args = []) {
   const cwd = io.cwd ?? process.cwd();
   const configPath = path.join(cwd, CONFIG_FILE_NAME);
+  let overrides;
+
+  try {
+    overrides = parseInitArgs(args);
+  } catch (error) {
+    io.stderr.write(`[opentree] ${error.message}\n`);
+    return 1;
+  }
+
   const config = createDefaultConfig();
+  config.profile = {
+    ...config.profile,
+    ...overrides
+  };
 
   io.stdout.write("[opentree] init command received\n");
   io.stdout.write(`[opentree] target directory: ${cwd}\n`);
@@ -59,5 +140,6 @@ async function runInit(io) {
 module.exports = {
   CONFIG_FILE_NAME,
   createDefaultConfig,
+  parseInitArgs,
   runInit
 };

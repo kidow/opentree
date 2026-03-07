@@ -87,6 +87,48 @@ test("init creates starter config in the current directory", async () => {
   assert.equal(config.theme.accentColor, "#166534");
 });
 
+test("init accepts profile overrides from flags", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-init-overrides-"));
+  const result = spawnSync(
+    process.execPath,
+    [
+      cliPath,
+      "init",
+      "--name",
+      "Kidow",
+      "--bio",
+      "CLI-native profile",
+      "--avatar-url",
+      "https://example.com/avatar.png"
+    ],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const config = JSON.parse(await fs.readFile(path.join(tempDir, configFilePath), "utf8"));
+
+  assert.equal(result.status, 0);
+  assert.equal(config.profile.name, "Kidow");
+  assert.equal(config.profile.bio, "CLI-native profile");
+  assert.equal(config.profile.avatarUrl, "https://example.com/avatar.png");
+});
+
+test("init rejects invalid profile overrides", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-init-invalid-"));
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "init", "--avatar-url", "ftp://example.com/avatar.png"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /\[opentree\] --avatar-url must be an http or https URL/);
+});
+
 test("init fails when config already exists", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-init-existing-"));
   await fs.writeFile(
@@ -286,6 +328,24 @@ test("profile set rejects invalid updates", async () => {
   assert.match(result.stderr, /profile\.avatarUrl must be an http or https URL/);
 });
 
+test("config show prints the current config json", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-config-show-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(process.execPath, [cliPath, "config", "show"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+  const parsed = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(parsed.profile.name, "Your Name");
+  assert.equal(parsed.links.length, 2);
+});
+
 test("link add appends a new link", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-link-add-"));
   spawnSync(process.execPath, [cliPath, "init"], {
@@ -308,6 +368,40 @@ test("link add appends a new link", async () => {
   assert.equal(config.links.length, 3);
   assert.equal(config.links[2].title, "Docs");
   assert.equal(config.links[2].url, "https://example.com/docs");
+});
+
+test("link list prints indexed links in their current order", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-link-list-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+  spawnSync(
+    process.execPath,
+    [cliPath, "link", "add", "--title", "Docs", "--url", "https://example.com/docs"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  spawnSync(
+    process.execPath,
+    [cliPath, "link", "move", "--from", "3", "--to", "1"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+
+  const result = spawnSync(process.execPath, [cliPath, "link", "list"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /^1\. Docs -> https:\/\/example\.com\/docs/m);
+  assert.match(result.stdout, /^2\. GitHub -> https:\/\/github\.com\/your-handle/m);
+  assert.match(result.stdout, /^3\. Website -> https:\/\/example\.com/m);
 });
 
 test("link add can insert at a 1-based index", async () => {
@@ -394,6 +488,146 @@ test("link remove rejects deleting the last link", async () => {
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /cannot remove the last link/);
+});
+
+test("link update changes a specific link", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-link-update-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "link", "update", "--index", "2", "--title", "Portfolio", "--url", "https://example.com/portfolio"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const config = JSON.parse(await fs.readFile(path.join(tempDir, configFilePath), "utf8"));
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /\[opentree\] updated link #2/);
+  assert.equal(config.links[1].title, "Portfolio");
+  assert.equal(config.links[1].url, "https://example.com/portfolio");
+});
+
+test("link update rejects invalid url changes", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-link-update-invalid-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "link", "update", "--index", "1", "--url", "mailto:test@example.com"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /\[opentree\] link update aborted because the config would be invalid/);
+  assert.match(result.stderr, /links\[0\]\.url must be an http or https URL/);
+});
+
+test("link move reorders links with 1-based indexes", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-link-move-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+  spawnSync(
+    process.execPath,
+    [cliPath, "link", "add", "--title", "Docs", "--url", "https://example.com/docs"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "link", "move", "--from", "3", "--to", "1"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const config = JSON.parse(await fs.readFile(path.join(tempDir, configFilePath), "utf8"));
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /\[opentree\] moved link from #3 to #1/);
+  assert.equal(config.links[0].title, "Docs");
+  assert.equal(config.links[1].title, "GitHub");
+});
+
+test("link move rejects out-of-range indexes", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-link-move-invalid-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "link", "move", "--from", "4", "--to", "1"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /--from must be between 1 and 2/);
+});
+
+test("theme set updates theme colors", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-theme-set-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "theme", "set", "--accent-color", "#0f766e", "--background-color", "#f0fdfa"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const config = JSON.parse(await fs.readFile(path.join(tempDir, configFilePath), "utf8"));
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /\[opentree\] updated theme fields: accentColor, backgroundColor/);
+  assert.equal(config.theme.accentColor, "#0f766e");
+  assert.equal(config.theme.backgroundColor, "#f0fdfa");
+  assert.equal(config.theme.textColor, "#052e16");
+});
+
+test("theme set rejects invalid colors", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-theme-invalid-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "theme", "set", "--text-color", "white"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /\[opentree\] theme update aborted because the config would be invalid/);
+  assert.match(result.stderr, /theme\.textColor must be a hex color/);
 });
 
 test("dev serves the preview and reloads config changes without restart", async () => {
