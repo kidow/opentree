@@ -252,6 +252,29 @@ test("validate passes for the starter config", async () => {
   assert.match(validateResult.stdout, /\[opentree\] opentree\.config\.json is valid/);
 });
 
+test("validate supports structured json output for valid config", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-validate-json-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(process.execPath, [cliPath, "validate", "--json"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(report.ok, true);
+  assert.equal(report.stage, "validate");
+  assert.equal(report.issueCount, 0);
+  assert.deepEqual(report.issues, []);
+  assert.match(report.message, /opentree\.config\.json is valid/);
+  assert.match(result.stderr, /\[opentree\] validating opentree\.config\.json/);
+  assert.match(result.stderr, /\[opentree\] opentree\.config\.json is valid/);
+});
+
 test("validate fails when the config file is missing", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-validate-missing-"));
   const result = spawnSync(process.execPath, [cliPath, "validate"], {
@@ -262,6 +285,44 @@ test("validate fails when the config file is missing", async () => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /\[opentree\] opentree\.config\.json was not found/);
   assert.match(result.stderr, /run `opentree init` first/);
+});
+
+test("validate supports structured json output for invalid config", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-validate-json-invalid-"));
+  await fs.writeFile(
+    path.join(tempDir, configFilePath),
+    JSON.stringify(
+      {
+        profile: {
+          name: "",
+          bio: 12,
+          avatarUrl: "ftp://example.com/avatar.png"
+        },
+        links: [],
+        theme: {
+          accentColor: "green",
+          backgroundColor: "#fff",
+          textColor: "#052e16"
+        }
+      },
+      null,
+      2
+    ) + "\n"
+  );
+
+  const result = spawnSync(process.execPath, [cliPath, "validate", "--json"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 1);
+  assert.equal(report.ok, false);
+  assert.equal(report.stage, "validate");
+  assert.equal(report.issueCount, 6);
+  assert.match(report.message, /found 6 validation issue\(s\)/);
+  assert.match(report.issues[0], /profile\.name must be a non-empty string/);
+  assert.match(result.stderr, /\[opentree\] found 6 validation issue\(s\)/);
 });
 
 test("validate reports schema errors for malformed config", async () => {
@@ -664,6 +725,35 @@ test("profile set updates the profile fields in config", async () => {
   assert.equal(config.profile.avatarUrl, "https://example.com/avatar.png");
 });
 
+test("profile set supports structured json output", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-profile-set-json-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+  const expectedConfigPath = path.join(await fs.realpath(tempDir), configFilePath);
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "profile", "set", "--name", "Kidow", "--bio", "Shipping links.", "--json"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(report.ok, true);
+  assert.equal(report.command, "profile set");
+  assert.equal(report.message, "updated profile fields: name, bio");
+  assert.deepEqual(report.result.fields, ["name", "bio"]);
+  assert.equal(report.result.profile.name, "Kidow");
+  assert.equal(report.result.profile.bio, "Shipping links.");
+  assert.equal(report.config.profile.name, "Kidow");
+  assert.equal(report.configPath, expectedConfigPath);
+});
+
 test("profile set rejects invalid updates", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-profile-invalid-"));
   spawnSync(process.execPath, [cliPath, "init"], {
@@ -767,6 +857,31 @@ test("meta set updates metadata fields", async () => {
   });
 });
 
+test("meta set supports structured json output", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-meta-set-json-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "meta", "set", "--title", "Kidow Links", "--json"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(report.ok, true);
+  assert.equal(report.command, "meta set");
+  assert.deepEqual(report.result.fields, ["title"]);
+  assert.equal(report.result.metadata.title, "Kidow Links");
+  assert.equal(report.config.metadata.title, "Kidow Links");
+});
+
 test("meta set rejects invalid og image urls", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-meta-invalid-"));
   spawnSync(process.execPath, [cliPath, "init"], {
@@ -806,6 +921,59 @@ test("config show prints the current config json", async () => {
   assert.equal(parsed.links.length, 2);
 });
 
+test("config show supports compact json output", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-config-show-json-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(process.execPath, [cliPath, "config", "show", "--json"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+  const parsed = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(result.stdout, `${JSON.stringify(parsed)}\n`);
+  assert.equal(parsed.profile.name, "Your Name");
+  assert.equal(parsed.links.length, 2);
+});
+
+test("config show supports explicit pretty output", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-config-show-pretty-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(process.execPath, [cliPath, "config", "show", "--pretty"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /\n  "profile": \{/);
+  assert.match(result.stdout, /\n  "links": \[/);
+});
+
+test("config show rejects unknown options", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-config-show-invalid-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(process.execPath, [cliPath, "config", "show", "--yaml"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /\[opentree\] unknown option: --yaml/);
+  assert.match(result.stderr, /usage: opentree config show \[--json\|--pretty\]/);
+});
+
 test("link add appends a new link", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-link-add-"));
   spawnSync(process.execPath, [cliPath, "init"], {
@@ -828,6 +996,33 @@ test("link add appends a new link", async () => {
   assert.equal(config.links.length, 3);
   assert.equal(config.links[2].title, "Docs");
   assert.equal(config.links[2].url, "https://example.com/docs");
+});
+
+test("link add supports structured json output", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-link-add-json-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "link", "add", "--title", "Docs", "--url", "https://example.com/docs", "--json"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(report.ok, true);
+  assert.equal(report.command, "link add");
+  assert.equal(report.result.index, 3);
+  assert.equal(report.result.link.title, "Docs");
+  assert.equal(report.result.link.url, "https://example.com/docs");
+  assert.equal(report.result.linksCount, 3);
+  assert.equal(report.config.links[2].title, "Docs");
 });
 
 test("link list prints indexed links in their current order", async () => {
@@ -1025,6 +1220,40 @@ test("link move reorders links with 1-based indexes", async () => {
   assert.equal(config.links[1].title, "GitHub");
 });
 
+test("link move supports structured json output", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-link-move-json-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+  spawnSync(
+    process.execPath,
+    [cliPath, "link", "add", "--title", "Docs", "--url", "https://example.com/docs"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "link", "move", "--from", "3", "--to", "1", "--json"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(report.ok, true);
+  assert.equal(report.command, "link move");
+  assert.equal(report.result.from, 3);
+  assert.equal(report.result.to, 1);
+  assert.equal(report.result.link.title, "Docs");
+  assert.equal(report.config.links[0].title, "Docs");
+});
+
 test("link move rejects out-of-range indexes", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-link-move-invalid-"));
   spawnSync(process.execPath, [cliPath, "init"], {
@@ -1088,6 +1317,31 @@ test("theme set rejects invalid colors", async () => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /\[opentree\] theme update aborted because the config would be invalid/);
   assert.match(result.stderr, /theme\.textColor must be a hex color/);
+});
+
+test("theme set supports structured json output for validation failures", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-theme-json-invalid-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "theme", "set", "--text-color", "white", "--json"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 1);
+  assert.equal(report.ok, false);
+  assert.equal(report.command, "theme set");
+  assert.equal(report.stage, "validate");
+  assert.match(report.message, /theme update aborted because the config would be invalid/);
+  assert.match(report.issues[0], /theme\.textColor must be a hex color/);
 });
 
 test("dev serves the preview and reloads config changes without restart", async () => {

@@ -1,3 +1,4 @@
+const path = require("node:path");
 const { CONFIG_FILE_NAME } = require("./init");
 const { loadConfig, saveConfig, validateConfig } = require("./config");
 
@@ -330,26 +331,95 @@ function parseMetaArgs(args) {
   return updates;
 }
 
-async function loadEditableConfig(io) {
-  const cwd = io.cwd ?? process.cwd();
+function writeJsonReport(stdout, report) {
+  stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+}
 
+function extractJsonFlag(args) {
+  const filteredArgs = [];
+  let json = false;
+
+  args.forEach((arg) => {
+    if (arg === "--json") {
+      json = true;
+      return;
+    }
+
+    filteredArgs.push(arg);
+  });
+
+  return {
+    args: filteredArgs,
+    json
+  };
+}
+
+function createEditReport(cwd, command) {
+  return {
+    command,
+    config: null,
+    configPath: path.join(cwd, CONFIG_FILE_NAME),
+    cwd,
+    issues: [],
+    message: "",
+    ok: false,
+    result: null,
+    stage: "args"
+  };
+}
+
+async function loadEditableConfigState(cwd = process.cwd(), loadConfigImpl = loadConfig) {
   try {
-    return await loadConfig(cwd);
+    return {
+      ok: true,
+      ...(await loadConfigImpl(cwd))
+    };
   } catch (error) {
     if (error && error.code === "ENOENT") {
-      io.stderr.write(`[opentree] ${CONFIG_FILE_NAME} was not found in ${cwd}\n`);
-      io.stderr.write("[opentree] run `opentree init` first to create a starter config\n");
-      return null;
+      return {
+        ok: false,
+        kind: "missing",
+        cwd
+      };
     }
 
     if (error instanceof SyntaxError) {
-      io.stderr.write(`[opentree] ${CONFIG_FILE_NAME} is not valid JSON\n`);
-      io.stderr.write(`[opentree] ${error.message}\n`);
-      return null;
+      return {
+        ok: false,
+        kind: "invalid_json",
+        cwd,
+        message: error.message
+      };
     }
 
     throw error;
   }
+}
+
+function writeLoadEditableConfigError(io, state) {
+  const cwd = state.cwd ?? io.cwd ?? process.cwd();
+
+  if (state.kind === "missing") {
+    io.stderr.write(`[opentree] ${CONFIG_FILE_NAME} was not found in ${cwd}\n`);
+    io.stderr.write("[opentree] run `opentree init` first to create a starter config\n");
+    return;
+  }
+
+  if (state.kind === "invalid_json") {
+    io.stderr.write(`[opentree] ${CONFIG_FILE_NAME} is not valid JSON\n`);
+    io.stderr.write(`[opentree] ${state.message}\n`);
+  }
+}
+
+async function loadEditableConfig(io) {
+  const state = await loadEditableConfigState(io.cwd ?? process.cwd());
+
+  if (!state.ok) {
+    writeLoadEditableConfigError(io, state);
+    return null;
+  }
+
+  return state;
 }
 
 function reportInvalidConfig(io, actionLabel, errors) {
@@ -359,29 +429,70 @@ function reportInvalidConfig(io, actionLabel, errors) {
   });
 }
 
+function emitEditFailure(io, report, json, message, issues = []) {
+  report.message = message;
+  report.issues = issues;
+
+  if (json) {
+    writeJsonReport(io.stdout ?? process.stdout, report);
+  }
+
+  return 1;
+}
+
+function emitEditSuccess(io, report, json, message, result, savedConfig) {
+  report.ok = true;
+  report.stage = "save";
+  report.message = message;
+  report.result = result;
+  report.config = savedConfig.config;
+  report.configPath = savedConfig.configPath;
+
+  if (json) {
+    writeJsonReport(io.stdout ?? process.stdout, report);
+    return 0;
+  }
+
+  io.stdout.write(`[opentree] ${message}\n`);
+  return 0;
+}
+
 function readLinks(config) {
   return Array.isArray(config.links) ? [...config.links] : [];
 }
 
 async function runProfileCommand(io, args = []) {
+  const requestedJson = args.includes("--json");
   const [subcommand, ...restArgs] = args;
+  const cwd = io.cwd ?? process.cwd();
+  const report = createEditReport(cwd, "profile set");
 
   if (subcommand !== "set") {
-    io.stderr.write("[opentree] usage: opentree profile set [--name <value>] [--bio <value>] [--avatar-url <value>]\n");
-    return 1;
+    const message =
+      "usage: opentree profile set [--name <value>] [--bio <value>] [--avatar-url <value>]";
+    io.stderr.write(`[opentree] ${message}\n`);
+    return emitEditFailure(io, report, requestedJson, message);
   }
 
+  const { args: filteredArgs, json } = extractJsonFlag(restArgs);
   let updates;
   try {
-    updates = parseProfileArgs(restArgs);
+    updates = parseProfileArgs(filteredArgs);
   } catch (error) {
     io.stderr.write(`[opentree] ${error.message}\n`);
-    return 1;
+    return emitEditFailure(io, report, json, error.message);
   }
 
-  const loadedConfig = await loadEditableConfig(io);
-  if (!loadedConfig) {
-    return 1;
+  report.stage = "load";
+  const loadedConfig = await loadEditableConfigState(cwd);
+  if (!loadedConfig.ok) {
+    writeLoadEditableConfigError(io, loadedConfig);
+    const issues = loadedConfig.message ? [loadedConfig.message] : [];
+    const message =
+      loadedConfig.kind === "missing"
+        ? `${CONFIG_FILE_NAME} was not found in ${cwd}`
+        : `${CONFIG_FILE_NAME} is not valid JSON`;
+    return emitEditFailure(io, report, json, message, issues);
   }
 
   const nextConfig = {
@@ -394,18 +505,30 @@ async function runProfileCommand(io, args = []) {
   const errors = validateConfig(nextConfig);
 
   if (errors.length > 0) {
+    report.stage = "validate";
     reportInvalidConfig(io, "profile update", errors);
-    return 1;
+    return emitEditFailure(io, report, json, "profile update aborted because the config would be invalid", errors);
   }
 
-  await saveConfig(io.cwd ?? process.cwd(), nextConfig);
+  const savedConfig = await saveConfig(cwd, nextConfig);
 
-  io.stdout.write(`[opentree] updated profile fields: ${Object.keys(updates).join(", ")}\n`);
-  return 0;
+  return emitEditSuccess(
+    io,
+    report,
+    json,
+    `updated profile fields: ${Object.keys(updates).join(", ")}`,
+    {
+      fields: Object.keys(updates),
+      profile: savedConfig.config.profile
+    },
+    savedConfig
+  );
 }
 
 async function runLinkCommand(io, args = []) {
+  const requestedJson = args.includes("--json");
   const [subcommand, ...restArgs] = args;
+  const cwd = io.cwd ?? process.cwd();
 
   if (subcommand === "list") {
     const loadedConfig = await loadEditableConfig(io);
@@ -428,26 +551,48 @@ async function runLinkCommand(io, args = []) {
     return 0;
   }
 
+  if (!subcommand) {
+    const message =
+      "usage: opentree link add --title <value> --url <value> [--index <number>]";
+    io.stderr.write(`[opentree] ${message}\n`);
+    io.stderr.write("[opentree]        opentree link list\n");
+    io.stderr.write("[opentree]        opentree link update --index <number> [--title <value>] [--url <value>]\n");
+    io.stderr.write("[opentree]        opentree link move --from <number> --to <number>\n");
+    io.stderr.write("[opentree]        opentree link remove --index <number>\n");
+    return emitEditFailure(io, createEditReport(cwd, "link"), requestedJson, message);
+  }
+
+  const report = createEditReport(cwd, `link ${subcommand}`);
+  const { args: filteredArgs, json } = extractJsonFlag(restArgs);
+
   if (subcommand === "add") {
     let options;
     try {
-      options = parseLinkAddArgs(restArgs);
+      options = parseLinkAddArgs(filteredArgs);
     } catch (error) {
       io.stderr.write(`[opentree] ${error.message}\n`);
-      return 1;
+      return emitEditFailure(io, report, json, error.message);
     }
 
-    const loadedConfig = await loadEditableConfig(io);
-    if (!loadedConfig) {
-      return 1;
+    report.stage = "load";
+    const loadedConfig = await loadEditableConfigState(cwd);
+    if (!loadedConfig.ok) {
+      writeLoadEditableConfigError(io, loadedConfig);
+      const issues = loadedConfig.message ? [loadedConfig.message] : [];
+      const message =
+        loadedConfig.kind === "missing"
+          ? `${CONFIG_FILE_NAME} was not found in ${cwd}`
+          : `${CONFIG_FILE_NAME} is not valid JSON`;
+      return emitEditFailure(io, report, json, message, issues);
     }
 
     const links = readLinks(loadedConfig.config);
     const insertIndex = options.index === undefined ? links.length : options.index - 1;
 
     if (insertIndex < 0 || insertIndex > links.length) {
-      io.stderr.write(`[opentree] --index must be between 1 and ${links.length + 1}\n`);
-      return 1;
+      const message = `--index must be between 1 and ${links.length + 1}`;
+      io.stderr.write(`[opentree] ${message}\n`);
+      return emitEditFailure(io, report, json, message);
     }
 
     links.splice(insertIndex, 0, {
@@ -462,41 +607,61 @@ async function runLinkCommand(io, args = []) {
     const errors = validateConfig(nextConfig);
 
     if (errors.length > 0) {
+      report.stage = "validate";
       reportInvalidConfig(io, "link add", errors);
-      return 1;
+      return emitEditFailure(io, report, json, "link add aborted because the config would be invalid", errors);
     }
 
-    await saveConfig(io.cwd ?? process.cwd(), nextConfig);
+    const savedConfig = await saveConfig(cwd, nextConfig);
 
-    io.stdout.write(`[opentree] added link #${insertIndex + 1}: ${options.title}\n`);
-    return 0;
+    return emitEditSuccess(
+      io,
+      report,
+      json,
+      `added link #${insertIndex + 1}: ${options.title}`,
+      {
+        index: insertIndex + 1,
+        link: savedConfig.config.links[insertIndex],
+        linksCount: savedConfig.config.links.length
+      },
+      savedConfig
+    );
   }
 
   if (subcommand === "update") {
     let options;
     try {
-      options = parseLinkUpdateArgs(restArgs);
+      options = parseLinkUpdateArgs(filteredArgs);
     } catch (error) {
       io.stderr.write(`[opentree] ${error.message}\n`);
-      return 1;
+      return emitEditFailure(io, report, json, error.message);
     }
 
-    const loadedConfig = await loadEditableConfig(io);
-    if (!loadedConfig) {
-      return 1;
+    report.stage = "load";
+    const loadedConfig = await loadEditableConfigState(cwd);
+    if (!loadedConfig.ok) {
+      writeLoadEditableConfigError(io, loadedConfig);
+      const issues = loadedConfig.message ? [loadedConfig.message] : [];
+      const message =
+        loadedConfig.kind === "missing"
+          ? `${CONFIG_FILE_NAME} was not found in ${cwd}`
+          : `${CONFIG_FILE_NAME} is not valid JSON`;
+      return emitEditFailure(io, report, json, message, issues);
     }
 
     const links = readLinks(loadedConfig.config);
 
     if (options.index > links.length) {
-      io.stderr.write(`[opentree] --index must be between 1 and ${links.length}\n`);
-      return 1;
+      const message = `--index must be between 1 and ${links.length}`;
+      io.stderr.write(`[opentree] ${message}\n`);
+      return emitEditFailure(io, report, json, message);
     }
 
     const currentLink = links[options.index - 1];
     if (!isObject(currentLink)) {
-      io.stderr.write(`[opentree] link #${options.index} is not editable\n`);
-      return 1;
+      const message = `link #${options.index} is not editable`;
+      io.stderr.write(`[opentree] ${message}\n`);
+      return emitEditFailure(io, report, json, message);
     }
 
     links[options.index - 1] = {
@@ -512,45 +677,70 @@ async function runLinkCommand(io, args = []) {
     const errors = validateConfig(nextConfig);
 
     if (errors.length > 0) {
+      report.stage = "validate";
       reportInvalidConfig(io, "link update", errors);
-      return 1;
+      return emitEditFailure(io, report, json, "link update aborted because the config would be invalid", errors);
     }
 
-    await saveConfig(io.cwd ?? process.cwd(), nextConfig);
+    const savedConfig = await saveConfig(cwd, nextConfig);
 
-    io.stdout.write(`[opentree] updated link #${options.index}\n`);
-    return 0;
+    return emitEditSuccess(
+      io,
+      report,
+      json,
+      `updated link #${options.index}`,
+      {
+        fields: [
+          ...(options.title === undefined ? [] : ["title"]),
+          ...(options.url === undefined ? [] : ["url"])
+        ],
+        index: options.index,
+        link: savedConfig.config.links[options.index - 1],
+        linksCount: savedConfig.config.links.length
+      },
+      savedConfig
+    );
   }
 
   if (subcommand === "move") {
     let options;
     try {
-      options = parseLinkMoveArgs(restArgs);
+      options = parseLinkMoveArgs(filteredArgs);
     } catch (error) {
       io.stderr.write(`[opentree] ${error.message}\n`);
-      return 1;
+      return emitEditFailure(io, report, json, error.message);
     }
 
-    const loadedConfig = await loadEditableConfig(io);
-    if (!loadedConfig) {
-      return 1;
+    report.stage = "load";
+    const loadedConfig = await loadEditableConfigState(cwd);
+    if (!loadedConfig.ok) {
+      writeLoadEditableConfigError(io, loadedConfig);
+      const issues = loadedConfig.message ? [loadedConfig.message] : [];
+      const message =
+        loadedConfig.kind === "missing"
+          ? `${CONFIG_FILE_NAME} was not found in ${cwd}`
+          : `${CONFIG_FILE_NAME} is not valid JSON`;
+      return emitEditFailure(io, report, json, message, issues);
     }
 
     const links = readLinks(loadedConfig.config);
 
     if (links.length === 0) {
-      io.stderr.write("[opentree] there are no links to move\n");
-      return 1;
+      const message = "there are no links to move";
+      io.stderr.write(`[opentree] ${message}\n`);
+      return emitEditFailure(io, report, json, message);
     }
 
     if (options.from > links.length) {
-      io.stderr.write(`[opentree] --from must be between 1 and ${links.length}\n`);
-      return 1;
+      const message = `--from must be between 1 and ${links.length}`;
+      io.stderr.write(`[opentree] ${message}\n`);
+      return emitEditFailure(io, report, json, message);
     }
 
     if (options.to > links.length) {
-      io.stderr.write(`[opentree] --to must be between 1 and ${links.length}\n`);
-      return 1;
+      const message = `--to must be between 1 and ${links.length}`;
+      io.stderr.write(`[opentree] ${message}\n`);
+      return emitEditFailure(io, report, json, message);
     }
 
     const [movedLink] = links.splice(options.from - 1, 1);
@@ -563,45 +753,67 @@ async function runLinkCommand(io, args = []) {
     const errors = validateConfig(nextConfig);
 
     if (errors.length > 0) {
+      report.stage = "validate";
       reportInvalidConfig(io, "link move", errors);
-      return 1;
+      return emitEditFailure(io, report, json, "link move aborted because the config would be invalid", errors);
     }
 
-    await saveConfig(io.cwd ?? process.cwd(), nextConfig);
+    const savedConfig = await saveConfig(cwd, nextConfig);
 
-    io.stdout.write(`[opentree] moved link from #${options.from} to #${options.to}\n`);
-    return 0;
+    return emitEditSuccess(
+      io,
+      report,
+      json,
+      `moved link from #${options.from} to #${options.to}`,
+      {
+        from: options.from,
+        to: options.to,
+        link: movedLink,
+        linksCount: savedConfig.config.links.length
+      },
+      savedConfig
+    );
   }
 
   if (subcommand === "remove") {
     let options;
     try {
-      options = parseLinkRemoveArgs(restArgs);
+      options = parseLinkRemoveArgs(filteredArgs);
     } catch (error) {
       io.stderr.write(`[opentree] ${error.message}\n`);
-      return 1;
+      return emitEditFailure(io, report, json, error.message);
     }
 
-    const loadedConfig = await loadEditableConfig(io);
-    if (!loadedConfig) {
-      return 1;
+    report.stage = "load";
+    const loadedConfig = await loadEditableConfigState(cwd);
+    if (!loadedConfig.ok) {
+      writeLoadEditableConfigError(io, loadedConfig);
+      const issues = loadedConfig.message ? [loadedConfig.message] : [];
+      const message =
+        loadedConfig.kind === "missing"
+          ? `${CONFIG_FILE_NAME} was not found in ${cwd}`
+          : `${CONFIG_FILE_NAME} is not valid JSON`;
+      return emitEditFailure(io, report, json, message, issues);
     }
 
     const links = readLinks(loadedConfig.config);
 
     if (links.length === 0) {
-      io.stderr.write("[opentree] there are no links to remove\n");
-      return 1;
+      const message = "there are no links to remove";
+      io.stderr.write(`[opentree] ${message}\n`);
+      return emitEditFailure(io, report, json, message);
     }
 
     if (options.index > links.length) {
-      io.stderr.write(`[opentree] --index must be between 1 and ${links.length}\n`);
-      return 1;
+      const message = `--index must be between 1 and ${links.length}`;
+      io.stderr.write(`[opentree] ${message}\n`);
+      return emitEditFailure(io, report, json, message);
     }
 
     if (links.length === 1) {
-      io.stderr.write("[opentree] cannot remove the last link because at least one link is required\n");
-      return 1;
+      const message = "cannot remove the last link because at least one link is required";
+      io.stderr.write(`[opentree] ${message}\n`);
+      return emitEditFailure(io, report, json, message);
     }
 
     const [removedLink] = links.splice(options.index - 1, 1);
@@ -612,43 +824,68 @@ async function runLinkCommand(io, args = []) {
     const errors = validateConfig(nextConfig);
 
     if (errors.length > 0) {
+      report.stage = "validate";
       reportInvalidConfig(io, "link remove", errors);
-      return 1;
+      return emitEditFailure(io, report, json, "link remove aborted because the config would be invalid", errors);
     }
 
-    await saveConfig(io.cwd ?? process.cwd(), nextConfig);
+    const savedConfig = await saveConfig(cwd, nextConfig);
 
-    io.stdout.write(`[opentree] removed link #${options.index}: ${removedLink.title}\n`);
-    return 0;
+    return emitEditSuccess(
+      io,
+      report,
+      json,
+      `removed link #${options.index}: ${removedLink.title}`,
+      {
+        index: options.index,
+        link: removedLink,
+        linksCount: savedConfig.config.links.length
+      },
+      savedConfig
+    );
   }
 
-  io.stderr.write("[opentree] usage: opentree link add --title <value> --url <value> [--index <number>]\n");
+  const message = "usage: opentree link add --title <value> --url <value> [--index <number>]";
+  io.stderr.write(`[opentree] ${message}\n`);
   io.stderr.write("[opentree]        opentree link list\n");
   io.stderr.write("[opentree]        opentree link update --index <number> [--title <value>] [--url <value>]\n");
   io.stderr.write("[opentree]        opentree link move --from <number> --to <number>\n");
   io.stderr.write("[opentree]        opentree link remove --index <number>\n");
-  return 1;
+  return emitEditFailure(io, report, json, message);
 }
 
 async function runThemeCommand(io, args = []) {
+  const requestedJson = args.includes("--json");
   const [subcommand, ...restArgs] = args;
+  const cwd = io.cwd ?? process.cwd();
+  const report = createEditReport(cwd, "theme set");
 
   if (subcommand !== "set") {
-    io.stderr.write("[opentree] usage: opentree theme set [--accent-color <hex>] [--background-color <hex>] [--text-color <hex>]\n");
-    return 1;
+    const message =
+      "usage: opentree theme set [--accent-color <hex>] [--background-color <hex>] [--text-color <hex>]";
+    io.stderr.write(`[opentree] ${message}\n`);
+    return emitEditFailure(io, report, requestedJson, message);
   }
 
+  const { args: filteredArgs, json } = extractJsonFlag(restArgs);
   let updates;
   try {
-    updates = parseThemeArgs(restArgs);
+    updates = parseThemeArgs(filteredArgs);
   } catch (error) {
     io.stderr.write(`[opentree] ${error.message}\n`);
-    return 1;
+    return emitEditFailure(io, report, json, error.message);
   }
 
-  const loadedConfig = await loadEditableConfig(io);
-  if (!loadedConfig) {
-    return 1;
+  report.stage = "load";
+  const loadedConfig = await loadEditableConfigState(cwd);
+  if (!loadedConfig.ok) {
+    writeLoadEditableConfigError(io, loadedConfig);
+    const issues = loadedConfig.message ? [loadedConfig.message] : [];
+    const message =
+      loadedConfig.kind === "missing"
+        ? `${CONFIG_FILE_NAME} was not found in ${cwd}`
+        : `${CONFIG_FILE_NAME} is not valid JSON`;
+    return emitEditFailure(io, report, json, message, issues);
   }
 
   const nextConfig = {
@@ -661,35 +898,57 @@ async function runThemeCommand(io, args = []) {
   const errors = validateConfig(nextConfig);
 
   if (errors.length > 0) {
+    report.stage = "validate";
     reportInvalidConfig(io, "theme update", errors);
-    return 1;
+    return emitEditFailure(io, report, json, "theme update aborted because the config would be invalid", errors);
   }
 
-  await saveConfig(io.cwd ?? process.cwd(), nextConfig);
+  const savedConfig = await saveConfig(cwd, nextConfig);
 
-  io.stdout.write(`[opentree] updated theme fields: ${Object.keys(updates).join(", ")}\n`);
-  return 0;
+  return emitEditSuccess(
+    io,
+    report,
+    json,
+    `updated theme fields: ${Object.keys(updates).join(", ")}`,
+    {
+      fields: Object.keys(updates),
+      theme: savedConfig.config.theme
+    },
+    savedConfig
+  );
 }
 
 async function runSiteCommand(io, args = []) {
+  const requestedJson = args.includes("--json");
   const [subcommand, ...restArgs] = args;
+  const cwd = io.cwd ?? process.cwd();
+  const report = createEditReport(cwd, "site set");
 
   if (subcommand !== "set") {
-    io.stderr.write("[opentree] usage: opentree site set --url <value>\n");
-    return 1;
+    const message = "usage: opentree site set --url <value>";
+    io.stderr.write(`[opentree] ${message}\n`);
+    return emitEditFailure(io, report, requestedJson, message);
   }
 
+  const { args: filteredArgs, json } = extractJsonFlag(restArgs);
   let updates;
   try {
-    updates = parseSiteArgs(restArgs);
+    updates = parseSiteArgs(filteredArgs);
   } catch (error) {
     io.stderr.write(`[opentree] ${error.message}\n`);
-    return 1;
+    return emitEditFailure(io, report, json, error.message);
   }
 
-  const loadedConfig = await loadEditableConfig(io);
-  if (!loadedConfig) {
-    return 1;
+  report.stage = "load";
+  const loadedConfig = await loadEditableConfigState(cwd);
+  if (!loadedConfig.ok) {
+    writeLoadEditableConfigError(io, loadedConfig);
+    const issues = loadedConfig.message ? [loadedConfig.message] : [];
+    const message =
+      loadedConfig.kind === "missing"
+        ? `${CONFIG_FILE_NAME} was not found in ${cwd}`
+        : `${CONFIG_FILE_NAME} is not valid JSON`;
+    return emitEditFailure(io, report, json, message, issues);
   }
 
   const nextConfig = {
@@ -699,37 +958,60 @@ async function runSiteCommand(io, args = []) {
   const errors = validateConfig(nextConfig);
 
   if (errors.length > 0) {
+    report.stage = "validate";
     reportInvalidConfig(io, "site update", errors);
-    return 1;
+    return emitEditFailure(io, report, json, "site update aborted because the config would be invalid", errors);
   }
 
-  await saveConfig(io.cwd ?? process.cwd(), nextConfig);
+  const savedConfig = await saveConfig(cwd, nextConfig);
 
-  io.stdout.write("[opentree] updated site fields: siteUrl\n");
-  return 0;
+  return emitEditSuccess(
+    io,
+    report,
+    json,
+    "updated site fields: siteUrl",
+    {
+      fields: ["siteUrl"],
+      site: {
+        siteUrl: savedConfig.config.siteUrl
+      }
+    },
+    savedConfig
+  );
 }
 
 async function runMetaCommand(io, args = []) {
+  const requestedJson = args.includes("--json");
   const [subcommand, ...restArgs] = args;
+  const cwd = io.cwd ?? process.cwd();
+  const report = createEditReport(cwd, "meta set");
 
   if (subcommand !== "set") {
-    io.stderr.write(
-      "[opentree] usage: opentree meta set [--title <value>] [--description <value>] [--og-image-url <value>]\n"
-    );
-    return 1;
+    const message =
+      "usage: opentree meta set [--title <value>] [--description <value>] [--og-image-url <value>]";
+    io.stderr.write(`[opentree] ${message}\n`);
+    return emitEditFailure(io, report, requestedJson, message);
   }
 
+  const { args: filteredArgs, json } = extractJsonFlag(restArgs);
   let updates;
   try {
-    updates = parseMetaArgs(restArgs);
+    updates = parseMetaArgs(filteredArgs);
   } catch (error) {
     io.stderr.write(`[opentree] ${error.message}\n`);
-    return 1;
+    return emitEditFailure(io, report, json, error.message);
   }
 
-  const loadedConfig = await loadEditableConfig(io);
-  if (!loadedConfig) {
-    return 1;
+  report.stage = "load";
+  const loadedConfig = await loadEditableConfigState(cwd);
+  if (!loadedConfig.ok) {
+    writeLoadEditableConfigError(io, loadedConfig);
+    const issues = loadedConfig.message ? [loadedConfig.message] : [];
+    const message =
+      loadedConfig.kind === "missing"
+        ? `${CONFIG_FILE_NAME} was not found in ${cwd}`
+        : `${CONFIG_FILE_NAME} is not valid JSON`;
+    return emitEditFailure(io, report, json, message, issues);
   }
 
   const nextConfig = {
@@ -742,14 +1024,24 @@ async function runMetaCommand(io, args = []) {
   const errors = validateConfig(nextConfig);
 
   if (errors.length > 0) {
+    report.stage = "validate";
     reportInvalidConfig(io, "meta update", errors);
-    return 1;
+    return emitEditFailure(io, report, json, "meta update aborted because the config would be invalid", errors);
   }
 
-  await saveConfig(io.cwd ?? process.cwd(), nextConfig);
+  const savedConfig = await saveConfig(cwd, nextConfig);
 
-  io.stdout.write(`[opentree] updated metadata fields: ${Object.keys(updates).join(", ")}\n`);
-  return 0;
+  return emitEditSuccess(
+    io,
+    report,
+    json,
+    `updated metadata fields: ${Object.keys(updates).join(", ")}`,
+    {
+      fields: Object.keys(updates),
+      metadata: savedConfig.config.metadata
+    },
+    savedConfig
+  );
 }
 
 module.exports = {

@@ -18,21 +18,21 @@ function buildHelpText() {
     "",
     "Commands:",
     "  build     Generate a static site into dist/index.html (--output <dir>, --json supported)",
-    "  config show   Print the current opentree.config.json",
+    "  config show   Print the current opentree.config.json (--json|--pretty supported)",
     "  deploy    Build and deploy with explicit --preview or --prod mode (--json supported)",
     "  doctor    Check config, siteUrl, and Vercel readiness (--json supported)",
     "  dev       Start a local preview server",
     "  init      Create a starter opentree.config.json",
-    "  link add      Add a link entry to opentree.config.json",
+    "  link add      Add a link entry to opentree.config.json (--json supported)",
     "  link list     Show link indexes and current values",
-    "  link move     Move a link entry by index",
-    "  link remove   Remove a link entry by index",
-    "  link update   Update a link entry by index",
-    "  meta set      Update metadata fields in opentree.config.json",
-    "  profile set   Update profile fields in opentree.config.json",
-    "  site set      Update site fields in opentree.config.json",
-    "  theme set     Update theme fields in opentree.config.json",
-    "  validate  Validate opentree.config.json",
+    "  link move     Move a link entry by index (--json supported)",
+    "  link remove   Remove a link entry by index (--json supported)",
+    "  link update   Update a link entry by index (--json supported)",
+    "  meta set      Update metadata fields in opentree.config.json (--json supported)",
+    "  profile set   Update profile fields in opentree.config.json (--json supported)",
+    "  site set      Update site fields in opentree.config.json (--json supported)",
+    "  theme set     Update theme fields in opentree.config.json (--json supported)",
+    "  validate  Validate opentree.config.json (--json supported)",
     "  vercel link    Link the project root to a reusable Vercel project",
     "  vercel unlink  Remove local reusable Vercel project linkage",
     "  help      Show this message",
@@ -104,7 +104,7 @@ async function run(argv = process.argv.slice(2), io = {}) {
   }
 
   if (command === "validate") {
-    return runValidate(context);
+    return runValidate(context, argv.slice(1));
   }
 
   if (command === "vercel") {

@@ -10,6 +10,7 @@
 npm install -g opentree-cli
 opentree init --name "Kidow" --bio "CLI-first profile" --site-url "https://links.example.com" --title "Kidow Links"
 opentree validate
+opentree validate --json
 opentree build
 opentree build --json
 opentree build --output public/site
@@ -23,11 +24,15 @@ opentree doctor --json
 opentree vercel link
 opentree vercel unlink
 opentree config show
+opentree config show --json
+opentree config show --pretty
 opentree profile set --name "Kidow"
+opentree profile set --name "Kidow" --json
 opentree site set --url "https://links.example.com"
 opentree meta set --title "Kidow Links" --description "Find my work." --og-image-url "https://cdn.example.com/og.png"
 opentree link list
 opentree link add --title "Docs" --url "https://example.com/docs"
+opentree link add --title "Docs" --url "https://example.com/docs" --json
 opentree link update --index 1 --title "GitHub Profile"
 opentree link move --from 3 --to 1
 opentree link remove --index 1
@@ -36,6 +41,7 @@ opentree theme set --accent-color "#0f766e"
 
 `opentree init`를 실행하면 현재 디렉터리에 `opentree.config.json`이 생성된다.
 `opentree validate`는 그 설정 파일이 다음 단계로 넘어가도 되는지 검증한다.
+`opentree validate --json`은 검증 결과와 validation issue 목록을 JSON으로 출력한다.
 `opentree build`는 검증된 설정으로 기본적으로 `dist/index.html` 정적 페이지를 생성한다.
 `opentree build --json`은 생성된 출력 파일 경로와 메타데이터 상태를 JSON으로 출력한다.
 `--output <dir>`를 주면 다른 출력 디렉터리로도 빌드할 수 있다.
@@ -49,8 +55,10 @@ opentree theme set --accent-color "#0f766e"
 기본 모드는 preview이고, `--prod` 또는 `--preview`로 배포 모드를 명시할 수 있다.
 `opentree doctor`는 config 유효성, `siteUrl`, Vercel CLI 설치 여부, 로그인 상태, 루트 Vercel link 상태를 한 번에 점검한다.
 `opentree doctor --json`은 같은 진단 결과를 CI나 스크립트에서 읽기 쉬운 JSON으로 출력한다.
-`opentree config show`는 현재 설정 파일 내용을 그대로 출력한다.
+`opentree config show`는 현재 설정 파일 내용을 보기 좋은 JSON으로 출력한다.
+`opentree config show --json`은 compact JSON으로 출력하고, `--pretty`는 명시적으로 pretty JSON을 출력한다.
 `opentree profile set`, `opentree site set`, `opentree meta set`, `opentree link add`, `opentree link update`, `opentree link move`, `opentree link remove`, `opentree theme set`은 설정 파일 수정을 CLI로 대체한다.
+이들 명령은 `--json`을 지원하며, 적용된 변경 요약과 저장된 최신 설정을 JSON으로 출력한다.
 `opentree link list`는 현재 링크 순서와 1-based 인덱스를 보여준다.
 
 `opentree deploy`를 쓰려면 먼저 Vercel CLI가 필요하다.

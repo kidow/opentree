@@ -24,10 +24,28 @@ async function loadReadableConfig(io) {
 }
 
 async function runConfigCommand(io, args = []) {
-  const [subcommand] = args;
+  const [subcommand, ...rest] = args;
 
   if (subcommand !== "show") {
-    io.stderr.write("[opentree] usage: opentree config show\n");
+    io.stderr.write("[opentree] usage: opentree config show [--json|--pretty]\n");
+    return 1;
+  }
+
+  let format = "pretty";
+
+  for (const arg of rest) {
+    if (arg === "--pretty") {
+      format = "pretty";
+      continue;
+    }
+
+    if (arg === "--json") {
+      format = "json";
+      continue;
+    }
+
+    io.stderr.write(`[opentree] unknown option: ${arg}\n`);
+    io.stderr.write("[opentree] usage: opentree config show [--json|--pretty]\n");
     return 1;
   }
 
@@ -36,7 +54,8 @@ async function runConfigCommand(io, args = []) {
     return 1;
   }
 
-  io.stdout.write(`${JSON.stringify(loadedConfig.config, null, 2)}\n`);
+  const spacing = format === "pretty" ? 2 : 0;
+  io.stdout.write(`${JSON.stringify(loadedConfig.config, null, spacing)}\n`);
   return 0;
 }
 
