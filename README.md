@@ -2,13 +2,20 @@
 
 ## 현재 부트스트랩 상태
 
-아래 최소 CLI 스캐폴드가 동작한다.
+패키지 이름은 `opentree-cli`이고, 전역 설치 후 실행 명령은 `opentree`다.
+
+### 설치 예정 형태
+
+```bash
+npm install -g opentree-cli
+opentree init
+```
+
+### 로컬 개발 실행
 
 ```bash
 node ./bin/opentree.js init
 ```
-
-패키지 바이너리로 연결하면 아래 형태를 바로 테스트할 수 있다.
 
 ```bash
 npm link
