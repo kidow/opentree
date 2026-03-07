@@ -3,6 +3,11 @@ const path = require("node:path");
 const { spawn } = require("node:child_process");
 const { CONFIG_FILE_NAME, inspectVercelAuth, loadValidatedConfig } = require("./preflight");
 const { OUTPUT_DIR_NAME } = require("./build");
+const {
+  createDiagnosticCheck,
+  createDiagnosticReport,
+  renderDiagnosticTextReport
+} = require("./diagnostics");
 
 const VERCEL_DIR_NAME = ".vercel";
 const VERCEL_PROJECT_FILE_NAME = "project.json";
@@ -22,32 +27,6 @@ function createVercelReport(cwd, command) {
     result: null,
     stage: "args"
   };
-}
-
-function createStatusCheck(id, status, message, hints = [], details = []) {
-  return {
-    details,
-    hints,
-    id,
-    message,
-    status
-  };
-}
-
-function renderVercelStatusReport(stdout, report) {
-  stdout.write("[opentree] vercel status\n");
-
-  report.checks.forEach((check) => {
-    stdout.write(`[${check.status}] ${check.id}: ${check.message}\n`);
-    check.hints.forEach((hint) => {
-      stdout.write(`  hint: ${hint}\n`);
-    });
-    check.details.forEach((detail) => {
-      stdout.write(`  - ${detail}\n`);
-    });
-  });
-
-  stdout.write(`${report.message}\n`);
 }
 
 function getVercelProjectFilePath(baseDir = process.cwd()) {
@@ -502,13 +481,11 @@ async function runVercelUnlink(io, args = [], deps = {}) {
   return 0;
 }
 
-async function createVercelStatusReport(cwd, env, deps = {}) {
+async function collectVercelStatus(cwd, env, deps = {}) {
   const spawnImpl = deps.spawn ?? spawn;
   const inspectAuthImpl = deps.inspectVercelAuth ?? inspectVercelAuth;
   const inspectLinkImpl = deps.inspectVercelProjectLink ?? inspectVercelProjectLink;
   const checks = [];
-  const issues = [];
-  let issueCount = 0;
 
   const vercelState = await inspectAuthImpl({
     cwd,
@@ -535,15 +512,13 @@ async function createVercelStatusReport(cwd, env, deps = {}) {
   };
 
   if (!vercelState.installed) {
-    issueCount += 1;
-    issues.push("Vercel CLI is not installed");
     checks.push(
-      createStatusCheck("vercel", "fail", "CLI is not installed", [
+      createDiagnosticCheck("vercel", "fail", "CLI is not installed", [
         "install it with `npm install -g vercel`"
       ])
     );
     checks.push(
-      createStatusCheck(
+      createDiagnosticCheck(
         "vercel auth",
         "skip",
         "could not be checked because the Vercel CLI is unavailable"
@@ -553,19 +528,17 @@ async function createVercelStatusReport(cwd, env, deps = {}) {
     result.cli.installed = true;
     result.auth.installed = true;
     result.auth.checked = true;
-    checks.push(createStatusCheck("vercel", "pass", "CLI is installed"));
+    checks.push(createDiagnosticCheck("vercel", "pass", "CLI is installed"));
 
     if (vercelState.authenticated) {
       result.auth.authenticated = true;
       result.auth.username = vercelState.username ?? "";
       const username = vercelState.username ? ` as ${vercelState.username}` : "";
-      checks.push(createStatusCheck("vercel auth", "pass", `logged in${username}`));
+      checks.push(createDiagnosticCheck("vercel auth", "pass", `logged in${username}`));
     } else {
-      issueCount += 1;
       result.auth.authenticated = false;
-      issues.push("Vercel CLI is not logged in");
       checks.push(
-        createStatusCheck(
+        createDiagnosticCheck(
           "vercel auth",
           "fail",
           "CLI is not logged in",
@@ -589,23 +562,21 @@ async function createVercelStatusReport(cwd, env, deps = {}) {
       ? `${linkState.project.projectName} (${linkState.project.projectId})`
       : linkState.project.projectId;
     checks.push(
-      createStatusCheck(
+      createDiagnosticCheck(
         "vercel link",
         "pass",
         `project root is linked to ${linkedProject}`
       )
     );
   } else {
-    issueCount += 1;
     result.link.kind = linkState.kind ?? "missing";
     result.link.linked = false;
     result.link.project = null;
     const hints = ["run `opentree vercel link` to create a reusable root-level project link"];
 
     if (linkState.kind === "invalid_json" || linkState.kind === "invalid") {
-      issues.push("root Vercel project link is invalid");
       checks.push(
-        createStatusCheck(
+        createDiagnosticCheck(
           "vercel link",
           "fail",
           "root Vercel project link is invalid",
@@ -614,9 +585,8 @@ async function createVercelStatusReport(cwd, env, deps = {}) {
         )
       );
     } else {
-      issues.push("root Vercel project link was not found");
       checks.push(
-        createStatusCheck(
+        createDiagnosticCheck(
           "vercel link",
           "fail",
           "root Vercel project link was not found",
@@ -628,18 +598,13 @@ async function createVercelStatusReport(cwd, env, deps = {}) {
 
   return {
     checks,
-    command: "vercel status",
-    cwd,
-    issueCount,
-    issues,
-    message:
-      issueCount === 0
-        ? "[opentree] vercel status found no issues"
-        : `[opentree] vercel status found ${issueCount} issue(s)`,
-    ok: issueCount === 0,
-    result,
-    stage: "status"
+    result
   };
+}
+
+async function createVercelStatusReport(cwd, env, deps = {}) {
+  const status = await collectVercelStatus(cwd, env, deps);
+  return createDiagnosticReport("vercel status", cwd, status.checks, status.result);
 }
 
 async function runVercelStatus(io, args = [], deps = {}) {
@@ -661,7 +626,7 @@ async function runVercelStatus(io, args = [], deps = {}) {
   if (options.json) {
     writeJsonReport(stdout, report);
   } else {
-    renderVercelStatusReport(stdout, report);
+    renderDiagnosticTextReport(stdout, "vercel status", report);
   }
 
   return report.ok ? 0 : 1;
@@ -701,5 +666,6 @@ module.exports = {
   sanitizeVercelProjectLink,
   saveVercelProjectLink,
   syncVercelProjectLink,
+  collectVercelStatus,
   createVercelStatusReport
 };

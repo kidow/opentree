@@ -1,6 +1,11 @@
 const { spawn } = require("node:child_process");
 const { CONFIG_FILE_NAME, hasSiteUrl, inspectVercelAuth, loadValidatedConfig } = require("./preflight");
-const { inspectVercelProjectLink } = require("./vercel");
+const {
+  createDiagnosticCheck,
+  createDiagnosticReport,
+  renderDiagnosticTextReport
+} = require("./diagnostics");
+const { collectVercelStatus } = require("./vercel");
 
 function parseDoctorArgs(args) {
   if (args.length === 0) {
@@ -14,64 +19,55 @@ function parseDoctorArgs(args) {
   throw new Error("usage: opentree doctor [--json]");
 }
 
-function createCheck(id, status, message, hints = [], details = []) {
-  return {
-    details,
-    hints,
-    id,
-    message,
-    status
-  };
-}
-
-function renderTextReport(stdout, report) {
-  stdout.write("[opentree] doctor report\n");
-
-  report.checks.forEach((check) => {
-    stdout.write(`[${check.status}] ${check.id}: ${check.message}\n`);
-    check.hints.forEach((hint) => {
-      stdout.write(`  hint: ${hint}\n`);
-    });
-    check.details.forEach((detail) => {
-      stdout.write(`  - ${detail}\n`);
-    });
-  });
-
-  stdout.write(`${report.summary}\n`);
-}
-
 async function createDoctorReport(cwd, env, deps = {}) {
   const loadConfigImpl = deps.loadConfig;
-  const spawnImpl = deps.spawn ?? spawn;
-  const inspectLinkImpl = deps.inspectVercelProjectLink ?? inspectVercelProjectLink;
   const checks = [];
-  let failureCount = 0;
+  const result = {
+    config: {
+      kind: "missing",
+      ok: false
+    },
+    siteUrl: {
+      configured: false,
+      value: ""
+    },
+    vercel: null
+  };
 
   const configState = await loadValidatedConfig(cwd, loadConfigImpl);
   let configForSiteCheck = null;
 
   if (configState.ok) {
-    checks.push(createCheck("config", "pass", `${CONFIG_FILE_NAME} is valid`));
+    result.config = {
+      kind: "valid",
+      ok: true
+    };
+    checks.push(createDiagnosticCheck("config", "pass", `${CONFIG_FILE_NAME} is valid`));
     configForSiteCheck = configState.config;
   } else if (configState.kind === "missing") {
-    failureCount += 1;
     checks.push(
-      createCheck("config", "fail", `${CONFIG_FILE_NAME} was not found in ${cwd}`, [
+      createDiagnosticCheck("config", "fail", `${CONFIG_FILE_NAME} was not found in ${cwd}`, [
         "run `opentree init` first to create a starter config"
       ])
     );
   } else if (configState.kind === "invalid_json") {
-    failureCount += 1;
+    result.config = {
+      kind: "invalid_json",
+      ok: false
+    };
     checks.push(
-      createCheck("config", "fail", `${CONFIG_FILE_NAME} is not valid JSON`, [
+      createDiagnosticCheck("config", "fail", `${CONFIG_FILE_NAME} is not valid JSON`, [
         configState.message
       ])
     );
   } else {
-    failureCount += 1;
+    result.config = {
+      kind: "invalid",
+      ok: false
+    };
     configForSiteCheck = configState.config ?? null;
     checks.push(
-      createCheck(
+      createDiagnosticCheck(
         "config",
         "fail",
         `${CONFIG_FILE_NAME} has validation issues`,
@@ -83,20 +79,23 @@ async function createDoctorReport(cwd, env, deps = {}) {
 
   if (configForSiteCheck) {
     if (hasSiteUrl(configForSiteCheck)) {
+      result.siteUrl = {
+        configured: true,
+        value: configForSiteCheck.siteUrl
+      };
       checks.push(
-        createCheck("siteUrl", "pass", `configured as ${configForSiteCheck.siteUrl}`)
+        createDiagnosticCheck("siteUrl", "pass", `configured as ${configForSiteCheck.siteUrl}`)
       );
     } else {
-      failureCount += 1;
       checks.push(
-        createCheck("siteUrl", "fail", "missing from opentree.config.json", [
+        createDiagnosticCheck("siteUrl", "fail", "missing from opentree.config.json", [
           "run `opentree site set --url <your-production-url>`"
         ])
       );
     }
   } else {
     checks.push(
-      createCheck(
+      createDiagnosticCheck(
         "siteUrl",
         "skip",
         "could not be checked because the config is unavailable"
@@ -104,96 +103,16 @@ async function createDoctorReport(cwd, env, deps = {}) {
     );
   }
 
-  const vercelState = await inspectVercelAuth({
-    cwd,
-    env,
-    spawnImpl
+  const vercelStatus = await collectVercelStatus(cwd, env, {
+    spawn: deps.spawn ?? spawn,
+    inspectVercelAuth: deps.inspectVercelAuth ?? inspectVercelAuth,
+    inspectVercelProjectLink: deps.inspectVercelProjectLink
   });
 
-  if (!vercelState.installed) {
-    failureCount += 1;
-    checks.push(
-      createCheck("vercel", "fail", "CLI is not installed", [
-        "install it with `npm install -g vercel`"
-      ])
-    );
-    checks.push(
-      createCheck(
-        "vercel auth",
-        "skip",
-        "could not be checked because the Vercel CLI is unavailable"
-      )
-    );
-  } else {
-    checks.push(createCheck("vercel", "pass", "CLI is installed"));
+  result.vercel = vercelStatus.result;
+  checks.push(...vercelStatus.checks);
 
-    if (vercelState.authenticated) {
-      const username = vercelState.username ? ` as ${vercelState.username}` : "";
-      checks.push(createCheck("vercel auth", "pass", `logged in${username}`));
-    } else {
-      failureCount += 1;
-      checks.push(
-        createCheck(
-          "vercel auth",
-          "fail",
-          "CLI is not logged in",
-          [
-            ...(vercelState.message ? [vercelState.message] : []),
-            "run `vercel login`"
-          ]
-        )
-      );
-    }
-  }
-
-  const linkState = await inspectLinkImpl(cwd);
-  if (linkState.ok) {
-    const linkedProject = linkState.project.projectName
-      ? `${linkState.project.projectName} (${linkState.project.projectId})`
-      : linkState.project.projectId;
-    checks.push(
-      createCheck(
-        "vercel link",
-        "pass",
-        `project root is linked to ${linkedProject}`
-      )
-    );
-  } else {
-    failureCount += 1;
-    const hints = ["run `opentree vercel link` to create a reusable root-level project link"];
-
-    if (linkState.kind === "invalid_json" || linkState.kind === "invalid") {
-      checks.push(
-        createCheck(
-          "vercel link",
-          "fail",
-          "root Vercel project link is invalid",
-          hints,
-          linkState.message ? [linkState.message] : []
-        )
-      );
-    } else {
-      checks.push(
-        createCheck(
-          "vercel link",
-          "fail",
-          "root Vercel project link was not found",
-          hints
-        )
-      );
-    }
-  }
-
-  return {
-    checks,
-    cwd,
-    issueCount: failureCount,
-    ok: failureCount === 0,
-    summary:
-      failureCount === 0
-        ? "[opentree] doctor found no issues"
-        : `[opentree] doctor found ${failureCount} issue(s)`
-  };
+  return createDiagnosticReport("doctor", cwd, checks, result);
 }
 
 async function runDoctor(io, args = [], deps = {}) {
@@ -215,7 +134,7 @@ async function runDoctor(io, args = [], deps = {}) {
   if (options.json) {
     stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   } else {
-    renderTextReport(stdout, report);
+    renderDiagnosticTextReport(stdout, "doctor report", report);
   }
 
   return report.ok ? 0 : 1;

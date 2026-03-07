@@ -2039,12 +2039,17 @@ test("vercel status supports structured json output for failing state", async ()
   assert.equal(report.ok, false);
   assert.equal(report.command, "vercel status");
   assert.equal(report.stage, "status");
+  assert.equal(report.summary, "[opentree] vercel status found 2 issue(s)");
   assert.equal(report.issueCount, 2);
   assert.equal(report.result.cli.installed, false);
   assert.equal(report.result.auth.checked, false);
   assert.equal(report.result.link.linked, false);
   assert.equal(report.result.link.kind, "missing");
   assert.equal(report.message, "[opentree] vercel status found 2 issue(s)");
+  assert.deepEqual(report.issues, [
+    "CLI is not installed",
+    "root Vercel project link was not found"
+  ]);
 });
 
 test("deploy runs build first and forwards the deployment url", async () => {
@@ -2464,9 +2469,17 @@ test("doctor supports json output for healthy projects", async () => {
   assert.equal(exitCode, 0);
   assert.equal(stderr.buffer, "");
   assert.equal(report.ok, true);
+  assert.equal(report.command, "doctor");
+  assert.equal(report.stage, "status");
   assert.equal(report.issueCount, 0);
   assert.equal(report.cwd, tempDir);
+  assert.equal(report.message, "[opentree] doctor found no issues");
   assert.equal(report.summary, "[opentree] doctor found no issues");
+  assert.deepEqual(report.issues, []);
+  assert.equal(report.result.config.kind, "valid");
+  assert.equal(report.result.siteUrl.value, "https://links.example.com");
+  assert.equal(report.result.vercel.auth.username, "kidow");
+  assert.equal(report.result.vercel.link.project.projectId, "prj_123");
   assert.equal(report.checks.length, 5);
   assert.deepEqual(
     report.checks.map((check) => [check.id, check.status]),
@@ -2590,8 +2603,14 @@ test("doctor supports json output for failing projects", async () => {
   assert.equal(exitCode, 1);
   assert.equal(stderr.buffer, "");
   assert.equal(report.ok, false);
+  assert.equal(report.command, "doctor");
+  assert.equal(report.stage, "status");
   assert.equal(report.issueCount, 3);
+  assert.equal(report.message, "[opentree] doctor found 3 issue(s)");
   assert.equal(report.summary, "[opentree] doctor found 3 issue(s)");
+  assert.equal(report.result.config.ok, false);
+  assert.equal(report.result.siteUrl.configured, false);
+  assert.equal(report.result.vercel.cli.installed, false);
   assert.deepEqual(
     report.checks.map((check) => [check.id, check.status]),
     [
@@ -2603,6 +2622,11 @@ test("doctor supports json output for failing projects", async () => {
     ]
   );
   assert.match(report.checks[0].message, /opentree\.config\.json was not found/);
+  assert.deepEqual(report.issues, [
+    `opentree.config.json was not found in ${tempDir}`,
+    "CLI is not installed",
+    "root Vercel project link was not found"
+  ]);
 });
 
 test("deploy rejects a custom cwd override", async () => {
