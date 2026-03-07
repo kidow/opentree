@@ -96,6 +96,23 @@ async function writeVercelProjectFile(cwd, overrides = {}) {
   return project;
 }
 
+async function writeDistVercelProjectFile(cwd, overrides = {}) {
+  const project = {
+    projectId: "prj_123",
+    orgId: "team_456",
+    projectName: "opentree",
+    ...overrides
+  };
+
+  await fs.mkdir(path.join(cwd, "dist", ".vercel"), { recursive: true });
+  await fs.writeFile(
+    path.join(cwd, distVercelProjectFilePath),
+    JSON.stringify(project, null, 2) + "\n"
+  );
+
+  return project;
+}
+
 async function renderDevResponse(cwd, requestUrl = "/") {
   const response = {
     body: "",
@@ -1205,6 +1222,56 @@ test("vercel link fails when the reusable root link is missing", async () => {
   assert.equal(stdout.buffer, "");
   assert.match(stderr.buffer, /no reusable project link was found/);
   assert.match(stderr.buffer, /expected `\.vercel\/project\.json` to be created/);
+});
+
+test("vercel unlink removes local root and dist project links without network calls", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-vercel-unlink-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+  await writeVercelProjectFile(tempDir);
+  await writeDistVercelProjectFile(tempDir);
+  await fs.writeFile(path.join(tempDir, ".vercel", "README.txt"), "keep me\n");
+
+  const exitCode = await runVercelCommand(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr
+    },
+    ["unlink"]
+  );
+
+  assert.equal(exitCode, 0);
+  assert.equal(stderr.buffer, "");
+  await assert.rejects(fs.readFile(path.join(tempDir, rootVercelProjectFilePath), "utf8"), {
+    code: "ENOENT"
+  });
+  await assert.rejects(fs.readFile(path.join(tempDir, distVercelProjectFilePath), "utf8"), {
+    code: "ENOENT"
+  });
+  assert.equal(await fs.readFile(path.join(tempDir, ".vercel", "README.txt"), "utf8"), "keep me\n");
+  assert.match(stdout.buffer, /\[opentree\] removed \.vercel\/project\.json/);
+  assert.match(stdout.buffer, /\[opentree\] removed dist\/\.vercel\/project\.json/);
+  assert.match(stdout.buffer, /\[opentree\] local Vercel project linkage cleared/);
+});
+
+test("vercel unlink is idempotent when no local project link exists", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-vercel-unlink-empty-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+
+  const exitCode = await runVercelCommand(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr
+    },
+    ["unlink"]
+  );
+
+  assert.equal(exitCode, 0);
+  assert.equal(stderr.buffer, "");
+  assert.match(stdout.buffer, /\[opentree\] no local Vercel project link was found/);
 });
 
 test("deploy runs build first and forwards the deployment url", async () => {

@@ -2,6 +2,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 const { CONFIG_FILE_NAME, inspectVercelAuth, loadValidatedConfig } = require("./preflight");
+const { OUTPUT_DIR_NAME } = require("./build");
 
 const VERCEL_DIR_NAME = ".vercel";
 const VERCEL_PROJECT_FILE_NAME = "project.json";
@@ -109,12 +110,62 @@ async function syncVercelProjectLink(sourceBaseDir = process.cwd(), targetBaseDi
   return saveVercelProjectLink(targetBaseDir, loaded.project);
 }
 
+async function removeOptionalVercelProjectLink(baseDir = process.cwd()) {
+  const projectFilePath = getVercelProjectFilePath(baseDir);
+  const vercelDirPath = path.dirname(projectFilePath);
+
+  try {
+    await fs.unlink(projectFilePath);
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      return {
+        removed: false,
+        projectFilePath,
+        vercelDirPath
+      };
+    }
+
+    throw error;
+  }
+
+  try {
+    await fs.rmdir(vercelDirPath);
+  } catch (error) {
+    if (
+      error &&
+      (error.code === "ENOENT" || error.code === "ENOTEMPTY" || error.code === "EEXIST")
+    ) {
+      return {
+        removed: true,
+        projectFilePath,
+        vercelDirPath
+      };
+    }
+
+    throw error;
+  }
+
+  return {
+    removed: true,
+    projectFilePath,
+    vercelDirPath
+  };
+}
+
 function parseVercelLinkArgs(args) {
   if (args.length === 0) {
     return {};
   }
 
   throw new Error("usage: opentree vercel link");
+}
+
+function parseVercelUnlinkArgs(args) {
+  if (args.length === 0) {
+    return {};
+  }
+
+  throw new Error("usage: opentree vercel unlink");
 }
 
 async function runVercelLink(io, args = [], deps = {}) {
@@ -246,6 +297,38 @@ async function runVercelLink(io, args = [], deps = {}) {
   return 0;
 }
 
+async function runVercelUnlink(io, args = [], deps = {}) {
+  const cwd = io.cwd ?? process.cwd();
+  const stdout = io.stdout ?? process.stdout;
+  const stderr = io.stderr ?? process.stderr;
+  const removeLinkImpl = deps.removeVercelProjectLink ?? removeOptionalVercelProjectLink;
+  const pathsToClean = [cwd, path.join(cwd, OUTPUT_DIR_NAME)];
+
+  try {
+    parseVercelUnlinkArgs(args);
+  } catch (error) {
+    stderr.write(`[opentree] ${error.message}\n`);
+    return 1;
+  }
+
+  const removalResults = await Promise.all(pathsToClean.map((targetDir) => removeLinkImpl(targetDir)));
+  const removedResults = removalResults.filter((result) => result.removed);
+
+  if (removedResults.length === 0) {
+    stdout.write("[opentree] no local Vercel project link was found\n");
+    return 0;
+  }
+
+  removedResults.forEach((result) => {
+    stdout.write(
+      `[opentree] removed ${path.relative(cwd, result.projectFilePath) || VERCEL_PROJECT_FILE_NAME}\n`
+    );
+  });
+  stdout.write("[opentree] local Vercel project linkage cleared\n");
+
+  return 0;
+}
+
 async function runVercelCommand(io, args = [], deps = {}) {
   const stderr = io.stderr ?? process.stderr;
   const [subcommand, ...rest] = args;
@@ -254,7 +337,11 @@ async function runVercelCommand(io, args = [], deps = {}) {
     return runVercelLink(io, rest, deps);
   }
 
-  stderr.write("[opentree] usage: opentree vercel link\n");
+  if (subcommand === "unlink") {
+    return runVercelUnlink(io, rest, deps);
+  }
+
+  stderr.write("[opentree] usage: opentree vercel <link|unlink>\n");
   return 1;
 }
 
@@ -264,8 +351,10 @@ module.exports = {
   getVercelProjectFilePath,
   inspectVercelProjectLink,
   loadVercelProjectLink,
+  removeOptionalVercelProjectLink,
   runVercelCommand,
   runVercelLink,
+  runVercelUnlink,
   sanitizeVercelProjectLink,
   saveVercelProjectLink,
   syncVercelProjectLink
