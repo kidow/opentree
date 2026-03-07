@@ -1,6 +1,7 @@
 const packageJson = require("../package.json");
 const { runBuild } = require("./build");
 const { runDev } = require("./dev");
+const { runDeploy } = require("./deploy");
 const { runInit } = require("./init");
 const { runValidate } = require("./validate");
 
@@ -13,6 +14,7 @@ function buildHelpText() {
     "",
     "Commands:",
     "  build     Generate a static site into dist/index.html",
+    "  deploy    Build and deploy the dist output with Vercel CLI",
     "  dev       Start a local preview server",
     "  init      Create a starter opentree.config.json",
     "  validate  Validate opentree.config.json",
@@ -50,6 +52,10 @@ async function run(argv = process.argv.slice(2), io = {}) {
 
   if (command === "dev") {
     return runDev(context, argv.slice(1));
+  }
+
+  if (command === "deploy") {
+    return runDeploy(context, argv.slice(1));
   }
 
   if (command === "validate") {

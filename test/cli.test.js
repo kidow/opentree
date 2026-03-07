@@ -4,11 +4,45 @@ const path = require("node:path");
 const fs = require("node:fs/promises");
 const os = require("node:os");
 const { spawnSync } = require("node:child_process");
+const { EventEmitter } = require("node:events");
+const { PassThrough, Writable } = require("node:stream");
 const { handleRequest } = require("../src/dev");
+const { runDeploy } = require("../src/deploy");
 
 const cliPath = path.join(__dirname, "..", "bin", "opentree.js");
 const configFilePath = "opentree.config.json";
 const buildFilePath = path.join("dist", "index.html");
+
+class MemoryWritable extends Writable {
+  constructor() {
+    super();
+    this.buffer = "";
+  }
+
+  _write(chunk, _encoding, callback) {
+    this.buffer += chunk.toString();
+    callback();
+  }
+}
+
+function createFakeChildProcess({ stdout = "", stderr = "", exitCode = 0, error = null }) {
+  const child = new EventEmitter();
+  child.stdout = new PassThrough();
+  child.stderr = new PassThrough();
+
+  process.nextTick(() => {
+    if (error) {
+      child.emit("error", error);
+      return;
+    }
+
+    child.stdout.end(stdout);
+    child.stderr.end(stderr);
+    child.emit("close", exitCode);
+  });
+
+  return child;
+}
 
 async function renderDevResponse(cwd, requestUrl = "/") {
   const response = {
@@ -307,6 +341,104 @@ test("dev request returns a problem page when the config becomes invalid", async
   assert.equal(response.statusCode, 500);
   assert.match(response.body, /opentree\.config\.json has validation issues/);
   assert.match(response.body, /links\[0\]\.url must be an http or https URL/);
+});
+
+test("deploy runs build first and forwards the deployment url", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-deploy-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+  const spawnCalls = [];
+  const buildCalls = [];
+
+  const exitCode = await runDeploy(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr,
+      env: { ...process.env }
+    },
+    ["--prod"],
+    {
+      runBuild: async (io) => {
+        buildCalls.push(io);
+        return 0;
+      },
+      spawn: (command, args, options) => {
+        spawnCalls.push({ command, args, options });
+        return createFakeChildProcess({
+          stdout: "https://opentree-demo.vercel.app\n",
+          stderr: "Inspect: https://vercel.com/kidow/opentree\n"
+        });
+      }
+    }
+  );
+
+  assert.equal(exitCode, 0);
+  assert.equal(buildCalls.length, 1);
+  assert.equal(buildCalls[0].stdout, stderr);
+  assert.equal(spawnCalls.length, 1);
+  assert.equal(spawnCalls[0].command, "vercel");
+  assert.deepEqual(spawnCalls[0].args, ["--cwd", path.join(tempDir, "dist"), "--prod"]);
+  assert.equal(spawnCalls[0].options.cwd, tempDir);
+  assert.match(stdout.buffer, /https:\/\/opentree-demo\.vercel\.app/);
+  assert.match(stderr.buffer, /Inspect: https:\/\/vercel\.com\/kidow\/opentree/);
+  assert.match(stderr.buffer, /\[opentree\] deployment ready: https:\/\/opentree-demo\.vercel\.app/);
+});
+
+test("deploy reports a missing vercel cli", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-deploy-missing-cli-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+
+  const exitCode = await runDeploy(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr,
+      env: { ...process.env }
+    },
+    [],
+    {
+      runBuild: async () => 0,
+      spawn: () => createFakeChildProcess({ error: { code: "ENOENT" } })
+    }
+  );
+
+  assert.equal(exitCode, 1);
+  assert.equal(stdout.buffer, "");
+  assert.match(stderr.buffer, /Vercel CLI not found/);
+});
+
+test("deploy rejects a custom cwd override", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-deploy-cwd-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+
+  const exitCode = await runDeploy(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr
+    },
+    ["--cwd", "somewhere-else"]
+  );
+
+  assert.equal(exitCode, 1);
+  assert.match(stderr.buffer, /--cwd is managed by `opentree deploy`/);
+});
+
+test("deploy fails when build cannot produce a valid deploy bundle", () => {
+  const tempDir = fs.mkdtemp(path.join(os.tmpdir(), "opentree-deploy-missing-config-"));
+  return tempDir.then((resolvedTempDir) => {
+    const result = spawnSync(process.execPath, [cliPath, "deploy"], {
+      cwd: resolvedTempDir,
+      encoding: "utf8"
+    });
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /\[opentree\] preparing deploy bundle/);
+    assert.match(result.stderr, /\[opentree\] opentree\.config\.json was not found/);
+  });
 });
 
 test("unknown commands fail with guidance", () => {
