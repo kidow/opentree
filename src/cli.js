@@ -16,7 +16,7 @@ function buildHelpText() {
     "  opentree <command>",
     "",
     "Commands:",
-    "  build     Generate a static site into dist/index.html",
+    "  build     Generate a static site into dist/index.html (--output <dir> supported)",
     "  config show   Print the current opentree.config.json",
     "  deploy    Build and deploy the dist output with Vercel CLI",
     "  doctor    Check config, siteUrl, and Vercel readiness (--json supported)",
@@ -61,7 +61,7 @@ async function run(argv = process.argv.slice(2), io = {}) {
   }
 
   if (command === "build") {
-    return runBuild(context);
+    return runBuild(context, argv.slice(1));
   }
 
   if (command === "dev") {

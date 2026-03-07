@@ -157,6 +157,41 @@ async function removeOptionalFile(filePath) {
   }
 }
 
+function parseBuildArgs(args) {
+  if (args.length === 0) {
+    return {
+      outputDir: OUTPUT_DIR_NAME
+    };
+  }
+
+  const options = {};
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    const nextValue = args[index + 1];
+
+    if (arg === "--output" || arg === "-o") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --output");
+      }
+
+      if (nextValue.trim().length === 0) {
+        throw new Error("--output must be a non-empty path");
+      }
+
+      options.outputDir = nextValue;
+      index += 1;
+      continue;
+    }
+
+    throw new Error(`unknown option: ${arg}`);
+  }
+
+  return {
+    outputDir: options.outputDir ?? OUTPUT_DIR_NAME
+  };
+}
+
 function renderHtml(config) {
   const metadata = resolvePageMetadata(config);
 
@@ -301,9 +336,18 @@ function renderHtml(config) {
 `;
 }
 
-async function runBuild(io) {
+async function runBuild(io, args = []) {
   const cwd = io.cwd ?? process.cwd();
-  const outputDir = path.join(cwd, OUTPUT_DIR_NAME);
+  let options;
+
+  try {
+    options = parseBuildArgs(args);
+  } catch (error) {
+    io.stderr.write(`[opentree] ${error.message}\n`);
+    return 1;
+  }
+
+  const outputDir = path.resolve(cwd, options.outputDir);
   const outputPath = path.join(outputDir, OUTPUT_FILE_NAME);
   const robotsPath = path.join(outputDir, ROBOTS_FILE_NAME);
   const sitemapPath = path.join(outputDir, SITEMAP_FILE_NAME);
@@ -364,6 +408,7 @@ module.exports = {
   OUTPUT_FILE_NAME,
   ROBOTS_FILE_NAME,
   SITEMAP_FILE_NAME,
+  parseBuildArgs,
   renderHtml,
   renderRobotsTxt,
   renderSitemapXml,

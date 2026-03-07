@@ -340,6 +340,66 @@ test("build creates a static html page in dist", async () => {
   assert.match(html, /https:\/\/github\.com\/your-handle/);
 });
 
+test("build supports a custom output directory", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-build-output-"));
+  const outputDir = path.join("public", "site");
+  spawnSync(process.execPath, [cliPath, "init", "--site-url", "https://links.example.com"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "build", "--output", outputDir],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const html = await fs.readFile(path.join(tempDir, outputDir, "index.html"), "utf8");
+  const sitemap = await fs.readFile(path.join(tempDir, outputDir, "sitemap.xml"), "utf8");
+  const robots = await fs.readFile(path.join(tempDir, outputDir, "robots.txt"), "utf8");
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /\[opentree\] wrote public\/site\/index\.html/);
+  assert.match(result.stdout, /\[opentree\] wrote public\/site\/sitemap\.xml/);
+  assert.match(result.stdout, /\[opentree\] wrote public\/site\/robots\.txt/);
+  assert.match(html, /<title>Your Name \| opentree<\/title>/);
+  assert.match(sitemap, /<loc>https:\/\/links\.example\.com\/<\/loc>/);
+  assert.match(robots, /Sitemap: https:\/\/links\.example\.com\/sitemap\.xml/);
+  await assert.rejects(fs.readFile(path.join(tempDir, buildFilePath), "utf8"), { code: "ENOENT" });
+});
+
+test("build rejects unknown or incomplete output options", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-build-output-invalid-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const missingValueResult = spawnSync(
+    process.execPath,
+    [cliPath, "build", "--output"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const unknownOptionResult = spawnSync(
+    process.execPath,
+    [cliPath, "build", "--target", "public"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+
+  assert.equal(missingValueResult.status, 1);
+  assert.match(missingValueResult.stderr, /\[opentree\] missing value for --output/);
+  assert.equal(unknownOptionResult.status, 1);
+  assert.match(unknownOptionResult.stderr, /\[opentree\] unknown option: --target/);
+});
+
 test("build injects canonical and social image tags from metadata", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-build-meta-"));
   await fs.writeFile(
