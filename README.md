@@ -24,7 +24,9 @@ opentree deploy --prod
 opentree doctor
 opentree doctor --json
 opentree vercel link
+opentree vercel link --json
 opentree vercel unlink
+opentree vercel unlink --json
 opentree config show
 opentree config show --json
 opentree config show --pretty
@@ -54,7 +56,9 @@ opentree theme set --accent-color "#0f766e"
 `opentree dev`는 로컬 미리보기 서버를 띄우고, 설정 파일 수정 내용을 새로고침만으로 반영한다.
 `opentree dev --json`은 시작된 preview 서버의 URL과 포트를 JSON으로 출력한다.
 `opentree vercel link`는 프로젝트 루트에 `.vercel/project.json`을 만들고, 이후 배포가 같은 Vercel 프로젝트를 계속 재사용할 수 있게 한다.
+`opentree vercel link --json`은 저장된 project linkage 정보를 JSON으로 출력한다.
 `opentree vercel unlink`는 루트와 기본 `dist` 출력 경로의 local project link를 제거하고, 원격 Vercel 프로젝트 자체는 건드리지 않는다.
+`opentree vercel unlink --json`은 제거된 local project link 경로 목록을 JSON으로 출력한다.
 `opentree deploy`는 먼저 `dist`를 빌드한 뒤, 루트의 Vercel project link를 `dist/.vercel/project.json`으로 동기화하고 Vercel CLI로 그 결과물을 배포한다.
 `opentree deploy --json`은 배포 URL, 배포 모드, 재사용된 Vercel project 정보를 JSON으로 출력한다.
 기본 모드는 preview이고, `--prod` 또는 `--preview`로 배포 모드를 명시할 수 있다.
