@@ -15,6 +15,8 @@ const { runVercelCommand } = require("../src/vercel");
 const cliPath = path.join(__dirname, "..", "bin", "opentree.js");
 const configFilePath = "opentree.config.json";
 const buildFilePath = path.join("dist", "index.html");
+const faviconFilePath = path.join("dist", "favicon.svg");
+const ogImageFilePath = path.join("dist", "opengraph-image.svg");
 const robotsFilePath = path.join("dist", "robots.txt");
 const sitemapFilePath = path.join("dist", "sitemap.xml");
 const rootVercelProjectFilePath = path.join(".vercel", "project.json");
@@ -618,13 +620,16 @@ test("build creates a static html page in dist", async () => {
     encoding: "utf8"
   });
   const html = await fs.readFile(path.join(tempDir, buildFilePath), "utf8");
+  const favicon = await fs.readFile(path.join(tempDir, faviconFilePath), "utf8");
   await assert.rejects(fs.readFile(path.join(tempDir, sitemapFilePath), "utf8"), { code: "ENOENT" });
   await assert.rejects(fs.readFile(path.join(tempDir, robotsFilePath), "utf8"), { code: "ENOENT" });
 
   assert.equal(initResult.status, 0);
   assert.equal(buildResult.status, 0);
   assert.match(buildResult.stdout, /\[opentree\] wrote dist\/index\.html/);
+  assert.match(buildResult.stdout, /\[opentree\] wrote dist\/favicon\.svg/);
   assert.match(html, /<title>Your Name \| opentree<\/title>/);
+  assert.match(html, /<link rel="icon" href="\.\/favicon\.svg" type="image\/svg\+xml" \/>/);
   assert.match(html, /Add a short bio for your opentree page\./);
   assert.match(html, /<meta property="og:title" content="Your Name \| opentree" \/>/);
   assert.match(
@@ -632,6 +637,11 @@ test("build creates a static html page in dist", async () => {
     /<meta property="og:description" content="Add a short bio for your opentree page\." \/>/
   );
   assert.match(html, /<meta name="twitter:card" content="summary" \/>/);
+  assert.match(html, /<main class="shell" id="content">/);
+  assert.match(html, /<nav aria-label="Profile links">/);
+  assert.match(html, /overflow-wrap: anywhere;/);
+  assert.match(html, /\.link-card:focus-visible/);
+  assert.match(favicon, /<svg/);
   assert.match(html, /https:\/\/github\.com\/your-handle/);
 });
 
@@ -694,6 +704,8 @@ test("build supports structured json output", async () => {
   const report = JSON.parse(result.stdout);
   const resolvedOutputDir = await fs.realpath(path.join(tempDir, outputDir));
   const resolvedIndexHtml = await fs.realpath(path.join(tempDir, outputDir, "index.html"));
+  const resolvedFavicon = await fs.realpath(path.join(tempDir, outputDir, "favicon.svg"));
+  const resolvedOgImage = await fs.realpath(path.join(tempDir, outputDir, "opengraph-image.svg"));
   const resolvedSitemap = await fs.realpath(path.join(tempDir, outputDir, "sitemap.xml"));
   const resolvedRobots = await fs.realpath(path.join(tempDir, outputDir, "robots.txt"));
 
@@ -703,7 +715,9 @@ test("build supports structured json output", async () => {
   assert.equal(report.stage, "write");
   assert.deepEqual(report.issues, []);
   assert.equal(report.outputDir, resolvedOutputDir);
+  assert.equal(report.files.favicon, resolvedFavicon);
   assert.equal(report.files.indexHtml, resolvedIndexHtml);
+  assert.equal(report.files.ogImage, resolvedOgImage);
   assert.equal(report.files.sitemap, resolvedSitemap);
   assert.equal(report.files.robots, resolvedRobots);
   assert.equal(report.metadata.title, "Kidow Links");
@@ -712,7 +726,9 @@ test("build supports structured json output", async () => {
   assert.equal(report.metadata.imageUrl, "https://cdn.example.com/og.png");
   assert.equal(report.metadata.twitterCard, "summary_large_image");
   assert.equal(report.result.outputDir, resolvedOutputDir);
+  assert.equal(report.result.files.favicon, resolvedFavicon);
   assert.equal(report.result.files.indexHtml, resolvedIndexHtml);
+  assert.equal(report.result.files.ogImage, resolvedOgImage);
   assert.match(result.stderr, /\[opentree\] building from opentree\.config\.json/);
   assert.match(result.stderr, /\[opentree\] wrote public\/site\/index\.html/);
 });
@@ -832,6 +848,32 @@ test("build injects canonical and social image tags from metadata", async () => 
     html,
     /<meta name="twitter:description" content="Find my work across the internet\." \/>/
   );
+});
+
+test("build generates a default social image when siteUrl is configured", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-build-default-og-"));
+  await writeConfigFile(tempDir, {
+    profile: {
+      name: "Kidow Studio",
+      bio: "A very long bio that should still remain readable on smaller devices without breaking the layout or overflowing its card.",
+      avatarUrl: ""
+    },
+    siteUrl: "https://links.example.com"
+  });
+
+  const buildResult = spawnSync(process.execPath, [cliPath, "build"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+  const html = await fs.readFile(path.join(tempDir, buildFilePath), "utf8");
+  const ogImage = await fs.readFile(path.join(tempDir, ogImageFilePath), "utf8");
+
+  assert.equal(buildResult.status, 0);
+  assert.match(buildResult.stdout, /\[opentree\] wrote dist\/opengraph-image\.svg/);
+  assert.match(html, /<meta property="og:image" content="https:\/\/links\.example\.com\/opengraph-image\.svg" \/>/);
+  assert.match(html, /<meta name="twitter:image" content="https:\/\/links\.example\.com\/opengraph-image\.svg" \/>/);
+  assert.match(html, /<meta property="og:image:alt" content="Kidow Studio profile image" \/>/);
+  assert.match(ogImage, /Kidow Studio/);
 });
 
 test("build removes stale sitemap and robots outputs when siteUrl is empty", async () => {

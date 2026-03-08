@@ -20,6 +20,7 @@ The current CLI already supports:
 - a documented config contract with `schemaVersion: 1` and a shipped JSON Schema export
 - a documented JSON output contract with shared top-level fields across machine-readable commands
 - deploy output that clearly distinguishes preview vs production, standardizes URLs, and gives post-preflight failure guidance
+- generated output with shipped favicon/social image assets, improved long-text handling, accessibility refinements, and tighter mobile spacing
 - readiness checks through `doctor`
 - machine-readable `--json` output for major commands
 - CI coverage through automated test and smoke test runs
@@ -36,26 +37,7 @@ The current CLI already supports:
 
 ## Remaining Work
 
-### 1. Raise Output Quality
-
-Priority: next
-
-The generated site should feel more complete by default.
-
-Deliverables:
-
-- favicon support
-- stronger default Open Graph image strategy
-- long text handling for bios and link titles
-- accessibility pass on generated markup
-- mobile layout polish and spacing review
-
-Acceptance criteria:
-
-- built pages behave well on common mobile and desktop widths
-- generated pages have reasonable default metadata and accessibility characteristics
-
-### 2. Release and Publishing Automation
+### 1. Release and Publishing Automation
 
 Priority: next
 
@@ -73,7 +55,7 @@ Acceptance criteria:
 - publishing a new version follows a repeatable process
 - release changes are visible to users
 
-### 3. Optional CLI Ergonomics
+### 2. Optional CLI Ergonomics
 
 Priority: later
 
@@ -91,7 +73,7 @@ Acceptance criteria:
 
 - additions must simplify common tasks without weakening the current deterministic workflow
 
-### 4. Future Expansion
+### 3. Future Expansion
 
 Priority: later
 
@@ -117,9 +99,8 @@ The following are explicitly out of scope for the near term:
 
 ## Recommended Execution Order
 
-1. Raise output quality.
-2. Automate releases.
-3. Revisit ergonomic and expansion features.
+1. Automate releases.
+2. Revisit ergonomic and expansion features.
 
 ## Definition Of The Next Milestone
 

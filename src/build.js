@@ -5,6 +5,8 @@ const { loadConfig, validateConfig } = require("./config");
 
 const OUTPUT_DIR_NAME = "dist";
 const OUTPUT_FILE_NAME = "index.html";
+const FAVICON_FILE_NAME = "favicon.svg";
+const OG_IMAGE_FILE_NAME = "opengraph-image.svg";
 const ROBOTS_FILE_NAME = "robots.txt";
 const SITEMAP_FILE_NAME = "sitemap.xml";
 
@@ -53,8 +55,8 @@ function renderLinks(links) {
     .map((link) => {
       return `
         <li>
-          <a class="link-card" href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer">
-            <span>${escapeHtml(link.title)}</span>
+          <a class="link-card" href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">
+            <span class="link-title">${escapeHtml(link.title)}</span>
             <span aria-hidden="true">↗</span>
           </a>
         </li>
@@ -67,6 +69,22 @@ function getOptionalString(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function getProfileMonogram(name) {
+  return getOptionalString(name).slice(0, 1).toUpperCase() || "O";
+}
+
+function buildSiteAssetUrl(siteUrl, fileName) {
+  const baseUrl = new URL(siteUrl);
+  baseUrl.search = "";
+  baseUrl.hash = "";
+
+  if (!baseUrl.pathname.endsWith("/")) {
+    baseUrl.pathname = `${baseUrl.pathname}/`;
+  }
+
+  return new URL(fileName, baseUrl).href;
+}
+
 function resolvePageMetadata(config) {
   const siteUrl = getOptionalString(config.siteUrl);
   const metadata =
@@ -75,7 +93,10 @@ function resolvePageMetadata(config) {
       : {};
   const title = getOptionalString(metadata.title) || `${config.profile.name} | opentree`;
   const description = getOptionalString(metadata.description) || config.profile.bio;
-  const imageUrl = getOptionalString(metadata.ogImageUrl) || getOptionalString(config.profile.avatarUrl);
+  const imageUrl =
+    getOptionalString(metadata.ogImageUrl) ||
+    getOptionalString(config.profile.avatarUrl) ||
+    (siteUrl ? buildSiteAssetUrl(siteUrl, OG_IMAGE_FILE_NAME) : "");
 
   return {
     description,
@@ -92,6 +113,7 @@ function renderMetaTags(config) {
     `<title>${escapeHtml(metadata.title)}</title>`,
     `<meta name="description" content="${escapeHtml(metadata.description)}" />`,
     `<meta name="theme-color" content="${escapeHtml(config.theme.accentColor)}" />`,
+    `<link rel="icon" href="./${FAVICON_FILE_NAME}" type="image/svg+xml" />`,
     `<meta property="og:type" content="website" />`,
     `<meta property="og:site_name" content="${escapeHtml(config.profile.name)}" />`,
     `<meta property="og:title" content="${escapeHtml(metadata.title)}" />`,
@@ -117,18 +139,6 @@ function renderMetaTags(config) {
   return tags.join("\n    ");
 }
 
-function buildSiteAssetUrl(siteUrl, fileName) {
-  const baseUrl = new URL(siteUrl);
-  baseUrl.search = "";
-  baseUrl.hash = "";
-
-  if (!baseUrl.pathname.endsWith("/")) {
-    baseUrl.pathname = `${baseUrl.pathname}/`;
-  }
-
-  return new URL(fileName, baseUrl).href;
-}
-
 function renderSitemapXml(siteUrl) {
   const pageUrl = new URL(siteUrl);
   pageUrl.hash = "";
@@ -146,6 +156,45 @@ function renderRobotsTxt(siteUrl) {
   return `User-agent: *
 Allow: /
 Sitemap: ${buildSiteAssetUrl(siteUrl, SITEMAP_FILE_NAME)}
+`;
+}
+
+function renderFaviconSvg(config) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="${escapeHtml(config.profile.name)} favicon">
+  <defs>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="${escapeHtml(config.theme.accentColor)}" />
+      <stop offset="100%" stop-color="${escapeHtml(config.theme.textColor)}" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#accent)" />
+  <circle cx="52" cy="12" r="6" fill="rgba(255,255,255,0.35)" />
+  <text x="32" y="39" text-anchor="middle" font-size="28" font-family="Georgia, serif" fill="#ffffff">${escapeHtml(getProfileMonogram(config.profile.name))}</text>
+</svg>
+`;
+}
+
+function renderDefaultOgImageSvg(config) {
+  const metadata = resolvePageMetadata(config);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="${escapeHtml(config.profile.name)} social image">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="${escapeHtml(config.theme.backgroundColor)}" />
+      <stop offset="100%" stop-color="${escapeHtml(config.theme.accentColor)}" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <circle cx="1030" cy="120" r="120" fill="rgba(255,255,255,0.16)" />
+  <circle cx="180" cy="540" r="180" fill="rgba(255,255,255,0.12)" />
+  <rect x="92" y="76" width="1016" height="478" rx="40" fill="rgba(255,255,255,0.84)" stroke="rgba(255,255,255,0.55)" />
+  <text x="140" y="230" font-size="64" font-family="Georgia, serif" fill="${escapeHtml(config.theme.textColor)}">${escapeHtml(config.profile.name)}</text>
+  <foreignObject x="140" y="270" width="860" height="170">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: 'Avenir Next', 'Segoe UI', sans-serif; font-size: 34px; line-height: 1.45; color: ${escapeHtml(config.theme.textColor)}; opacity: 0.86;">
+      ${escapeHtml(metadata.description)}
+    </div>
+  </foreignObject>
+  <text x="140" y="505" font-size="30" font-family="'Avenir Next', 'Segoe UI', sans-serif" fill="${escapeHtml(config.theme.textColor)}">opentree</text>
+</svg>
 `;
 }
 
@@ -234,6 +283,23 @@ function renderHtml(config) {
         padding: 32px 16px;
       }
 
+      .skip-link {
+        position: absolute;
+        left: 16px;
+        top: 16px;
+        transform: translateY(-160%);
+        background: var(--text);
+        color: white;
+        border-radius: 999px;
+        padding: 10px 14px;
+        text-decoration: none;
+        transition: transform 160ms ease;
+      }
+
+      .skip-link:focus {
+        transform: translateY(0);
+      }
+
       .shell {
         width: min(100%, 520px);
       }
@@ -273,8 +339,9 @@ function renderHtml(config) {
       h1 {
         margin: 18px 0 10px;
         font-size: clamp(2rem, 6vw, 2.8rem);
-        line-height: 0.95;
+        line-height: 1;
         letter-spacing: -0.05em;
+        overflow-wrap: anywhere;
       }
 
       p {
@@ -283,6 +350,7 @@ function renderHtml(config) {
         font-size: 1rem;
         line-height: 1.6;
         color: color-mix(in srgb, var(--text) 74%, black);
+        overflow-wrap: anywhere;
       }
 
       ul {
@@ -309,10 +377,20 @@ function renderHtml(config) {
         transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
       }
 
+      .link-title {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
       .link-card:hover {
         transform: translateY(-2px);
         border-color: color-mix(in srgb, var(--accent) 35%, white);
         box-shadow: 0 18px 32px rgba(5, 46, 22, 0.12);
+      }
+
+      .link-card:focus-visible {
+        outline: 3px solid color-mix(in srgb, var(--accent) 60%, white);
+        outline-offset: 4px;
       }
 
       .footer {
@@ -321,20 +399,44 @@ function renderHtml(config) {
         font-size: 0.85rem;
         color: color-mix(in srgb, var(--text) 54%, white);
       }
+
+      @media (max-width: 640px) {
+        body {
+          padding: 20px 12px;
+        }
+
+        .profile-card {
+          border-radius: 24px;
+          padding: 22px 18px;
+        }
+
+        .avatar {
+          width: 84px;
+          height: 84px;
+        }
+
+        .link-card {
+          padding: 16px 16px;
+          gap: 12px;
+        }
+      }
     </style>
   </head>
   <body>
-    <main class="shell">
-      <section class="profile-card">
+    <a class="skip-link" href="#content">Skip to content</a>
+    <main class="shell" id="content">
+      <section class="profile-card" aria-labelledby="profile-title">
         <header class="hero">
           ${renderAvatar(config.profile)}
-          <h1>${escapeHtml(config.profile.name)}</h1>
+          <h1 id="profile-title">${escapeHtml(config.profile.name)}</h1>
           <p>${escapeHtml(config.profile.bio)}</p>
         </header>
-        <ul>
-          ${renderLinks(config.links)}
-        </ul>
-        <div class="footer">Built with opentree</div>
+        <nav aria-label="Profile links">
+          <ul>
+            ${renderLinks(config.links)}
+          </ul>
+        </nav>
+        <footer class="footer">Built with opentree</footer>
       </section>
     </main>
   </body>
@@ -353,7 +455,9 @@ async function runBuild(io, args = []) {
     configPath: path.join(cwd, CONFIG_FILE_NAME),
     cwd,
     files: {
+      favicon: null,
       indexHtml: null,
+      ogImage: null,
       robots: null,
       sitemap: null
     },
@@ -381,7 +485,9 @@ async function runBuild(io, args = []) {
   report.outputDir = path.resolve(cwd, options.outputDir);
   const buildStdout = options.json ? stderr : stdout;
   const outputDir = path.resolve(cwd, options.outputDir);
+  const faviconPath = path.join(outputDir, FAVICON_FILE_NAME);
   const outputPath = path.join(outputDir, OUTPUT_FILE_NAME);
+  const ogImagePath = path.join(outputDir, OG_IMAGE_FILE_NAME);
   const robotsPath = path.join(outputDir, ROBOTS_FILE_NAME);
   const sitemapPath = path.join(outputDir, SITEMAP_FILE_NAME);
 
@@ -444,10 +550,16 @@ async function runBuild(io, args = []) {
   report.metadata = metadata;
 
   await fs.mkdir(outputDir, { recursive: true });
+  await fs.writeFile(faviconPath, renderFaviconSvg(loadedConfig.config), "utf8");
   await fs.writeFile(outputPath, renderHtml(loadedConfig.config), "utf8");
+  await fs.writeFile(ogImagePath, renderDefaultOgImageSvg(loadedConfig.config), "utf8");
+  report.files.favicon = faviconPath;
   report.files.indexHtml = outputPath;
+  report.files.ogImage = ogImagePath;
 
+  buildStdout.write(`[opentree] wrote ${path.relative(cwd, faviconPath)}\n`);
   buildStdout.write(`[opentree] wrote ${path.relative(cwd, outputPath)}\n`);
+  buildStdout.write(`[opentree] wrote ${path.relative(cwd, ogImagePath)}\n`);
 
   if (metadata.siteUrl) {
     await fs.writeFile(sitemapPath, renderSitemapXml(metadata.siteUrl), "utf8");
@@ -479,6 +591,8 @@ async function runBuild(io, args = []) {
 module.exports = {
   OUTPUT_DIR_NAME,
   OUTPUT_FILE_NAME,
+  FAVICON_FILE_NAME,
+  OG_IMAGE_FILE_NAME,
   ROBOTS_FILE_NAME,
   SITEMAP_FILE_NAME,
   parseBuildArgs,

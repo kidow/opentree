@@ -28,7 +28,7 @@ This creates `opentree.config.json`, updates it through CLI commands, builds a s
 - Generates a link page from `opentree.config.json`
 - Updates profile, site, metadata, theme, and links from the CLI
 - Validates config before build and deploy
-- Produces static HTML output
+- Produces static HTML output plus generated favicon and social image assets
 - Previews the page locally with live config reload on refresh
 - Integrates with Vercel for linking, status checks, and deployment
 - Supports `--json` output on major commands for scripts and CI
@@ -147,6 +147,14 @@ Field definitions:
 - `metadata.title`: optional string for the HTML title and social title.
 - `metadata.description`: optional string for meta description and social description.
 - `metadata.ogImageUrl`: optional string. Use `""` for unset, or an `http`/`https` URL for Open Graph and Twitter image tags.
+
+Generated output defaults:
+
+- `build` always emits `favicon.svg` based on the profile name and theme colors
+- `build` always emits `opengraph-image.svg` as a default social card asset
+- when `siteUrl` is configured and `metadata.ogImageUrl` is empty, social tags fall back to the generated `opengraph-image.svg`
+- long bios and link titles are wrapped to avoid card overflow
+- generated markup includes a skip link, labeled navigation, and visible keyboard focus styles
 
 ## JSON Output
 
