@@ -26,6 +26,7 @@ test("docs app includes the planned Fumadocs skeleton", async () => {
   const docsPackageJson = await readJson(path.join(docsAppDir, "package.json"));
   const sourceConfig = await readText(path.join(docsAppDir, "source.config.ts"));
   const sourceLoader = await readText(path.join(docsAppDir, "lib", "source.ts"));
+  const mdxComponents = await readText(path.join(docsAppDir, "mdx-components.tsx"));
   const appLayout = await readText(path.join(docsAppDir, "app", "layout.tsx"));
   const docsLayout = await readText(path.join(docsAppDir, "app", "docs", "layout.tsx"));
   const docsPage = await readText(
@@ -42,7 +43,9 @@ test("docs app includes the planned Fumadocs skeleton", async () => {
   assert.equal(docsPackageJson.scripts.postinstall, "fumadocs-mdx");
   assert.match(docsPackageJson.dependencies.next, /^15\./);
   assert.match(sourceConfig, /dir:\s*["']content\/docs["']/);
+  assert.match(sourceLoader, /@\/\.source/);
   assert.match(sourceLoader, /baseUrl:\s*["']\/docs["']/);
+  assert.match(mdxComponents, /useMDXComponents/);
   assert.match(appLayout, /RootProvider/);
   assert.match(docsLayout, /DocsLayout/);
   assert.match(docsPage, /source\.getPage/);
