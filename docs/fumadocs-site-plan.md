@@ -20,7 +20,7 @@
 - 핵심 사용자 흐름은 `src/init.js`, `src/edit.js`, `src/import.js`, `src/prompt.js`, `src/build.js`, `src/dev.js`, `src/deploy.js`, `src/doctor.js`, `src/vercel.js`에 나뉘어 있다.
 - 주요 예제와 기대 결과는 `README.md`, `scripts/cli-smoke.js`, `test/cli.test.js`에 이미 존재한다.
 
-이 구조 때문에 Fumadocs를 루트 패키지에 직접 섞는 방식은 비추천이다. 문서 사이트는 "리포지토리 내부의 별도 앱"으로 두고, CLI 패키지와 배포/의존성을 분리하는 편이 안전하다.
+이 구조 때문에 Fumadocs를 루트 패키지에 직접 섞는 방식은 비추천이다. 문서 사이트는 "리포지토리 내부의 별도 앱"으로 두고, CLI 패키지와 배포/의존성을 분리한 뒤 Vercel에 별도 프로젝트로 올리는 편이 안전하다.
 
 ## 2. 권장 아키텍처
 
@@ -37,7 +37,7 @@
 - 루트 `package.json`은 npm publish 대상이므로 docs 전용 의존성을 섞지 않는 편이 낫다.
 - 현재 리포지토리는 workspace 구성이 아니다. docs 앱을 분리하면 monorepo 전환 없이도 시작할 수 있다.
 - CLI와 문서 사이트의 배포 주기를 분리할 수 있다.
-- 장기적으로 docs 앱만 별도 Vercel 프로젝트로 배포하기 쉽다.
+- Vercel에서 `apps/docs`만 별도 프로젝트로 연결하기 쉽다.
 
 ### 추천 디렉터리 구조
 
@@ -90,6 +90,20 @@ docs/
   - CLI 패키지의 배포 구조를 거의 건드리지 않는다.
   - 문서 사이트 도입만으로 저장소 운영 방식이 크게 바뀌지 않는다.
 
+### Vercel 배포 기준
+
+이 계획은 문서 사이트를 Vercel에 배포한다는 전제를 기본값으로 둔다.
+
+- docs 앱은 CLI와 분리된 별도 Vercel 프로젝트로 운영한다.
+- Vercel 프로젝트의 Root Directory는 `apps/docs`로 둔다.
+- Framework Preset은 Next.js를 사용한다.
+- Install Command는 `npm install`, Build Command는 `npm run build`를 `apps/docs` 기준으로 실행한다.
+- Production Branch는 저장소의 기본 브랜치를 따른다.
+- Pull Request마다 Vercel Preview Deployment가 생성되도록 GitHub 연동을 켠다.
+- 문서 정식 도메인은 가능하면 `docs.<service-domain>` 형태의 별도 서브도메인으로 둔다.
+
+즉, docs 사이트는 "CLI 패키지의 부속 정적 파일"이 아니라 "같은 저장소 안의 별도 Vercel 앱"으로 보는 것이 맞다.
+
 ## 3. Fumadocs 적용 방향
 
 공식 Fumadocs 문서 기준으로, 기존 코드베이스에 붙일 때 필요한 최소 구조는 아래와 같다.
@@ -111,10 +125,10 @@ docs/
 1. docs 앱의 홈 `/`는 소개 랜딩 페이지로 사용한다.
 2. 실제 문서는 `/docs/*` 아래 Fumadocs route로 둔다.
 3. `lib/source.ts`의 `baseUrl`은 `/docs`로 잡는다.
-4. 1차 배포는 Vercel 서버 모드 + 기본 Orama 검색으로 간다.
-5. static export는 2차 최적화 과제로 남긴다.
+4. 1차 배포는 Vercel의 Next.js 서버 모드 + 기본 Orama 검색으로 간다.
+5. static export는 특별한 비용/성능 요구가 생길 때만 재검토한다.
 
-이렇게 하면 초기 복잡도를 낮추면서도, 나중에 정적 호스팅으로 바꾸고 싶을 때 [Fumadocs Static Build](https://fumadocs.dev/docs/ui/static-export) 방향으로 확장할 수 있다.
+이렇게 하면 초기 복잡도를 낮추면서도, Vercel Preview/Production 흐름을 바로 활용할 수 있다. 정적 호스팅으로 바꾸는 일은 현재 계획의 기본 경로가 아니다.
 
 ## 4. 문서 사이트에서 무엇을 안내해야 하는가
 
@@ -129,6 +143,8 @@ docs/
 3. 레퍼런스: 명령어와 설정 스키마를 정확히 찾는 영역
 4. 예제: 자주 쓰는 설정 조합과 결과물
 5. 운영: 배포, 진단, 릴리스, 유지보수
+
+여기서 "배포"는 docs 사이트 자체도 Vercel에 배포된다는 점을 전제로 설명해야 한다. 즉, CLI 사용자가 `opentree deploy`로 자신의 링크 페이지를 올리는 흐름과, 저장소 관리자가 docs 앱을 Vercel에 올리는 흐름이 문서상에서 명확히 구분되어야 한다.
 
 ### 코드베이스 기반 핵심 주제
 
@@ -280,7 +296,7 @@ content/docs/
 | `reference/json-output` | 자동화용 JSON 출력 계약은? | `README.md`, 테스트 전반 | 공통 필드, stage 의미, additive compatibility |
 | `reference/templates-presets-and-analytics` | 템플릿/프리셋/추가 기능은? | `src/build.js`, `src/catalog.js` | glass vs terminal, presets 4종, clickTracking, QR/social card |
 | `operations/release-workflow` | 릴리스는 어떻게 관리하나? | `README.md`, `RELEASING.md`, `CHANGELOG.md` | versioning rules, checklist |
-| `operations/docs-maintenance` | 문서와 코드 동기화는 어떻게 유지하나? | 본 계획 문서 | 문서 갱신 규칙, 리뷰 체크리스트 |
+| `operations/docs-maintenance` | 문서와 코드 동기화는 어떻게 유지하나? | 본 계획 문서 | 문서 갱신 규칙, 리뷰 체크리스트, Vercel preview 확인 |
 
 ## 7. 문서 UX 원칙
 
@@ -308,6 +324,7 @@ content/docs/
 - Code block title: 파일명과 명령어를 분명히 표시
 - 카드 링크: 시작하기/배포/트러블슈팅 진입점
 - "Expected output" 박스: build 후 생성 파일, doctor 진단 예시
+- Preview badge/notice: 이 페이지 변경은 Vercel Preview에서 먼저 검토된다는 운영 원칙 표시 가능
 
 ### 특히 주의할 표현
 
@@ -328,6 +345,7 @@ content/docs/
 - Next.js 16 + Tailwind CSS 4 + TypeScript 구성
 - Fumadocs MDX 설치
 - 기본 app router 동작 확인
+- Vercel 프로젝트에서 `apps/docs` Root Directory로 연결
 
 ### Phase 1. Fumadocs 최소 골격
 
@@ -346,6 +364,7 @@ content/docs/
 - `apps/docs/app/docs/[[...slug]]/page.tsx`
 - `apps/docs/app/api/search/route.ts`
   - 기본 Orama 검색 활성화
+- Vercel Preview Deployment에서 `/`와 `/docs` 라우팅 정상 확인
 
 ### Phase 2. 정보 구조와 기본 콘텐츠
 
@@ -374,14 +393,15 @@ content/docs/
 
 - 검색 품질 점검
 - dead link 검사
-- docs build CI 추가
 - README에서 docs 사이트로 진입 경로 추가
+- Vercel Preview URL을 기준으로 문서 리뷰 플로우 정리
+- 필요하면 GitHub Actions에는 링크 검사나 콘텐츠 검증만 두고, 실제 배포는 Vercel에 맡긴다.
 
 ### Phase 5. 확장
 
 - 다국어 문서 필요 시 Fumadocs i18n 적용
 - 버전 문서 필요 시 Fumadocs navigation/versioning 전략 도입
-- 정적 호스팅 필요 시 static export + static search 전환
+- Vercel 운영 비용/성능 요구가 바뀔 때만 static export + static search 전환 검토
 
 ## 9. 문서 소스 오브 트루스 규칙
 
@@ -396,6 +416,7 @@ content/docs/
 5. 운영/배포 규칙: `src/deploy.js`, `src/doctor.js`, `src/vercel.js`
 6. 빠른 사용 예제: `scripts/cli-smoke.js`
 7. 회귀 확인: `test/cli.test.js`
+8. docs 앱 배포 설정: Vercel project settings, domain, preview flow
 
 ### 문서 갱신 규칙
 
@@ -403,6 +424,7 @@ content/docs/
 - config 필드가 바뀌면 `reference/config-schema`와 예제 config 동시 수정
 - build 산출물이 바뀌면 `preview-and-build`와 홈 랜딩의 feature 설명 수정
 - deploy/doctor 메시지나 단계가 바뀌면 운영 문서 수정
+- docs 관련 PR은 머지 전에 Vercel Preview Deployment에서 핵심 페이지 렌더링을 확인
 
 ### 장기적으로 고려할 자동화
 
@@ -420,6 +442,7 @@ content/docs/
 - `/` 랜딩 렌더링 확인
 - `/docs`와 주요 페이지 렌더링 확인
 - 검색에서 `init`, `deploy`, `schemaVersion`, `prompt` 등 핵심 키워드 검색 가능
+- Vercel Preview Deployment에서 라우팅, 검색, 정적 자산이 정상 동작
 
 ### 내용 검증
 
@@ -432,6 +455,7 @@ content/docs/
 
 - README에 docs 사이트 링크 추가
 - 새 릴리스 체크리스트에 "docs drift 확인" 항목 추가
+- 기본 브랜치 머지 후 Vercel Production Deployment가 정상 승격
 
 ## 11. 리스크와 대응
 
@@ -441,6 +465,7 @@ content/docs/
 
 - workspace 전환은 미루고 `apps/docs` 독립 앱으로 시작
 - 루트 publish 구조는 유지
+- Vercel도 `apps/docs`만 연결해 영향 범위를 제한
 
 ### 리스크 2. README와 웹 문서 중복
 
@@ -449,6 +474,7 @@ content/docs/
 - README는 짧은 제품 소개 + 빠른 시작만 남기고
 - 상세 설명은 docs 사이트로 이동
 - README는 docs의 인덱스 역할만 하도록 정리
+- docs canonical source는 Vercel에 배포된 사이트로 수렴
 
 ### 리스크 3. 코드와 문서의 드리프트
 
@@ -472,7 +498,8 @@ content/docs/
 2. 홈 랜딩 + `/docs` 인덱스 + Quick Start 3페이지 우선 작성
 3. config/build/deploy/doctor 문서 추가
 4. CLI/reference/schema 문서 추가
-5. 검색/CI/README 링크 연결
+5. Vercel Preview/Production 흐름 점검
+6. 검색/README 링크 연결
 
 ## 13. 완료 기준
 
@@ -483,6 +510,7 @@ content/docs/
 - `opentree.config.json`의 필수/선택 필드를 문서에서 정확히 찾을 수 있다.
 - `build`, `deploy`, `doctor`의 차이를 사용자가 UI 상에서 명확히 이해할 수 있다.
 - docs 앱이 CLI 패키지 publish 구조를 망치지 않는다.
+- docs 앱이 Vercel Preview/Production에서 안정적으로 배포되고 검토 가능하다.
 
 ## 14. 참고 링크
 
@@ -494,4 +522,3 @@ content/docs/
 - [Fumadocs Deploying](https://fumadocs.dev/docs/ui/deploying)
 - [Fumadocs Static Build](https://fumadocs.dev/docs/ui/static-export)
 - [Fumadocs Search: Orama](https://fumadocs.dev/docs/ui/search/orama)
-
