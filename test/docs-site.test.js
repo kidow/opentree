@@ -39,6 +39,7 @@ test("docs app includes the planned Fumadocs skeleton", async () => {
   assert.equal(docsPackageJson.scripts.dev, "next dev");
   assert.equal(docsPackageJson.scripts.build, "next build");
   assert.equal(docsPackageJson.scripts.test, "node --test");
+  assert.match(docsPackageJson.dependencies.next, /^15\./);
   assert.match(sourceConfig, /dir:\s*["']content\/docs["']/);
   assert.match(sourceLoader, /baseUrl:\s*["']\/docs["']/);
   assert.match(appLayout, /RootProvider/);
