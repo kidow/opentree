@@ -1,0 +1,39 @@
+---
+title: Quick Start
+description: Follow the smallest working flow from a fresh directory to a locally rendered page.
+---
+
+# Quick Start
+
+## What this page solves
+
+You want the fastest possible path to a working site without learning every command first.
+
+## Run the minimal flow
+
+```bash title="Terminal"
+opentree init --name "Kidow" --bio "CLI-first profile"
+opentree link add --title "Docs" --url "https://example.com/docs"
+opentree build
+opentree dev
+```
+
+## What changes on disk
+
+- `opentree init` creates `opentree.config.json`
+- `opentree build` writes `dist/index.html`
+- `opentree build` also writes `dist/favicon.svg` and `dist/opengraph-image.svg`
+- if `siteUrl` is set, `build` also adds `dist/robots.txt` and `dist/sitemap.xml`
+
+## Verify the result
+
+Open the local preview URL printed by `opentree dev`. The preview server renders the same HTML generator used by `build`.
+
+## Important accuracy notes
+
+- `dev` is a browser-refresh preview server, not hot reload
+- `build` generates more than HTML, so treat the `dist/` directory as the deploy bundle
+
+## Next page
+
+[Config file](/docs/guides/config-file)

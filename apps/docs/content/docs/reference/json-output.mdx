@@ -1,0 +1,32 @@
+---
+title: JSON Output
+description: Understand the stable top-level fields returned by major commands when you pass --json.
+---
+
+# JSON output
+
+Most operational commands support `--json`, including `init`, `validate`, `build`, `dev`, `deploy`, `doctor`, `import links`, `config show`, edit commands, and Vercel commands.
+
+## Common fields
+
+- `command`
+- `stage`
+- `message`
+- `ok`
+- `issues`
+- `result`
+
+## Stage meanings
+
+- `args`: argument parsing or usage failure
+- `load`: config loading or startup failure
+- `validate`: schema validation failure
+- `preflight`: readiness failure before mutation
+- `auth`: external authentication check
+- `link`: reusable link inspection or linking failure
+- `build`: static output generation
+- `deploy`: remote deployment handoff
+
+## Compatibility guideline
+
+Treat the common top-level keys as stable, and treat command-specific `result` payloads as additive over time.

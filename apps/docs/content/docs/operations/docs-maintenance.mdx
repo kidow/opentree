@@ -1,0 +1,22 @@
+---
+title: Docs Maintenance
+description: Keep docs synchronized with CLI commands, schema rules, and build output behavior.
+---
+
+# Docs maintenance
+
+## Source of truth order
+
+1. `src/cli.js`
+2. `src/config.js`
+3. `opentree.schema.json`
+4. `src/init.js`
+5. `src/build.js`
+6. `src/deploy.js`
+7. `src/doctor.js`
+8. `scripts/cli-smoke.js`
+9. `test/cli.test.js`
+
+## Update rule
+
+If command help, config fields, or generated output changes, update the corresponding docs page in the same pull request.

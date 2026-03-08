@@ -1,0 +1,37 @@
+---
+title: Templates, Presets, and Analytics
+description: Review supported template names, link presets, click tracking modes, and generated extras.
+---
+
+# Templates, presets, and analytics
+
+## Templates
+
+Supported template values:
+
+- `glass`
+- `terminal`
+
+## Link presets
+
+Preset names from `src/catalog.js`:
+
+- `github`
+- `linkedin`
+- `x`
+- `youtube`
+
+## Analytics
+
+`analytics.clickTracking` supports:
+
+- `off`
+- `local`
+
+When set to `local`, generated links store click counts in `localStorage`.
+
+## Generated extras
+
+- default favicon: `favicon.svg`
+- default social card image: `opengraph-image.svg`
+- optional QR block when `metadata.socialCard.showQrCode` is `true` and `siteUrl` exists

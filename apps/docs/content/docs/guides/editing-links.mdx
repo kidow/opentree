@@ -1,0 +1,42 @@
+---
+title: Editing Links
+description: Add, reorder, update, remove, or preset links while keeping the config valid.
+---
+
+# Editing links
+
+## What this page solves
+
+You want to manage link cards without hand-editing array indexes.
+
+## Core commands
+
+```bash title="Terminal"
+opentree link list
+opentree link add --title "Docs" --url "https://example.com/docs"
+opentree link update --index 1 --title "GitHub Profile"
+opentree link move --from 3 --to 1
+opentree link remove --index 2
+```
+
+## Presets
+
+```bash title="Terminal"
+opentree link preset --name github --handle kidow
+opentree link preset --name linkedin --handle kidow
+```
+
+Current preset destinations:
+
+- `github`
+- `linkedin`
+- `x`
+- `youtube`
+
+## Accuracy note
+
+The config must always keep at least one link. Removal that would leave an empty array is rejected during validation.
+
+## Next page
+
+[Import and prompt](/docs/guides/import-and-prompt)

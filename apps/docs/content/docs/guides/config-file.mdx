@@ -1,0 +1,70 @@
+---
+title: Config File
+description: Understand what opentree.config.json controls, what is required, and how schemaVersion is enforced.
+---
+
+# Config file
+
+## What this page solves
+
+You want to know which fields define the page and which validation rules the CLI enforces.
+
+## File contract
+
+`opentree.config.json` is the public contract for the CLI. Validation is implemented in `src/config.js`, and the editor-facing schema lives in `opentree.schema.json`.
+
+## Required top-level sections
+
+- `profile`
+- `links`
+- `theme`
+
+Optional sections:
+
+- `schemaVersion`
+- `template`
+- `siteUrl`
+- `analytics`
+- `metadata`
+
+## Starter example
+
+```json title="opentree.config.json"
+{
+  "schemaVersion": 1,
+  "profile": {
+    "name": "Your Name",
+    "bio": "Add a short bio for your opentree page.",
+    "avatarUrl": ""
+  },
+  "links": [
+    {
+      "title": "GitHub",
+      "url": "https://github.com/your-handle"
+    }
+  ],
+  "theme": {
+    "accentColor": "#166534",
+    "backgroundColor": "#f0fdf4",
+    "textColor": "#052e16"
+  },
+  "template": "glass",
+  "siteUrl": "",
+  "analytics": {
+    "clickTracking": "off"
+  }
+}
+```
+
+## Validation rules that matter early
+
+- `schemaVersion`, when present, must be `1`
+- `links` must contain at least one item
+- link URLs and avatar URLs must be `http` or `https`
+- theme colors must be six-digit hex values
+- `template` accepts `glass` or `terminal`
+- `analytics.clickTracking` accepts `off` or `local`
+
+## Next page
+
+[Config schema reference](/docs/reference/config-schema)

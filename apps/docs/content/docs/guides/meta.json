@@ -1,0 +1,12 @@
+{
+  "title": "Guides",
+  "pages": [
+    "config-file",
+    "editing-profile",
+    "editing-links",
+    "import-and-prompt",
+    "preview-and-build",
+    "deploy-to-vercel",
+    "doctor-and-troubleshooting"
+  ]
+}
