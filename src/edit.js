@@ -1,4 +1,5 @@
 const path = require("node:path");
+const { CLICK_TRACKING_VALUES, LINK_PRESETS, SOCIAL_CARD_STYLE_VALUES } = require("./catalog");
 const { CONFIG_FILE_NAME } = require("./init");
 const { loadConfig, saveConfig, validateConfig } = require("./config");
 
@@ -112,6 +113,47 @@ function parseLinkAddArgs(args) {
 
   if (options.url === undefined) {
     throw new Error("missing required option --url");
+  }
+
+  return options;
+}
+
+function parseLinkPresetArgs(args) {
+  const options = {};
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    const nextValue = args[index + 1];
+
+    if (arg === "--name") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --name");
+      }
+
+      options.name = nextValue.toLowerCase();
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--handle") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --handle");
+      }
+
+      options.handle = nextValue;
+      index += 1;
+      continue;
+    }
+
+    throw new Error(`unknown option: ${arg}`);
+  }
+
+  if (!options.name || !LINK_PRESETS[options.name]) {
+    throw new Error(`--name must be one of: ${Object.keys(LINK_PRESETS).join(", ")}`);
+  }
+
+  if (!options.handle) {
+    throw new Error("missing required option --handle");
   }
 
   return options;
@@ -271,17 +313,46 @@ function parseThemeArgs(args) {
 }
 
 function parseSiteArgs(args) {
-  if (args.length === 0) {
-    throw new Error("missing required option --url");
+  const updates = {};
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    const nextValue = args[index + 1];
+
+    if (arg === "--url") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --url");
+      }
+
+      updates.siteUrl = nextValue;
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--analytics") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --analytics");
+      }
+
+      if (!CLICK_TRACKING_VALUES.includes(nextValue)) {
+        throw new Error(`--analytics must be one of: ${CLICK_TRACKING_VALUES.join(", ")}`);
+      }
+
+      updates.analytics = {
+        clickTracking: nextValue
+      };
+      index += 1;
+      continue;
+    }
+
+    throw new Error(`unknown option: ${arg}`);
   }
 
-  if (args.length !== 2 || args[0] !== "--url") {
-    throw new Error("usage: opentree site set --url <value>");
+  if (Object.keys(updates).length === 0) {
+    throw new Error("provide at least one of --url or --analytics");
   }
 
-  return {
-    siteUrl: args[1]
-  };
+  return updates;
 }
 
 function parseMetaArgs(args) {
@@ -321,11 +392,51 @@ function parseMetaArgs(args) {
       continue;
     }
 
+    if (arg === "--card-eyebrow") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --card-eyebrow");
+      }
+
+      updates.socialCard = {
+        ...(updates.socialCard ?? {}),
+        eyebrow: nextValue
+      };
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--card-style") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --card-style");
+      }
+
+      if (!SOCIAL_CARD_STYLE_VALUES.includes(nextValue)) {
+        throw new Error(`--card-style must be one of: ${SOCIAL_CARD_STYLE_VALUES.join(", ")}`);
+      }
+
+      updates.socialCard = {
+        ...(updates.socialCard ?? {}),
+        style: nextValue
+      };
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--show-qr-code") {
+      updates.socialCard = {
+        ...(updates.socialCard ?? {}),
+        showQrCode: true
+      };
+      continue;
+    }
+
     throw new Error(`unknown option: ${arg}`);
   }
 
   if (Object.keys(updates).length === 0) {
-    throw new Error("provide at least one of --title, --description, or --og-image-url");
+    throw new Error(
+      "provide at least one of --title, --description, --og-image-url, --card-eyebrow, --card-style, or --show-qr-code"
+    );
   }
 
   return updates;
@@ -670,6 +781,62 @@ async function runLinkCommand(io, args = []) {
     );
   }
 
+  if (subcommand === "preset") {
+    let options;
+    try {
+      options = parseLinkPresetArgs(filteredArgs);
+    } catch (error) {
+      io.stderr.write(`[opentree] ${error.message}\n`);
+      return emitEditFailure(io, report, json, error.message);
+    }
+
+    report.stage = "load";
+    const loadedConfig = await loadEditableConfigState(cwd);
+    if (!loadedConfig.ok) {
+      writeLoadEditableConfigError(io, loadedConfig);
+      const issues = loadedConfig.message ? [loadedConfig.message] : [];
+      const message =
+        loadedConfig.kind === "missing"
+          ? `${CONFIG_FILE_NAME} was not found in ${cwd}`
+          : `${CONFIG_FILE_NAME} is not valid JSON`;
+      return emitEditFailure(io, report, json, message, issues);
+    }
+
+    const preset = LINK_PRESETS[options.name];
+    const links = readLinks(loadedConfig.config);
+    const presetLink = {
+      title: preset.title,
+      url: preset.url(options.handle)
+    };
+    const nextConfig = {
+      ...loadedConfig.config,
+      links: [...links, presetLink]
+    };
+    const errors = validateConfig(nextConfig);
+
+    if (errors.length > 0) {
+      report.stage = "validate";
+      reportInvalidConfig(io, "link preset", errors);
+      return emitEditFailure(io, report, json, "link preset aborted because the config would be invalid", errors);
+    }
+
+    const savedConfig = await saveConfig(cwd, nextConfig);
+
+    return emitEditSuccess(
+      io,
+      report,
+      json,
+      `added ${preset.title} preset`,
+      {
+        index: savedConfig.config.links.length,
+        link: presetLink,
+        linksCount: savedConfig.config.links.length,
+        preset: options.name
+      },
+      savedConfig
+    );
+  }
+
   if (subcommand === "update") {
     let options;
     try {
@@ -890,6 +1057,7 @@ async function runLinkCommand(io, args = []) {
   const message = "usage: opentree link add --title <value> --url <value> [--index <number>]";
   io.stderr.write(`[opentree] ${message}\n`);
   io.stderr.write("[opentree]        opentree link list\n");
+  io.stderr.write("[opentree]        opentree link preset --name <preset> --handle <value>\n");
   io.stderr.write("[opentree]        opentree link update --index <number> [--title <value>] [--url <value>]\n");
   io.stderr.write("[opentree]        opentree link move --from <number> --to <number>\n");
   io.stderr.write("[opentree]        opentree link remove --index <number>\n");
@@ -967,7 +1135,7 @@ async function runSiteCommand(io, args = []) {
   const report = createEditReport(cwd, "site set");
 
   if (subcommand !== "set") {
-    const message = "usage: opentree site set --url <value>";
+    const message = "usage: opentree site set [--url <value>] [--analytics <off|local>]";
     io.stderr.write(`[opentree] ${message}\n`);
     return emitEditFailure(io, report, requestedJson, message);
   }
@@ -1015,6 +1183,7 @@ async function runSiteCommand(io, args = []) {
     {
       fields: ["siteUrl"],
       site: {
+        analytics: savedConfig.config.analytics,
         siteUrl: savedConfig.config.siteUrl
       }
     },
@@ -1060,7 +1229,19 @@ async function runMetaCommand(io, args = []) {
     ...loadedConfig.config,
     metadata: {
       ...(isObject(loadedConfig.config.metadata) ? loadedConfig.config.metadata : {}),
-      ...updates
+      ...updates,
+      ...(updates.socialCard
+        ? {
+            socialCard: {
+              ...(
+                isObject(loadedConfig.config.metadata?.socialCard)
+                  ? loadedConfig.config.metadata.socialCard
+                  : {}
+              ),
+              ...updates.socialCard
+            }
+          }
+        : {})
     }
   };
   const errors = validateConfig(nextConfig);

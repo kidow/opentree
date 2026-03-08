@@ -609,6 +609,34 @@ test("repository ships a JSON Schema for opentree config", async () => {
   assert.equal(schema.properties.links.type, "array");
 });
 
+test("repository documents the release workflow and versioning policy", async () => {
+  const readme = await fs.readFile(path.join(__dirname, "..", "README.md"), "utf8");
+  const releaseGuide = await fs.readFile(path.join(__dirname, "..", "RELEASING.md"), "utf8");
+
+  assert.match(readme, /## Release Workflow/);
+  assert.match(readme, /versioning rules/i);
+  assert.match(releaseGuide, /npm publish/);
+  assert.match(releaseGuide, /CHANGELOG\.md/);
+  assert.match(releaseGuide, /v\d+\.\d+\.\d+/);
+});
+
+test("repository ships changelog and release automation files", async () => {
+  const changelog = await fs.readFile(path.join(__dirname, "..", "CHANGELOG.md"), "utf8");
+  const workflow = await fs.readFile(
+    path.join(__dirname, "..", ".github", "workflows", "release.yml"),
+    "utf8"
+  );
+  const pkg = JSON.parse(await fs.readFile(path.join(__dirname, "..", "package.json"), "utf8"));
+
+  assert.match(changelog, /## Unreleased/);
+  assert.match(changelog, /Initial release notes/);
+  assert.match(workflow, /name: Release/);
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /npm publish/);
+  assert.equal(pkg.scripts["release:check"], "npm test && npm run test:smoke");
+  assert.equal(pkg.scripts.prepublishOnly, "npm run release:check");
+});
+
 test("build creates a static html page in dist", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-build-"));
   const initResult = spawnSync(process.execPath, [cliPath, "init"], {
@@ -3048,4 +3076,212 @@ test("unknown commands fail with guidance", () => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /\[opentree\] unknown command: unknown/);
   assert.match(result.stderr, /opentree --help/);
+});
+
+test("help output includes task-oriented examples", () => {
+  const result = spawnSync(process.execPath, [cliPath, "--help"], {
+    cwd: path.join(__dirname, ".."),
+    encoding: "utf8"
+  });
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /Quick Start:/);
+  assert.match(result.stdout, /Common Tasks:/);
+  assert.match(result.stdout, /opentree init --name "Kidow"/);
+  assert.match(result.stdout, /opentree deploy --prod/);
+  assert.match(result.stdout, /opentree doctor/);
+});
+
+test("completion command prints bash completion", () => {
+  const result = spawnSync(process.execPath, [cliPath, "completion", "bash"], {
+    cwd: path.join(__dirname, ".."),
+    encoding: "utf8"
+  });
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /complete -F _opentree_completion opentree/);
+  assert.match(result.stdout, /COMPREPLY/);
+});
+
+test("completion command prints zsh completion", () => {
+  const result = spawnSync(process.execPath, [cliPath, "completion", "zsh"], {
+    cwd: path.join(__dirname, ".."),
+    encoding: "utf8"
+  });
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /#compdef opentree/);
+  assert.match(result.stdout, /_arguments/);
+});
+
+test("completion command rejects unsupported shells", () => {
+  const result = spawnSync(process.execPath, [cliPath, "completion", "fish"], {
+    cwd: path.join(__dirname, ".."),
+    encoding: "utf8"
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /\[opentree\] usage: opentree completion <bash\|zsh>/);
+});
+
+test("init supports template selection", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-init-template-"));
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "init", "--template", "terminal"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const config = JSON.parse(await fs.readFile(path.join(tempDir, configFilePath), "utf8"));
+
+  assert.equal(result.status, 0);
+  assert.equal(config.template, "terminal");
+});
+
+test("link preset adds a known destination from a handle", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-link-preset-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "link", "preset", "--name", "github", "--handle", "kidow", "--json"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(report.command, "link preset");
+  assert.equal(report.result.link.url, "https://github.com/kidow");
+  assert.equal(report.result.link.title, "GitHub");
+});
+
+test("interactive command creates a config from prompt answers", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-interactive-"));
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "interactive"],
+    {
+      cwd: tempDir,
+      encoding: "utf8",
+      input: ["Kidow", "CLI profile", "", "https://links.example.com", "terminal", "Docs", "https://example.com/docs"].join("\n") + "\n"
+    }
+  );
+  const config = JSON.parse(await fs.readFile(path.join(tempDir, configFilePath), "utf8"));
+
+  assert.equal(result.status, 0);
+  assert.equal(config.profile.name, "Kidow");
+  assert.equal(config.template, "terminal");
+  assert.equal(config.links[0].url, "https://example.com/docs");
+});
+
+test("import links loads links from a JSON file", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-import-links-"));
+  const importFile = path.join(tempDir, "links.json");
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+  await fs.writeFile(
+    importFile,
+    JSON.stringify([
+      { title: "Docs", url: "https://example.com/docs" },
+      { title: "GitHub", url: "https://github.com/kidow" }
+    ]) + "\n"
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "import", "links", "--file", importFile, "--replace", "--json"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(report.command, "import links");
+  assert.equal(report.result.linksCount, 2);
+  assert.equal(report.result.links[0].title, "Docs");
+});
+
+test("prompt command applies deterministic natural language edits", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-prompt-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "prompt", "set my name to Kidow and add link Docs https://example.com/docs and set template to terminal"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const config = JSON.parse(await fs.readFile(path.join(tempDir, configFilePath), "utf8"));
+
+  assert.equal(result.status, 0);
+  assert.equal(config.profile.name, "Kidow");
+  assert.equal(config.template, "terminal");
+  assert.equal(config.links.at(-1).url, "https://example.com/docs");
+});
+
+test("build supports alternate templates, qr, click tracking, and social card customization", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-build-expansion-"));
+  await fs.writeFile(
+    path.join(tempDir, configFilePath),
+    JSON.stringify(
+      {
+        ...createConfig({
+          profile: {
+            name: "Kidow",
+            bio: "Shipping links."
+          },
+          siteUrl: "https://links.example.com",
+          template: "terminal",
+          analytics: {
+            clickTracking: "local"
+          },
+          metadata: {
+            title: "Kidow Links",
+            description: "Find my work.",
+            ogImageUrl: "",
+            socialCard: {
+              eyebrow: "Operator Manual",
+              style: "terminal",
+              showQrCode: true
+            }
+          }
+        })
+      },
+      null,
+      2
+    ) + "\n"
+  );
+
+  const result = spawnSync(process.execPath, [cliPath, "build"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+  const html = await fs.readFile(path.join(tempDir, buildFilePath), "utf8");
+  const ogImage = await fs.readFile(path.join(tempDir, ogImageFilePath), "utf8");
+
+  assert.equal(result.status, 0);
+  assert.match(html, /data-template="terminal"/);
+  assert.match(html, /api\.qrserver\.com/);
+  assert.match(html, /localStorage/);
+  assert.match(html, /data-link-id="1"/);
+  assert.match(ogImage, /Operator Manual/);
 });

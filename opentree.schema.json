@@ -71,6 +71,20 @@
       "type": "string",
       "pattern": "^(|https?://.+)$"
     },
+    "template": {
+      "type": "string",
+      "enum": ["glass", "terminal"]
+    },
+    "analytics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "clickTracking": {
+          "type": "string",
+          "enum": ["off", "local"]
+        }
+      }
+    },
     "metadata": {
       "type": "object",
       "additionalProperties": false,
@@ -84,6 +98,22 @@
         "ogImageUrl": {
           "type": "string",
           "pattern": "^(|https?://.+)$"
+        },
+        "socialCard": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "eyebrow": {
+              "type": "string"
+            },
+            "style": {
+              "type": "string",
+              "enum": ["glass", "terminal"]
+            },
+            "showQrCode": {
+              "type": "boolean"
+            }
+          }
         }
       }
     }

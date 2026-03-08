@@ -50,12 +50,42 @@ function renderAvatar(profile) {
   `;
 }
 
-function renderLinks(links) {
+function getTemplate(config) {
+  return config.template === "terminal" ? "terminal" : "glass";
+}
+
+function getAnalyticsMode(config) {
+  return config.analytics?.clickTracking === "local" ? "local" : "off";
+}
+
+function getSocialCard(config) {
+  if (!config.metadata || typeof config.metadata !== "object" || Array.isArray(config.metadata)) {
+    return {};
+  }
+
+  return config.metadata.socialCard && typeof config.metadata.socialCard === "object"
+    ? config.metadata.socialCard
+    : {};
+}
+
+function getQrCodeUrl(siteUrl) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(siteUrl)}`;
+}
+
+function renderLinks(links, analyticsMode) {
   return links
-    .map((link) => {
+    .map((link, index) => {
       return `
         <li>
-          <a class="link-card" href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">
+          <a
+            class="link-card"
+            href="${escapeHtml(link.url)}"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-link-id="${index + 1}"
+            data-link-title="${escapeHtml(link.title)}"
+            ${analyticsMode === "local" ? 'data-track-click="true"' : ""}
+          >
             <span class="link-title">${escapeHtml(link.title)}</span>
             <span aria-hidden="true">↗</span>
           </a>
@@ -105,6 +135,54 @@ function resolvePageMetadata(config) {
     title,
     twitterCard: imageUrl ? "summary_large_image" : "summary"
   };
+}
+
+function renderAnalyticsScript(config) {
+  if (getAnalyticsMode(config) !== "local") {
+    return "";
+  }
+
+  return `
+    <script>
+      (() => {
+        const storageKey = "opentree-click-tracking";
+        const links = document.querySelectorAll("[data-track-click='true']");
+        links.forEach((link) => {
+          link.addEventListener("click", () => {
+            const current = JSON.parse(localStorage.getItem(storageKey) || "{}");
+            const linkId = link.dataset.linkId;
+            current[linkId] = {
+              count: (current[linkId]?.count || 0) + 1,
+              title: link.dataset.linkTitle || "",
+              url: link.href,
+              updatedAt: new Date().toISOString()
+            };
+            localStorage.setItem(storageKey, JSON.stringify(current));
+          });
+        });
+      })();
+    </script>
+  `;
+}
+
+function renderQrCode(config) {
+  const socialCard = getSocialCard(config);
+
+  if (!socialCard.showQrCode || !getOptionalString(config.siteUrl)) {
+    return "";
+  }
+
+  return `
+        <aside class="qr-card" aria-label="Quick access QR code">
+          <img
+            class="qr-image"
+            src="${escapeHtml(getQrCodeUrl(config.siteUrl))}"
+            alt="${escapeHtml(config.profile.name)} site QR code"
+            loading="lazy"
+          />
+          <p class="qr-copy">Scan to open ${escapeHtml(config.siteUrl)}</p>
+        </aside>
+  `;
 }
 
 function renderMetaTags(config) {
@@ -176,6 +254,29 @@ function renderFaviconSvg(config) {
 
 function renderDefaultOgImageSvg(config) {
   const metadata = resolvePageMetadata(config);
+  const socialCard = getSocialCard(config);
+  const cardStyle = socialCard.style === "terminal" ? "terminal" : "glass";
+  const eyebrow = getOptionalString(socialCard.eyebrow) || "opentree";
+
+  if (cardStyle === "terminal") {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="${escapeHtml(config.profile.name)} social image">
+  <rect width="1200" height="630" fill="#08140f" />
+  <rect x="70" y="58" width="1060" height="514" rx="28" fill="#091d16" stroke="${escapeHtml(config.theme.accentColor)}" stroke-width="4" />
+  <circle cx="112" cy="100" r="10" fill="#f87171" />
+  <circle cx="148" cy="100" r="10" fill="#fbbf24" />
+  <circle cx="184" cy="100" r="10" fill="#34d399" />
+  <text x="120" y="170" font-size="28" font-family="'SFMono-Regular', 'Menlo', monospace" fill="${escapeHtml(config.theme.accentColor)}">${escapeHtml(eyebrow)}</text>
+  <text x="120" y="262" font-size="72" font-family="'SFMono-Regular', 'Menlo', monospace" fill="#f8fafc">${escapeHtml(config.profile.name)}</text>
+  <foreignObject x="120" y="292" width="820" height="170">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: 'SFMono-Regular', 'Menlo', monospace; font-size: 30px; line-height: 1.55; color: #d1fae5;">
+      ${escapeHtml(metadata.description)}
+    </div>
+  </foreignObject>
+  <text x="120" y="525" font-size="26" font-family="'SFMono-Regular', 'Menlo', monospace" fill="#86efac">$ open ${escapeHtml(metadata.siteUrl || "opentree")}</text>
+</svg>
+`;
+  }
+
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="${escapeHtml(config.profile.name)} social image">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
@@ -187,6 +288,7 @@ function renderDefaultOgImageSvg(config) {
   <circle cx="1030" cy="120" r="120" fill="rgba(255,255,255,0.16)" />
   <circle cx="180" cy="540" r="180" fill="rgba(255,255,255,0.12)" />
   <rect x="92" y="76" width="1016" height="478" rx="40" fill="rgba(255,255,255,0.84)" stroke="rgba(255,255,255,0.55)" />
+  <text x="140" y="150" font-size="28" font-family="'Avenir Next', 'Segoe UI', sans-serif" fill="${escapeHtml(config.theme.textColor)}">${escapeHtml(eyebrow)}</text>
   <text x="140" y="230" font-size="64" font-family="Georgia, serif" fill="${escapeHtml(config.theme.textColor)}">${escapeHtml(config.profile.name)}</text>
   <foreignObject x="140" y="270" width="860" height="170">
     <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: 'Avenir Next', 'Segoe UI', sans-serif; font-size: 34px; line-height: 1.45; color: ${escapeHtml(config.theme.textColor)}; opacity: 0.86;">
@@ -249,6 +351,8 @@ function parseBuildArgs(args) {
 
 function renderHtml(config) {
   const metadata = resolvePageMetadata(config);
+  const template = getTemplate(config);
+  const analyticsMode = getAnalyticsMode(config);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -311,6 +415,35 @@ function renderHtml(config) {
         border-radius: 28px;
         box-shadow: 0 28px 60px var(--shadow);
         padding: 28px;
+      }
+
+      body[data-template="terminal"] {
+        font-family: "SFMono-Regular", "Menlo", monospace;
+      }
+
+      body[data-template="terminal"] .profile-card {
+        --surface: rgba(5, 18, 13, 0.94);
+        --surface-border: rgba(74, 222, 128, 0.48);
+        --shadow: rgba(2, 6, 23, 0.45);
+        color: #ecfdf5;
+        border-radius: 24px;
+        backdrop-filter: none;
+      }
+
+      body[data-template="terminal"] p,
+      body[data-template="terminal"] .footer {
+        color: #bbf7d0;
+      }
+
+      body[data-template="terminal"] .link-card {
+        background: rgba(6, 24, 18, 0.96);
+        color: #f0fdf4;
+        border-color: rgba(74, 222, 128, 0.32);
+        box-shadow: 0 18px 32px rgba(2, 6, 23, 0.22);
+      }
+
+      body[data-template="terminal"] .link-card:hover {
+        border-color: rgba(74, 222, 128, 0.7);
       }
 
       .hero {
@@ -400,6 +533,29 @@ function renderHtml(config) {
         color: color-mix(in srgb, var(--text) 54%, white);
       }
 
+      .qr-card {
+        margin-top: 18px;
+        display: grid;
+        justify-items: center;
+        gap: 10px;
+      }
+
+      .qr-image {
+        width: 112px;
+        height: 112px;
+        border-radius: 18px;
+        background: white;
+        padding: 8px;
+        border: 1px solid rgba(5, 46, 22, 0.12);
+      }
+
+      .qr-copy {
+        margin: 0;
+        max-width: 30ch;
+        text-align: center;
+        font-size: 0.9rem;
+      }
+
       @media (max-width: 640px) {
         body {
           padding: 20px 12px;
@@ -422,7 +578,7 @@ function renderHtml(config) {
       }
     </style>
   </head>
-  <body>
+  <body data-template="${escapeHtml(template)}" data-analytics="${escapeHtml(analyticsMode)}">
     <a class="skip-link" href="#content">Skip to content</a>
     <main class="shell" id="content">
       <section class="profile-card" aria-labelledby="profile-title">
@@ -433,12 +589,14 @@ function renderHtml(config) {
         </header>
         <nav aria-label="Profile links">
           <ul>
-            ${renderLinks(config.links)}
+            ${renderLinks(config.links, analyticsMode)}
           </ul>
         </nav>
+        ${renderQrCode(config)}
         <footer class="footer">Built with opentree</footer>
       </section>
     </main>
+    ${renderAnalyticsScript(config)}
   </body>
 </html>
 `;

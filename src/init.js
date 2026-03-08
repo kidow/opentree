@@ -1,5 +1,6 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const { TEMPLATE_VALUES } = require("./catalog");
 const { CONFIG_SCHEMA_VERSION } = require("./schema");
 
 const CONFIG_FILE_NAME = "opentree.config.json";
@@ -45,7 +46,11 @@ function createDefaultConfig() {
       backgroundColor: "#f0fdf4",
       textColor: "#052e16"
     },
+    template: "glass",
     siteUrl: "",
+    analytics: {
+      clickTracking: "off"
+    },
     metadata: {
       title: "",
       description: "",
@@ -147,6 +152,16 @@ function parseInitArgs(args) {
       continue;
     }
 
+    if (arg === "--template") {
+      if (nextValue === undefined) {
+        throw new Error("missing value for --template");
+      }
+
+      overrides.template = nextValue;
+      index += 1;
+      continue;
+    }
+
     throw new Error(`unknown option: ${arg}`);
   }
 
@@ -179,6 +194,13 @@ function parseInitArgs(args) {
     !isValidUrl(overrides.metadata.ogImageUrl)
   ) {
     throw new Error("--og-image-url must be an http or https URL");
+  }
+
+  if (
+    overrides.template !== undefined &&
+    !TEMPLATE_VALUES.includes(overrides.template)
+  ) {
+    throw new Error(`--template must be one of: ${TEMPLATE_VALUES.join(", ")}`);
   }
 
   return overrides;
@@ -229,6 +251,7 @@ async function runInit(io, args = []) {
     ...config.profile,
     ...overrides.profile
   };
+  config.template = overrides.template ?? config.template;
   config.siteUrl = overrides.siteUrl ?? config.siteUrl;
   config.metadata = {
     ...config.metadata,

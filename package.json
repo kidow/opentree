@@ -28,6 +28,8 @@
   },
   "scripts": {
     "start": "node ./bin/opentree.js",
+    "release:check": "npm test && npm run test:smoke",
+    "prepublishOnly": "npm run release:check",
     "test": "node --test",
     "test:smoke": "node ./scripts/cli-smoke.js"
   },

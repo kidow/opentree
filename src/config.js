@@ -1,5 +1,6 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const { CLICK_TRACKING_VALUES, SOCIAL_CARD_STYLE_VALUES, TEMPLATE_VALUES } = require("./catalog");
 const { CONFIG_FILE_NAME } = require("./init");
 const { CONFIG_SCHEMA_VERSION } = require("./schema");
 
@@ -110,11 +111,26 @@ function validateConfig(config) {
     }
   }
 
+  if (config.template !== undefined && !TEMPLATE_VALUES.includes(config.template)) {
+    errors.push(`template must be one of: ${TEMPLATE_VALUES.join(", ")}.`);
+  }
+
   if (config.siteUrl !== undefined) {
     if (typeof config.siteUrl !== "string") {
       errors.push("siteUrl must be a string.");
     } else if (config.siteUrl !== "" && !isValidUrl(config.siteUrl)) {
       errors.push("siteUrl must be an http or https URL when provided.");
+    }
+  }
+
+  if (config.analytics !== undefined) {
+    if (!config.analytics || typeof config.analytics !== "object" || Array.isArray(config.analytics)) {
+      errors.push("analytics must be an object.");
+    } else if (
+      config.analytics.clickTracking !== undefined &&
+      !CLICK_TRACKING_VALUES.includes(config.analytics.clickTracking)
+    ) {
+      errors.push(`analytics.clickTracking must be one of: ${CLICK_TRACKING_VALUES.join(", ")}.`);
     }
   }
 
@@ -141,6 +157,39 @@ function validateConfig(config) {
           !isValidUrl(config.metadata.ogImageUrl)
         ) {
           errors.push("metadata.ogImageUrl must be an http or https URL when provided.");
+        }
+      }
+
+      if (config.metadata.socialCard !== undefined) {
+        if (
+          !config.metadata.socialCard ||
+          typeof config.metadata.socialCard !== "object" ||
+          Array.isArray(config.metadata.socialCard)
+        ) {
+          errors.push("metadata.socialCard must be an object.");
+        } else {
+          if (
+            config.metadata.socialCard.eyebrow !== undefined &&
+            typeof config.metadata.socialCard.eyebrow !== "string"
+          ) {
+            errors.push("metadata.socialCard.eyebrow must be a string.");
+          }
+
+          if (
+            config.metadata.socialCard.style !== undefined &&
+            !SOCIAL_CARD_STYLE_VALUES.includes(config.metadata.socialCard.style)
+          ) {
+            errors.push(
+              `metadata.socialCard.style must be one of: ${SOCIAL_CARD_STYLE_VALUES.join(", ")}.`
+            );
+          }
+
+          if (
+            config.metadata.socialCard.showQrCode !== undefined &&
+            typeof config.metadata.socialCard.showQrCode !== "boolean"
+          ) {
+            errors.push("metadata.socialCard.showQrCode must be a boolean.");
+          }
         }
       }
     }
