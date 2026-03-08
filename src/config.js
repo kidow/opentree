@@ -1,6 +1,7 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { CONFIG_FILE_NAME } = require("./init");
+const { CONFIG_SCHEMA_VERSION } = require("./schema");
 
 function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
@@ -48,6 +49,12 @@ function validateConfig(config) {
 
   if (!config || typeof config !== "object" || Array.isArray(config)) {
     return ["Config must be a JSON object."];
+  }
+
+  if (config.schemaVersion !== undefined) {
+    if (!Number.isInteger(config.schemaVersion) || config.schemaVersion !== CONFIG_SCHEMA_VERSION) {
+      errors.push(`schemaVersion must be ${CONFIG_SCHEMA_VERSION} when provided.`);
+    }
   }
 
   if (!config.profile || typeof config.profile !== "object" || Array.isArray(config.profile)) {

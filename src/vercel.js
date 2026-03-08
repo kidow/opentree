@@ -612,12 +612,20 @@ async function runVercelStatus(io, args = [], deps = {}) {
   const stdout = io.stdout ?? process.stdout;
   const stderr = io.stderr ?? process.stderr;
   const env = io.env ?? process.env;
+  const requestedJson = args.includes("--json");
   let options;
 
   try {
     options = parseVercelStatusArgs(args);
   } catch (error) {
     stderr.write(`[opentree] ${error.message}\n`);
+    if (requestedJson) {
+      writeJsonReport(stdout, {
+        ...createVercelReport(cwd, "vercel status"),
+        issues: [error.message],
+        message: error.message
+      });
+    }
     return 1;
   }
 
@@ -633,8 +641,11 @@ async function runVercelStatus(io, args = [], deps = {}) {
 }
 
 async function runVercelCommand(io, args = [], deps = {}) {
+  const cwd = io.cwd ?? process.cwd();
+  const stdout = io.stdout ?? process.stdout;
   const stderr = io.stderr ?? process.stderr;
   const [subcommand, ...rest] = args;
+  const requestedJson = args.includes("--json");
 
   if (subcommand === "link") {
     return runVercelLink(io, rest, deps);
@@ -649,6 +660,13 @@ async function runVercelCommand(io, args = [], deps = {}) {
   }
 
   stderr.write("[opentree] usage: opentree vercel <link|unlink|status>\n");
+  if (requestedJson) {
+    writeJsonReport(stdout, {
+      ...createVercelReport(cwd, "vercel"),
+      issues: ["usage: opentree vercel <link|unlink|status>"],
+      message: "usage: opentree vercel <link|unlink|status>"
+    });
+  }
   return 1;
 }
 

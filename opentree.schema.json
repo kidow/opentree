@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kidow/opentree/blob/main/opentree.schema.json",
+  "title": "opentree config",
+  "description": "JSON schema for opentree.config.json",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "description": "Config contract version. Omit only for legacy compatibility.",
+      "type": "integer",
+      "const": 1
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "bio", "avatarUrl"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bio": {
+          "type": "string"
+        },
+        "avatarUrl": {
+          "type": "string",
+          "pattern": "^(|https?://.+)$"
+        }
+      }
+    },
+    "links": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "url"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "url": {
+            "type": "string",
+            "pattern": "^https?://.+$"
+          }
+        }
+      }
+    },
+    "theme": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accentColor", "backgroundColor", "textColor"],
+      "properties": {
+        "accentColor": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "backgroundColor": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "textColor": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        }
+      }
+    },
+    "siteUrl": {
+      "type": "string",
+      "pattern": "^(|https?://.+)$"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "ogImageUrl": {
+          "type": "string",
+          "pattern": "^(|https?://.+)$"
+        }
+      }
+    }
+  },
+  "required": ["profile", "links", "theme"]
+}

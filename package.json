@@ -20,7 +20,8 @@
   ],
   "files": [
     "bin",
-    "src"
+    "src",
+    "opentree.schema.json"
   ],
   "bin": {
     "opentree": "./bin/opentree.js"

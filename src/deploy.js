@@ -50,6 +50,10 @@ function getDeployPreflightStage(check) {
   return "auth";
 }
 
+function getDeployTarget(mode) {
+  return mode === "prod" ? "production" : "preview";
+}
+
 function parseDeployArgs(args) {
   let mode = "preview";
   let modeWasExplicit = false;
@@ -98,22 +102,27 @@ async function runDeploy(io, args = [], deps = {}) {
   const requestedJson = args.includes("--json");
   let options;
   let report = {
+    command: "deploy",
     cwd,
     deploymentUrl: null,
     inspectUrl: null,
+    issues: [],
     message: "",
     mode: "preview",
     ok: false,
     outputDir: path.join(cwd, OUTPUT_DIR_NAME),
     project: null,
     projectFilePath: null,
+    result: null,
     stage: "args"
   };
 
   try {
     options = parseDeployArgs(args);
     report.mode = options.mode;
+    report.target = getDeployTarget(options.mode);
   } catch (error) {
+    report.issues = [error.message];
     report.message = error.message;
     stderr.write(`[opentree] ${error.message}\n`);
     if (requestedJson) {
@@ -131,6 +140,7 @@ async function runDeploy(io, args = [], deps = {}) {
 
     if (deployConfigState.kind === "missing") {
       report.message = `${CONFIG_FILE_NAME} was not found in ${cwd}`;
+      report.issues = [report.message];
       stderr.write(`[opentree] ${CONFIG_FILE_NAME} was not found in ${cwd}\n`);
       stderr.write("[opentree] run `opentree init` first to create a starter config\n");
       if (options.json) {
@@ -141,6 +151,7 @@ async function runDeploy(io, args = [], deps = {}) {
 
     if (deployConfigState.kind === "invalid_json") {
       report.message = `${CONFIG_FILE_NAME} is not valid JSON`;
+      report.issues = [deployConfigState.message];
       stderr.write(`[opentree] ${CONFIG_FILE_NAME} is not valid JSON\n`);
       stderr.write(`[opentree] ${deployConfigState.message}\n`);
       if (options.json) {
@@ -153,6 +164,7 @@ async function runDeploy(io, args = [], deps = {}) {
     }
 
     report.message = "deploy preflight failed because the config is invalid";
+    report.issues = deployConfigState.errors;
     stderr.write("[opentree] deploy preflight failed because the config is invalid\n");
     deployConfigState.errors.forEach((error) => {
       stderr.write(`- ${error}\n`);
@@ -169,6 +181,7 @@ async function runDeploy(io, args = [], deps = {}) {
   if (!hasSiteUrl(deployConfigState.config)) {
     report.stage = "preflight";
     report.message = "deploy preflight failed because siteUrl is missing";
+    report.issues = [report.message];
     stderr.write("[opentree] deploy preflight failed because siteUrl is missing\n");
     stderr.write("[opentree] run `opentree site set --url <your-production-url>` and try again\n");
     if (options.json) {
@@ -188,6 +201,7 @@ async function runDeploy(io, args = [], deps = {}) {
   if (failedCheck) {
     report.stage = getDeployPreflightStage(failedCheck);
     report.message = `deploy preflight failed: ${failedCheck.message}`;
+    report.issues = [failedCheck.message, ...(failedCheck.details ?? []), ...(failedCheck.hints ?? [])];
     renderDeployPreflightCheck(stderr, failedCheck);
     if (options.json) {
       writeJsonReport(stdout, {
@@ -215,6 +229,7 @@ async function runDeploy(io, args = [], deps = {}) {
 
   if (buildExitCode !== 0) {
     report.message = `build failed with exit code ${buildExitCode}`;
+    report.issues = [report.message];
     if (options.json) {
       writeJsonReport(stdout, report);
     }
@@ -224,6 +239,16 @@ async function runDeploy(io, args = [], deps = {}) {
   report.stage = "deploy";
   const linkedProject = await syncLinkImpl(cwd, report.outputDir);
   const vercelArgs = ["--cwd", report.outputDir, ...options.vercelArgs];
+  report.projectFilePath = linkedProject.projectFilePath;
+  report.result = {
+    deploymentUrl: null,
+    inspectUrl: null,
+    mode: report.mode,
+    outputDir: report.outputDir,
+    project: report.project,
+    projectFilePath: report.projectFilePath,
+    target: report.target
+  };
 
   stderr.write(`[opentree] deploying ${OUTPUT_DIR_NAME} with Vercel CLI\n`);
   stderr.write(
@@ -266,6 +291,7 @@ async function runDeploy(io, args = [], deps = {}) {
 
       if (error && error.code === "ENOENT") {
         report.message = "Vercel CLI not found. Install it with `npm install -g vercel`";
+        report.issues = [report.message];
         stderr.write("[opentree] Vercel CLI not found. Install it with `npm install -g vercel`\n");
         if (options.json) {
           writeJsonReport(stdout, report);
@@ -286,16 +312,21 @@ async function runDeploy(io, args = [], deps = {}) {
 
       report.deploymentUrl = parseUrlFromOutput(deploymentOutput);
       report.inspectUrl = parseInspectUrl(deploymentStderr);
+      report.result.deploymentUrl = report.deploymentUrl;
+      report.result.inspectUrl = report.inspectUrl;
 
       if (code === 0) {
+        stderr.write(`[opentree] ${report.target} deployment ready\n`);
         if (report.deploymentUrl) {
-          stderr.write(`[opentree] deployment ready: ${report.deploymentUrl}\n`);
+          stderr.write(`[opentree] deployment url: ${report.deploymentUrl}\n`);
+        }
+        if (report.inspectUrl) {
+          stderr.write(`[opentree] inspect url: ${report.inspectUrl}\n`);
         }
         report.ok = true;
         report.message = report.deploymentUrl
-          ? `deployment ready: ${report.deploymentUrl}`
-          : "deployment completed";
-        report.projectFilePath = linkedProject.projectFilePath;
+          ? `${report.target} deployment ready: ${report.deploymentUrl}`
+          : `${report.target} deployment completed`;
         if (options.json) {
           writeJsonReport(stdout, report);
         }
@@ -303,9 +334,13 @@ async function runDeploy(io, args = [], deps = {}) {
         return;
       }
 
-      report.message = `Vercel deploy failed with exit code ${code ?? 1}`;
-      report.projectFilePath = linkedProject.projectFilePath;
+      report.message = `${report.target} deploy failed with exit code ${code ?? 1}`;
+      report.issues = [report.message];
+      if (report.inspectUrl) {
+        stderr.write(`[opentree] inspect url: ${report.inspectUrl}\n`);
+      }
       stderr.write(`[opentree] Vercel deploy failed with exit code ${code ?? 1}\n`);
+      stderr.write("[opentree] review the Vercel inspect output and logs, then retry the deploy\n");
       if (options.json) {
         writeJsonReport(stdout, report);
       }

@@ -1,5 +1,6 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const { CONFIG_SCHEMA_VERSION } = require("./schema");
 
 const CONFIG_FILE_NAME = "opentree.config.json";
 
@@ -23,6 +24,7 @@ function createInitReport(cwd) {
 
 function createDefaultConfig() {
   return {
+    schemaVersion: CONFIG_SCHEMA_VERSION,
     profile: {
       name: "Your Name",
       bio: "Add a short bio for your opentree page.",

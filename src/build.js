@@ -349,6 +349,7 @@ async function runBuild(io, args = []) {
   const requestedJson = args.includes("--json");
   let options;
   let report = {
+    command: "build",
     configPath: path.join(cwd, CONFIG_FILE_NAME),
     cwd,
     files: {
@@ -356,16 +357,19 @@ async function runBuild(io, args = []) {
       robots: null,
       sitemap: null
     },
+    issues: [],
     message: "",
     metadata: null,
     ok: false,
     outputDir: path.resolve(cwd, OUTPUT_DIR_NAME),
+    result: null,
     stage: "args"
   };
 
   try {
     options = parseBuildArgs(args);
   } catch (error) {
+    report.issues = [error.message];
     report.message = error.message;
     stderr.write(`[opentree] ${error.message}\n`);
     if (requestedJson) {
@@ -391,6 +395,7 @@ async function runBuild(io, args = []) {
 
     if (error && error.code === "ENOENT") {
       report.message = `${CONFIG_FILE_NAME} was not found in ${cwd}`;
+      report.issues = [report.message];
       stderr.write(`[opentree] ${CONFIG_FILE_NAME} was not found in ${cwd}\n`);
       stderr.write("[opentree] run `opentree init` first to create a starter config\n");
       if (options.json) {
@@ -401,6 +406,7 @@ async function runBuild(io, args = []) {
 
     if (error instanceof SyntaxError) {
       report.message = `${CONFIG_FILE_NAME} is not valid JSON`;
+      report.issues = [error.message];
       stderr.write(`[opentree] ${CONFIG_FILE_NAME} is not valid JSON\n`);
       stderr.write(`[opentree] ${error.message}\n`);
       if (options.json) {
@@ -419,6 +425,7 @@ async function runBuild(io, args = []) {
   if (errors.length > 0) {
     report.stage = "validate";
     report.message = "build aborted because the config is invalid";
+    report.issues = errors;
     stderr.write("[opentree] build aborted because the config is invalid\n");
     errors.forEach((error) => {
       stderr.write(`- ${error}\n`);
@@ -457,6 +464,11 @@ async function runBuild(io, args = []) {
 
   report.ok = true;
   report.message = `build completed: ${path.relative(cwd, outputPath)}`;
+  report.result = {
+    files: report.files,
+    metadata: report.metadata,
+    outputDir: report.outputDir
+  };
   if (options.json) {
     writeJsonReport(stdout, report);
   }

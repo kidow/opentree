@@ -181,6 +181,7 @@ test("init creates starter config in the current directory", async () => {
   assert.equal(config.profile.name, "Your Name");
   assert.equal(config.links.length, 2);
   assert.equal(config.theme.accentColor, "#166534");
+  assert.equal(config.schemaVersion, 1);
   assert.equal(config.siteUrl, "");
   assert.deepEqual(config.metadata, {
     title: "",
@@ -348,6 +349,7 @@ test("validate supports structured json output for valid config", async () => {
     cwd: tempDir,
     encoding: "utf8"
   });
+  const expectedConfigPath = await fs.realpath(path.join(tempDir, configFilePath));
 
   const result = spawnSync(process.execPath, [cliPath, "validate", "--json"], {
     cwd: tempDir,
@@ -357,9 +359,14 @@ test("validate supports structured json output for valid config", async () => {
 
   assert.equal(result.status, 0);
   assert.equal(report.ok, true);
+  assert.equal(report.command, "validate");
   assert.equal(report.stage, "validate");
   assert.equal(report.issueCount, 0);
   assert.deepEqual(report.issues, []);
+  assert.deepEqual(report.result, {
+    configPath: expectedConfigPath,
+    valid: true
+  });
   assert.match(report.message, /opentree\.config\.json is valid/);
   assert.match(result.stderr, /\[opentree\] validating opentree\.config\.json/);
   assert.match(result.stderr, /\[opentree\] opentree\.config\.json is valid/);
@@ -408,10 +415,12 @@ test("validate supports structured json output for invalid config", async () => 
 
   assert.equal(result.status, 1);
   assert.equal(report.ok, false);
+  assert.equal(report.command, "validate");
   assert.equal(report.stage, "validate");
   assert.equal(report.issueCount, 6);
   assert.match(report.message, /found 6 validation issue\(s\)/);
   assert.match(report.issues[0], /profile\.name must be a non-empty string/);
+  assert.equal(report.result, null);
   assert.match(result.stderr, /\[opentree\] found 6 validation issue\(s\)/);
 });
 
@@ -498,6 +507,104 @@ test("validate reports metadata errors for malformed site metadata", async () =>
   assert.match(result.stderr, /metadata\.title must be a string/);
   assert.match(result.stderr, /metadata\.description must be a string/);
   assert.match(result.stderr, /metadata\.ogImageUrl must be an http or https URL when provided/);
+});
+
+test("validate rejects unsupported schema versions", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-validate-schema-version-"));
+  await fs.writeFile(
+    path.join(tempDir, configFilePath),
+    JSON.stringify(
+      {
+        schemaVersion: 2,
+        profile: {
+          name: "Kidow",
+          bio: "Shipping links.",
+          avatarUrl: ""
+        },
+        links: [
+          {
+            title: "GitHub",
+            url: "https://github.com/kidow"
+          }
+        ],
+        theme: {
+          accentColor: "#166534",
+          backgroundColor: "#f0fdf4",
+          textColor: "#052e16"
+        },
+        siteUrl: "",
+        metadata: {
+          title: "",
+          description: "",
+          ogImageUrl: ""
+        }
+      },
+      null,
+      2
+    ) + "\n"
+  );
+
+  const result = spawnSync(process.execPath, [cliPath, "validate"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /schemaVersion must be 1 when provided/);
+});
+
+test("validate accepts legacy configs without schemaVersion", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-validate-schema-legacy-"));
+  await fs.writeFile(
+    path.join(tempDir, configFilePath),
+    JSON.stringify(
+      {
+        profile: {
+          name: "Kidow",
+          bio: "Shipping links.",
+          avatarUrl: ""
+        },
+        links: [
+          {
+            title: "GitHub",
+            url: "https://github.com/kidow"
+          }
+        ],
+        theme: {
+          accentColor: "#166534",
+          backgroundColor: "#f0fdf4",
+          textColor: "#052e16"
+        },
+        siteUrl: "",
+        metadata: {
+          title: "",
+          description: "",
+          ogImageUrl: ""
+        }
+      },
+      null,
+      2
+    ) + "\n"
+  );
+
+  const result = spawnSync(process.execPath, [cliPath, "validate"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /opentree\.config\.json is valid/);
+});
+
+test("repository ships a JSON Schema for opentree config", async () => {
+  const schemaPath = path.join(__dirname, "..", "opentree.schema.json");
+  const schema = JSON.parse(await fs.readFile(schemaPath, "utf8"));
+
+  assert.equal(schema.$schema, "https://json-schema.org/draft/2020-12/schema");
+  assert.equal(schema.title, "opentree config");
+  assert.equal(schema.properties.schemaVersion.const, 1);
+  assert.equal(schema.properties.profile.type, "object");
+  assert.equal(schema.properties.links.type, "array");
 });
 
 test("build creates a static html page in dist", async () => {
@@ -592,7 +699,9 @@ test("build supports structured json output", async () => {
 
   assert.equal(result.status, 0);
   assert.equal(report.ok, true);
+  assert.equal(report.command, "build");
   assert.equal(report.stage, "write");
+  assert.deepEqual(report.issues, []);
   assert.equal(report.outputDir, resolvedOutputDir);
   assert.equal(report.files.indexHtml, resolvedIndexHtml);
   assert.equal(report.files.sitemap, resolvedSitemap);
@@ -602,6 +711,8 @@ test("build supports structured json output", async () => {
   assert.equal(report.metadata.siteUrl, "https://links.example.com");
   assert.equal(report.metadata.imageUrl, "https://cdn.example.com/og.png");
   assert.equal(report.metadata.twitterCard, "summary_large_image");
+  assert.equal(report.result.outputDir, resolvedOutputDir);
+  assert.equal(report.result.files.indexHtml, resolvedIndexHtml);
   assert.match(result.stderr, /\[opentree\] building from opentree\.config\.json/);
   assert.match(result.stderr, /\[opentree\] wrote public\/site\/index\.html/);
 });
@@ -652,10 +763,13 @@ test("build supports structured json output for argument failures", async () => 
 
   assert.equal(result.status, 1);
   assert.equal(report.ok, false);
+  assert.equal(report.command, "build");
   assert.equal(report.stage, "args");
   assert.equal(report.message, "unknown option: --target");
+  assert.deepEqual(report.issues, ["unknown option: --target"]);
   assert.equal(report.files.indexHtml, null);
   assert.equal(report.metadata, null);
+  assert.equal(report.result, null);
   assert.match(result.stderr, /\[opentree\] unknown option: --target/);
 });
 
@@ -1017,17 +1131,22 @@ test("config show supports compact json output", async () => {
     cwd: tempDir,
     encoding: "utf8"
   });
+  const expectedConfigPath = await fs.realpath(path.join(tempDir, configFilePath));
 
   const result = spawnSync(process.execPath, [cliPath, "config", "show", "--json"], {
     cwd: tempDir,
     encoding: "utf8"
   });
-  const parsed = JSON.parse(result.stdout);
+  const report = JSON.parse(result.stdout);
 
   assert.equal(result.status, 0);
-  assert.equal(result.stdout, `${JSON.stringify(parsed)}\n`);
-  assert.equal(parsed.profile.name, "Your Name");
-  assert.equal(parsed.links.length, 2);
+  assert.equal(report.ok, true);
+  assert.equal(report.command, "config show");
+  assert.equal(report.stage, "load");
+  assert.equal(report.configPath, expectedConfigPath);
+  assert.deepEqual(report.issues, []);
+  assert.equal(report.result.config.profile.name, "Your Name");
+  assert.equal(report.result.config.links.length, 2);
 });
 
 test("config show supports explicit pretty output", async () => {
@@ -2115,8 +2234,9 @@ test("deploy runs build first and forwards the deployment url", async () => {
   assert.match(stdout.buffer, /https:\/\/opentree-demo\.vercel\.app/);
   assert.match(stderr.buffer, /\[opentree\] Vercel CLI authenticated as kidow/);
   assert.match(stderr.buffer, /\[opentree\] synced Vercel project link to dist\/\.vercel\/project\.json/);
-  assert.match(stderr.buffer, /Inspect: https:\/\/vercel\.com\/kidow\/opentree/);
-  assert.match(stderr.buffer, /\[opentree\] deployment ready: https:\/\/opentree-demo\.vercel\.app/);
+  assert.match(stderr.buffer, /\[opentree\] production deployment ready/);
+  assert.match(stderr.buffer, /\[opentree\] deployment url: https:\/\/opentree-demo\.vercel\.app/);
+  assert.match(stderr.buffer, /\[opentree\] inspect url: https:\/\/vercel\.com\/kidow\/opentree/);
 });
 
 test("deploy supports explicit preview mode without forwarding --prod", async () => {
@@ -2159,6 +2279,8 @@ test("deploy supports explicit preview mode without forwarding --prod", async ()
   assert.equal(spawnCalls.length, 2);
   assert.match(stderr.buffer, /\[opentree\] deploy mode: preview/);
   assert.deepEqual(spawnCalls[1].args, ["--cwd", path.join(tempDir, "dist")]);
+  assert.match(stderr.buffer, /\[opentree\] preview deployment ready/);
+  assert.match(stderr.buffer, /\[opentree\] deployment url: https:\/\/opentree-preview\.vercel\.app/);
   assert.match(stdout.buffer, /https:\/\/opentree-preview\.vercel\.app/);
 });
 
@@ -2200,17 +2322,25 @@ test("deploy supports structured json output on success", async () => {
 
   assert.equal(exitCode, 0);
   assert.equal(report.ok, true);
+  assert.equal(report.command, "deploy");
   assert.equal(report.mode, "prod");
   assert.equal(report.stage, "deploy");
   assert.equal(report.cwd, tempDir);
   assert.equal(report.outputDir, path.join(tempDir, "dist"));
+  assert.deepEqual(report.issues, []);
   assert.equal(report.deploymentUrl, "https://opentree-json.vercel.app");
   assert.equal(report.inspectUrl, "https://vercel.com/kidow/opentree-json");
   assert.equal(report.project.projectId, "prj_123");
   assert.equal(report.project.orgId, "team_456");
   assert.equal(report.project.projectName, "opentree");
   assert.equal(report.projectFilePath, path.join(tempDir, "dist", ".vercel", "project.json"));
-  assert.match(stderr.buffer, /\[opentree\] deployment ready: https:\/\/opentree-json\.vercel\.app/);
+  assert.equal(report.result.mode, "prod");
+  assert.equal(report.result.target, "production");
+  assert.equal(report.result.deploymentUrl, "https://opentree-json.vercel.app");
+  assert.equal(report.result.inspectUrl, "https://vercel.com/kidow/opentree-json");
+  assert.match(stderr.buffer, /\[opentree\] production deployment ready/);
+  assert.match(stderr.buffer, /\[opentree\] deployment url: https:\/\/opentree-json\.vercel\.app/);
+  assert.match(stderr.buffer, /\[opentree\] inspect url: https:\/\/vercel\.com\/kidow\/opentree-json/);
 });
 
 test("deploy reports a missing vercel cli", async () => {
@@ -2401,11 +2531,14 @@ test("deploy supports structured json output for argument failures", async () =>
 
   assert.equal(exitCode, 1);
   assert.equal(report.ok, false);
+  assert.equal(report.command, "deploy");
   assert.equal(report.stage, "args");
   assert.equal(report.mode, "preview");
   assert.equal(report.deploymentUrl, null);
   assert.equal(report.project, null);
   assert.equal(report.message, "unknown option: --target");
+  assert.deepEqual(report.issues, ["unknown option: --target"]);
+  assert.equal(report.result, null);
   assert.match(stderr.buffer, /\[opentree\] unknown option: --target/);
 });
 
@@ -2448,6 +2581,52 @@ test("deploy requires a reusable root Vercel project link", async () => {
     stderr.buffer,
     /run `opentree vercel link` to create a reusable root-level project link/
   );
+});
+
+test("deploy reports inspect url and guidance when the deploy step fails", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-deploy-fail-guidance-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+  await writeConfigFile(tempDir, {
+    siteUrl: "https://links.example.com"
+  });
+  await writeVercelProjectFile(tempDir);
+
+  const exitCode = await runDeploy(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr,
+      env: { ...process.env }
+    },
+    ["--prod", "--json"],
+    {
+      runBuild: async () => 0,
+      spawn: (_command, args) => {
+        if (args[0] === "whoami") {
+          return createFakeChildProcess({
+            stdout: "kidow\n"
+          });
+        }
+
+        return createFakeChildProcess({
+          stderr: "Inspect: https://vercel.com/kidow/opentree-failed\n",
+          exitCode: 1
+        });
+      }
+    }
+  );
+
+  const report = JSON.parse(stdout.buffer);
+
+  assert.equal(exitCode, 1);
+  assert.equal(report.ok, false);
+  assert.equal(report.stage, "deploy");
+  assert.equal(report.inspectUrl, "https://vercel.com/kidow/opentree-failed");
+  assert.equal(report.result.target, "production");
+  assert.equal(report.result.inspectUrl, "https://vercel.com/kidow/opentree-failed");
+  assert.match(stderr.buffer, /\[opentree\] inspect url: https:\/\/vercel\.com\/kidow\/opentree-failed/);
+  assert.match(stderr.buffer, /\[opentree\] review the Vercel inspect output and logs, then retry the deploy/);
 });
 
 test("deploy rejects unsupported or conflicting mode flags", async () => {
@@ -2706,6 +2885,84 @@ test("doctor supports json output for failing projects", async () => {
     "CLI is not installed",
     "root Vercel project link was not found"
   ]);
+});
+
+test("doctor returns structured json for argument failures", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-doctor-json-args-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+
+  const exitCode = await runDoctor(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr
+    },
+    ["--bad", "--json"]
+  );
+
+  const report = JSON.parse(stdout.buffer);
+
+  assert.equal(exitCode, 1);
+  assert.equal(report.ok, false);
+  assert.equal(report.command, "doctor");
+  assert.equal(report.stage, "args");
+  assert.equal(report.message, "usage: opentree doctor [--json]");
+  assert.deepEqual(report.issues, ["usage: opentree doctor [--json]"]);
+  assert.equal(report.result, null);
+  assert.match(stderr.buffer, /\[opentree\] usage: opentree doctor \[--json\]/);
+});
+
+test("vercel status returns structured json for argument failures", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-vercel-status-json-args-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+
+  const exitCode = await runVercelCommand(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr
+    },
+    ["status", "--bad", "--json"]
+  );
+
+  const report = JSON.parse(stdout.buffer);
+
+  assert.equal(exitCode, 1);
+  assert.equal(report.ok, false);
+  assert.equal(report.command, "vercel status");
+  assert.equal(report.stage, "args");
+  assert.equal(report.message, "usage: opentree vercel status [--json]");
+  assert.deepEqual(report.issues, ["usage: opentree vercel status [--json]"]);
+  assert.equal(report.result, null);
+  assert.match(stderr.buffer, /\[opentree\] usage: opentree vercel status \[--json\]/);
+});
+
+test("vercel command returns structured json for invalid subcommands", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-vercel-json-subcommand-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+
+  const exitCode = await runVercelCommand(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr
+    },
+    ["nope", "--json"]
+  );
+
+  const report = JSON.parse(stdout.buffer);
+
+  assert.equal(exitCode, 1);
+  assert.equal(report.ok, false);
+  assert.equal(report.command, "vercel");
+  assert.equal(report.stage, "args");
+  assert.equal(report.message, "usage: opentree vercel <link|unlink|status>");
+  assert.deepEqual(report.issues, ["usage: opentree vercel <link|unlink|status>"]);
+  assert.equal(report.result, null);
+  assert.match(stderr.buffer, /\[opentree\] usage: opentree vercel <link\|unlink\|status>/);
 });
 
 test("deploy rejects a custom cwd override", async () => {

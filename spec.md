@@ -17,6 +17,9 @@ The current CLI already supports:
 - deployment through `deploy`
 - Vercel link management through `vercel link`, `vercel status`, and `vercel unlink`
 - shared Vercel readiness diagnostics across `deploy`, `doctor`, and `vercel status`
+- a documented config contract with `schemaVersion: 1` and a shipped JSON Schema export
+- a documented JSON output contract with shared top-level fields across machine-readable commands
+- deploy output that clearly distinguishes preview vs production, standardizes URLs, and gives post-preflight failure guidance
 - readiness checks through `doctor`
 - machine-readable `--json` output for major commands
 - CI coverage through automated test and smoke test runs
@@ -33,60 +36,7 @@ The current CLI already supports:
 
 ## Remaining Work
 
-### 1. Formalize the Config Schema
-
-Priority: now
-
-The project needs a stable public config contract.
-
-Deliverables:
-
-- documented schema for `opentree.config.json`
-- explicit field definitions for `profile`, `links`, `theme`, `siteUrl`, and `metadata`
-- decision on whether to add `schemaVersion`
-- optional JSON Schema export for editor integration
-
-Acceptance criteria:
-
-- users can understand the full config format without reading source code
-- future breaking changes have a place to be versioned
-
-### 2. Freeze the JSON Output Contract
-
-Priority: now
-
-`--json` output is now broad enough that it should be treated as a public interface.
-
-Deliverables:
-
-- common required fields documented for all machine-readable commands
-- rules for `command`, `stage`, `message`, `issues`, and `result`
-- compatibility policy for future JSON changes
-
-Acceptance criteria:
-
-- downstream scripts can rely on output structure
-- new command implementations follow the same contract by default
-
-### 3. Improve Deploy UX
-
-Priority: next
-
-Deployment works, but the CLI can still be clearer and more polished.
-
-Deliverables:
-
-- clearer success output for preview vs production deploys
-- standardized reporting for deployment URL and inspect URL
-- better guidance when deploy fails after passing preflight
-- consistent JSON response shape for deploy outcomes
-
-Acceptance criteria:
-
-- a user can distinguish preview and production deploys without guessing
-- deploy failures are actionable without reading source code
-
-### 4. Raise Output Quality
+### 1. Raise Output Quality
 
 Priority: next
 
@@ -105,7 +55,7 @@ Acceptance criteria:
 - built pages behave well on common mobile and desktop widths
 - generated pages have reasonable default metadata and accessibility characteristics
 
-### 5. Release and Publishing Automation
+### 2. Release and Publishing Automation
 
 Priority: next
 
@@ -123,7 +73,7 @@ Acceptance criteria:
 - publishing a new version follows a repeatable process
 - release changes are visible to users
 
-### 6. Optional CLI Ergonomics
+### 3. Optional CLI Ergonomics
 
 Priority: later
 
@@ -141,7 +91,7 @@ Acceptance criteria:
 
 - additions must simplify common tasks without weakening the current deterministic workflow
 
-### 7. Future Expansion
+### 4. Future Expansion
 
 Priority: later
 
@@ -167,17 +117,12 @@ The following are explicitly out of scope for the near term:
 
 ## Recommended Execution Order
 
-1. Formalize the config schema.
-2. Freeze the JSON output contract.
-3. Improve deploy UX.
-4. Raise output quality.
-5. Automate releases.
-6. Revisit ergonomic and expansion features.
+1. Raise output quality.
+2. Automate releases.
+3. Revisit ergonomic and expansion features.
 
 ## Definition Of The Next Milestone
 
 The next milestone is complete when:
 
-- the config schema is documented in a stable way
-- JSON output is documented as a public contract
 - the default deployment workflow is clear enough for a first-time user

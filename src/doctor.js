@@ -7,6 +7,10 @@ const {
 } = require("./diagnostics");
 const { collectVercelStatus } = require("./vercel");
 
+function writeJsonReport(stdout, report) {
+  stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+}
+
 function parseDoctorArgs(args) {
   if (args.length === 0) {
     return { json: false };
@@ -120,12 +124,25 @@ async function runDoctor(io, args = [], deps = {}) {
   const stdout = io.stdout ?? process.stdout;
   const stderr = io.stderr ?? process.stderr;
   const env = io.env ?? process.env;
+  const requestedJson = args.includes("--json");
   let options;
 
   try {
     options = parseDoctorArgs(args);
   } catch (error) {
     stderr.write(`[opentree] ${error.message}\n`);
+    if (requestedJson) {
+      writeJsonReport(stdout, {
+        command: "doctor",
+        cwd,
+        issueCount: 1,
+        issues: [error.message],
+        message: error.message,
+        ok: false,
+        result: null,
+        stage: "args"
+      });
+    }
     return 1;
   }
 

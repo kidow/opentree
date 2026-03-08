@@ -24,12 +24,14 @@ async function runValidate(io, args = []) {
   const requestedJson = args.includes("--json");
   let options;
   const report = {
+    command: "validate",
     configPath: `${cwd}/${CONFIG_FILE_NAME}`,
     cwd,
     issueCount: 0,
     issues: [],
     message: "",
     ok: false,
+    result: null,
     stage: "args"
   };
 
@@ -56,6 +58,8 @@ async function runValidate(io, args = []) {
 
     if (error && error.code === "ENOENT") {
       report.message = `${CONFIG_FILE_NAME} was not found in ${cwd}`;
+      report.issues = [report.message];
+      report.issueCount = 1;
       stderr.write(`[opentree] ${CONFIG_FILE_NAME} was not found in ${cwd}\n`);
       stderr.write("[opentree] run `opentree init` first to create a starter config\n");
       if (options.json) {
@@ -99,6 +103,10 @@ async function runValidate(io, args = []) {
 
   report.ok = true;
   report.message = `${CONFIG_FILE_NAME} is valid`;
+  report.result = {
+    configPath: loadedConfig.configPath,
+    valid: true
+  };
   validateStdout.write(`[opentree] ${CONFIG_FILE_NAME} is valid\n`);
   if (options.json) {
     writeJsonReport(stdout, report);
