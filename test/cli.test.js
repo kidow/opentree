@@ -2239,7 +2239,82 @@ test("deploy reports a missing vercel cli", async () => {
 
   assert.equal(exitCode, 1);
   assert.equal(stdout.buffer, "");
-  assert.match(stderr.buffer, /Vercel CLI not found/);
+  assert.match(stderr.buffer, /checking Vercel readiness/);
+  assert.match(stderr.buffer, /CLI is not installed/);
+  assert.match(stderr.buffer, /npm install -g vercel/);
+});
+
+test("deploy uses the shared Vercel status collector for preflight", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-deploy-shared-status-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+  await writeConfigFile(tempDir, {
+    siteUrl: "https://links.example.com"
+  });
+  await writeVercelProjectFile(tempDir);
+
+  const exitCode = await runDeploy(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr,
+      env: { ...process.env }
+    },
+    [],
+    {
+      collectVercelStatus: async () => ({
+        checks: [
+          {
+            id: "vercel",
+            status: "fail",
+            message: "CLI is not installed",
+            hints: ["install it with `npm install -g vercel`"],
+            details: []
+          }
+        ],
+        result: {
+          cli: {
+            installed: false
+          },
+          auth: {
+            installed: false,
+            checked: false,
+            authenticated: false,
+            username: ""
+          },
+          link: {
+            kind: "linked",
+            linked: true,
+            project: {
+              projectId: "prj_123",
+              orgId: "team_456",
+              projectName: "opentree"
+            },
+            projectFilePath: path.join(tempDir, ".vercel", "project.json")
+          }
+        }
+      }),
+      runBuild: async () => {
+        throw new Error("runBuild should not be called when shared diagnostics fail");
+      },
+      spawn: (_command, args) => {
+        if (args[0] === "whoami") {
+          return createFakeChildProcess({
+            stdout: "kidow\n"
+          });
+        }
+
+        return createFakeChildProcess({
+          stdout: "https://opentree-preview.vercel.app\n"
+        });
+      }
+    }
+  );
+
+  assert.equal(exitCode, 1);
+  assert.equal(stdout.buffer, "");
+  assert.match(stderr.buffer, /CLI is not installed/);
+  assert.match(stderr.buffer, /npm install -g vercel/);
 });
 
 test("deploy requires siteUrl before running build", async () => {
@@ -2302,9 +2377,10 @@ test("deploy reports when vercel login is missing", async () => {
 
   assert.equal(exitCode, 1);
   assert.equal(stdout.buffer, "");
-  assert.match(stderr.buffer, /checking Vercel authentication/);
+  assert.match(stderr.buffer, /checking Vercel readiness/);
+  assert.match(stderr.buffer, /CLI is not logged in/);
   assert.match(stderr.buffer, /Error: Not logged in/);
-  assert.match(stderr.buffer, /Vercel CLI is not logged in\. Run `vercel login` and try again/);
+  assert.match(stderr.buffer, /run `vercel login`/);
 });
 
 test("deploy supports structured json output for argument failures", async () => {
@@ -2367,8 +2443,11 @@ test("deploy requires a reusable root Vercel project link", async () => {
 
   assert.equal(exitCode, 1);
   assert.equal(stdout.buffer, "");
-  assert.match(stderr.buffer, /project is not linked to Vercel/);
-  assert.match(stderr.buffer, /run `opentree vercel link` and try again/);
+  assert.match(stderr.buffer, /root Vercel project link was not found/);
+  assert.match(
+    stderr.buffer,
+    /run `opentree vercel link` to create a reusable root-level project link/
+  );
 });
 
 test("deploy rejects unsupported or conflicting mode flags", async () => {

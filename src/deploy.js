@@ -1,8 +1,8 @@
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 const { OUTPUT_DIR_NAME, runBuild } = require("./build");
-const { CONFIG_FILE_NAME, hasSiteUrl, inspectVercelAuth, loadValidatedConfig } = require("./preflight");
-const { inspectVercelProjectLink, syncVercelProjectLink } = require("./vercel");
+const { CONFIG_FILE_NAME, hasSiteUrl, loadValidatedConfig } = require("./preflight");
+const { collectVercelStatus, syncVercelProjectLink } = require("./vercel");
 
 function parseUrlFromOutput(output) {
   const lines = String(output)
@@ -28,6 +28,26 @@ function parseInspectUrl(stderrOutput) {
 
 function writeJsonReport(stdout, report) {
   stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+}
+
+function renderDeployPreflightCheck(stderr, check) {
+  stderr.write(`[opentree] ${check.message}\n`);
+
+  for (const hint of check.hints ?? []) {
+    stderr.write(`[opentree] hint: ${hint}\n`);
+  }
+
+  for (const detail of check.details ?? []) {
+    stderr.write(`[opentree] detail: ${detail}\n`);
+  }
+}
+
+function getDeployPreflightStage(check) {
+  if (check.id === "vercel link") {
+    return "link";
+  }
+
+  return "auth";
 }
 
 function parseDeployArgs(args) {
@@ -73,7 +93,7 @@ async function runDeploy(io, args = [], deps = {}) {
   const spawnImpl = deps.spawn ?? spawn;
   const runBuildImpl = deps.runBuild ?? runBuild;
   const loadConfigImpl = deps.loadConfig;
-  const inspectLinkImpl = deps.inspectVercelProjectLink ?? inspectVercelProjectLink;
+  const collectVercelStatusImpl = deps.collectVercelStatus ?? collectVercelStatus;
   const syncLinkImpl = deps.syncVercelProjectLink ?? syncVercelProjectLink;
   const requestedJson = args.includes("--json");
   let options;
@@ -157,63 +177,33 @@ async function runDeploy(io, args = [], deps = {}) {
     return 1;
   }
 
-  report.stage = "auth";
-  stderr.write("[opentree] checking Vercel authentication\n");
-  const vercelState = await inspectVercelAuth({
+  stderr.write("[opentree] checking Vercel readiness\n");
+  const vercelStatus = await collectVercelStatusImpl(cwd, env, {
     cwd,
     env,
-    spawnImpl
+    spawn: spawnImpl
   });
-  if (!vercelState.ok) {
-    if (!vercelState.installed) {
-      report.message = "Vercel CLI not found. Install it with `npm install -g vercel`";
-      stderr.write("[opentree] Vercel CLI not found. Install it with `npm install -g vercel`\n");
-      if (options.json) {
-        writeJsonReport(stdout, report);
-      }
-      return 1;
-    }
+  const failedCheck = vercelStatus.checks.find((check) => check.status === "fail");
 
-    if (vercelState.message) {
-      stderr.write(`${vercelState.message}\n`);
-    }
-    report.message = "Vercel CLI is not logged in. Run `vercel login` and try again";
-    stderr.write("[opentree] Vercel CLI is not logged in. Run `vercel login` and try again\n");
+  if (failedCheck) {
+    report.stage = getDeployPreflightStage(failedCheck);
+    report.message = `deploy preflight failed: ${failedCheck.message}`;
+    renderDeployPreflightCheck(stderr, failedCheck);
     if (options.json) {
       writeJsonReport(stdout, {
         ...report,
-        details: vercelState.message ? [vercelState.message] : []
+        details: [...(failedCheck.details ?? []), ...(failedCheck.hints ?? [])]
       });
     }
     return 1;
   }
 
-  if (vercelState.username) {
-    stderr.write(`[opentree] Vercel CLI authenticated as ${vercelState.username}\n`);
+  if (vercelStatus.result.auth.username) {
+    stderr.write(`[opentree] Vercel CLI authenticated as ${vercelStatus.result.auth.username}\n`);
   }
 
-  report.stage = "link";
-  const linkState = await inspectLinkImpl(cwd);
-  if (!linkState.ok) {
-    report.message = "deploy preflight failed because this project is not linked to Vercel";
-    stderr.write("[opentree] deploy preflight failed because this project is not linked to Vercel\n");
-    stderr.write("[opentree] run `opentree vercel link` and try again\n");
-
-    if (linkState.message) {
-      stderr.write(`[opentree] ${linkState.message}\n`);
-    }
-
-    if (options.json) {
-      writeJsonReport(stdout, {
-        ...report,
-        details: linkState.message ? [linkState.message] : []
-      });
-    }
-    return 1;
-  }
-
-  report.project = linkState.project;
-  report.projectFilePath = linkState.projectFilePath;
+  report.project = vercelStatus.result.link.project;
+  report.projectFilePath = vercelStatus.result.link.projectFilePath;
   report.stage = "build";
   const buildExitCode = await runBuildImpl({
     ...io,

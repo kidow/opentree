@@ -16,6 +16,7 @@ The current CLI already supports:
 - local preview through `dev`
 - deployment through `deploy`
 - Vercel link management through `vercel link`, `vercel status`, and `vercel unlink`
+- shared Vercel readiness diagnostics across `deploy`, `doctor`, and `vercel status`
 - readiness checks through `doctor`
 - machine-readable `--json` output for major commands
 - CI coverage through automated test and smoke test runs
@@ -32,25 +33,7 @@ The current CLI already supports:
 
 ## Remaining Work
 
-### 1. Unify Deploy Preflight With Shared Diagnostics
-
-Priority: now
-
-`deploy` should consume the same shared diagnostic collectors used by `doctor` and `vercel status`.
-
-Deliverables:
-
-- one shared source of truth for Vercel CLI installation checks
-- one shared source of truth for Vercel auth checks
-- one shared source of truth for root project link checks
-- consistent failure wording across `deploy`, `doctor`, and `vercel status`
-
-Acceptance criteria:
-
-- no duplicate Vercel readiness logic in separate command files
-- the same failure scenario produces equivalent status interpretation in all three commands
-
-### 2. Formalize the Config Schema
+### 1. Formalize the Config Schema
 
 Priority: now
 
@@ -68,7 +51,7 @@ Acceptance criteria:
 - users can understand the full config format without reading source code
 - future breaking changes have a place to be versioned
 
-### 3. Freeze the JSON Output Contract
+### 2. Freeze the JSON Output Contract
 
 Priority: now
 
@@ -85,7 +68,7 @@ Acceptance criteria:
 - downstream scripts can rely on output structure
 - new command implementations follow the same contract by default
 
-### 4. Improve Deploy UX
+### 3. Improve Deploy UX
 
 Priority: next
 
@@ -103,7 +86,7 @@ Acceptance criteria:
 - a user can distinguish preview and production deploys without guessing
 - deploy failures are actionable without reading source code
 
-### 5. Raise Output Quality
+### 4. Raise Output Quality
 
 Priority: next
 
@@ -122,7 +105,7 @@ Acceptance criteria:
 - built pages behave well on common mobile and desktop widths
 - generated pages have reasonable default metadata and accessibility characteristics
 
-### 6. Release and Publishing Automation
+### 5. Release and Publishing Automation
 
 Priority: next
 
@@ -140,7 +123,7 @@ Acceptance criteria:
 - publishing a new version follows a repeatable process
 - release changes are visible to users
 
-### 7. Optional CLI Ergonomics
+### 6. Optional CLI Ergonomics
 
 Priority: later
 
@@ -158,7 +141,7 @@ Acceptance criteria:
 
 - additions must simplify common tasks without weakening the current deterministic workflow
 
-### 8. Future Expansion
+### 7. Future Expansion
 
 Priority: later
 
@@ -184,19 +167,17 @@ The following are explicitly out of scope for the near term:
 
 ## Recommended Execution Order
 
-1. Unify deploy preflight with shared diagnostics.
-2. Formalize the config schema.
-3. Freeze the JSON output contract.
-4. Improve deploy UX.
-5. Raise output quality.
-6. Automate releases.
-7. Revisit ergonomic and expansion features.
+1. Formalize the config schema.
+2. Freeze the JSON output contract.
+3. Improve deploy UX.
+4. Raise output quality.
+5. Automate releases.
+6. Revisit ergonomic and expansion features.
 
 ## Definition Of The Next Milestone
 
 The next milestone is complete when:
 
-- `deploy`, `doctor`, and `vercel status` share the same readiness logic
 - the config schema is documented in a stable way
 - JSON output is documented as a public contract
 - the default deployment workflow is clear enough for a first-time user
