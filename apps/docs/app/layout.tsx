@@ -1,25 +1,8 @@
 import type { Metadata } from "next";
-import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import type { ReactNode } from "react";
-import { RootProvider } from "fumadocs-ui/provider";
+import { SiteFooter } from "@/components/docs/site-footer";
+import { SiteHeader } from "@/components/docs/site-header";
 import "./app.css";
-
-const display = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-display"
-});
-
-const sans = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-sans"
-});
-
-const mono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-mono"
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://docs.opentree.run"),
@@ -40,10 +23,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${display.variable} ${sans.variable} ${mono.variable} min-h-screen antialiased`}
-      >
-        <RootProvider>{children}</RootProvider>
+      <body className="min-h-screen bg-[var(--ot-canvas)] text-[var(--ot-ink)] antialiased">
+        <div className="mx-auto min-h-screen max-w-[1600px] px-4 pb-8 pt-6 lg:px-6">
+          <SiteHeader />
+          <main>{children}</main>
+          <SiteFooter />
+        </div>
       </body>
     </html>
   );

@@ -1,20 +1,18 @@
 @import "tailwindcss";
-@import "fumadocs-ui/css/neutral.css";
-@import "fumadocs-ui/css/preset.css";
-
-@source "../node_modules/fumadocs-ui/dist/**/*.js";
 
 :root {
-  --fd-layout-width: 1440px;
-  --ot-bg: #f2efe8;
-  --ot-panel: rgba(255, 252, 245, 0.86);
-  --ot-border: rgba(45, 33, 22, 0.14);
-  --ot-text: #201712;
-  --ot-muted: #5f5146;
-  --ot-accent: #116149;
-  --ot-accent-soft: #d9f8df;
-  --ot-terminal: #151617;
+  --ot-canvas: #f4efe5;
+  --ot-panel: rgba(255, 252, 246, 0.76);
+  --ot-panel-strong: rgba(255, 252, 246, 0.88);
+  --ot-border: rgba(39, 31, 25, 0.12);
+  --ot-ink: #1d1713;
+  --ot-muted: #62574c;
+  --ot-accent: #0f6058;
+  --ot-accent-soft: rgba(15, 96, 88, 0.14);
   --ot-shadow: 0 32px 100px rgba(35, 24, 15, 0.12);
+  --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --font-sans: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-mono: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
 * {
@@ -22,21 +20,23 @@
 }
 
 html {
+  scroll-behavior: smooth;
   background:
-    radial-gradient(circle at top left, rgba(247, 193, 111, 0.3), transparent 28rem),
-    radial-gradient(circle at 85% 15%, rgba(17, 97, 73, 0.18), transparent 24rem),
-    linear-gradient(180deg, #f7f1e6 0%, #ece5da 100%);
+    radial-gradient(circle at top left, rgba(243, 185, 92, 0.28), transparent 28rem),
+    radial-gradient(circle at 82% 12%, rgba(15, 96, 88, 0.16), transparent 24rem),
+    linear-gradient(180deg, #f7f2e8 0%, #ece4d8 100%);
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  color: var(--ot-text);
+  color: var(--ot-ink);
   font-family: var(--font-sans), sans-serif;
 }
 
 a {
   color: inherit;
+  text-decoration: none;
 }
 
 pre,
@@ -44,219 +44,139 @@ code {
   font-family: var(--font-mono), monospace;
 }
 
-.ot-shell {
-  width: min(1180px, calc(100vw - 32px));
-  margin: 0 auto;
-  padding: 40px 0 72px;
-}
-
-.ot-hero,
-.ot-grid-section,
-.ot-split-section {
-  display: grid;
-  gap: 24px;
-  margin-bottom: 24px;
-}
-
-.ot-hero {
-  grid-template-columns: 1.15fr 0.85fr;
-  align-items: stretch;
-}
-
-.ot-grid-section,
-.ot-split-section {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.ot-hero-copy,
-.ot-panel,
-.ot-command-card {
-  border: 1px solid var(--ot-border);
-  border-radius: 28px;
-  background: var(--ot-panel);
-  box-shadow: var(--ot-shadow);
-  backdrop-filter: blur(18px);
-}
-
-.ot-hero-copy {
-  padding: 36px;
-}
-
-.ot-command-card,
-.ot-panel {
-  padding: 28px;
-}
-
-.ot-eyebrow,
-.ot-section-label,
-.ot-command-header {
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  font-size: 0.78rem;
-  color: var(--ot-muted);
-}
-
-.ot-command-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.ot-hero h1,
-.ot-grid-section h2,
-.ot-preview-panel h3 {
+.ot-display {
   font-family: var(--font-display), serif;
-  line-height: 0.95;
 }
 
-.ot-hero h1 {
-  margin: 14px 0 16px;
-  font-size: clamp(3.1rem, 8vw, 5.6rem);
-  max-width: 12ch;
+.ot-mono {
+  font-family: var(--font-mono), monospace;
 }
 
-.ot-grid-section h2 {
-  margin: 8px 0 0;
-  font-size: clamp(2rem, 4vw, 3.2rem);
-  max-width: 12ch;
+::selection {
+  background: rgba(15, 96, 88, 0.18);
 }
 
-.ot-lead,
-.ot-panel p,
-.ot-proof-list,
-.ot-link-stack {
+.ot-prose {
   color: var(--ot-muted);
-  line-height: 1.7;
-  font-size: 1rem;
+  font-size: 1.03rem;
+  line-height: 1.85;
 }
 
-.ot-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin: 28px 0 18px;
+.ot-prose > :first-child {
+  margin-top: 0;
 }
 
-.ot-button {
+.ot-prose > * + * {
+  margin-top: 1.25rem;
+}
+
+.ot-prose h2,
+.ot-prose h3,
+.ot-prose h4 {
+  color: var(--ot-ink);
+  font-family: var(--font-display), serif;
+  line-height: 0.98;
+}
+
+.ot-prose h2 {
+  margin-top: 3.25rem;
+  font-size: clamp(2rem, 3vw, 3rem);
+}
+
+.ot-prose h3 {
+  margin-top: 2.4rem;
+  font-size: clamp(1.4rem, 2vw, 2rem);
+}
+
+.ot-prose h4 {
+  margin-top: 2rem;
+  font-size: 1.2rem;
+}
+
+.ot-prose p code,
+.ot-prose li code {
   border: 1px solid var(--ot-border);
-  border-radius: 999px;
-  padding: 12px 18px;
-  text-decoration: none;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.5);
+  border-radius: 0.7rem;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 0.12rem 0.45rem;
+  color: var(--ot-ink);
+  font-size: 0.9em;
 }
 
-.ot-button-primary {
-  background: var(--ot-accent);
-  color: white;
-  border-color: transparent;
+.ot-prose a {
+  color: var(--ot-accent);
+  text-decoration: underline;
+  text-decoration-color: rgba(15, 96, 88, 0.3);
+  text-underline-offset: 0.18em;
 }
 
-.ot-caption {
-  margin: 0;
-  font-size: 0.92rem;
+.ot-prose ul,
+.ot-prose ol {
+  padding-left: 1.2rem;
+}
+
+.ot-prose li + li {
+  margin-top: 0.65rem;
+}
+
+.ot-prose blockquote {
+  margin: 1.75rem 0;
+  border-left: 3px solid var(--ot-accent);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.52);
+  padding: 1rem 1.25rem;
+  color: var(--ot-ink);
+}
+
+.ot-prose pre {
+  margin: 1.75rem 0;
+  overflow-x: auto;
+  border-radius: 1.3rem;
+  background: #171b20;
+  padding: 1.25rem 1.35rem;
+  color: #eef4f1;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.ot-prose pre code {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: 0.95rem;
+}
+
+.ot-prose hr {
+  margin: 2rem 0;
+  border: 0;
+  border-top: 1px solid var(--ot-border);
+}
+
+.ot-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+}
+
+.ot-prose thead th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
   color: var(--ot-muted);
 }
 
-.ot-command-card {
-  background:
-    linear-gradient(180deg, rgba(21, 22, 23, 0.98), rgba(31, 33, 36, 0.96)),
-    var(--ot-terminal);
-  color: #f2efe8;
+.ot-prose th,
+.ot-prose td {
+  border-bottom: 1px solid var(--ot-border);
+  padding: 0.85rem 1rem;
+  text-align: left;
 }
 
-.ot-command-card pre {
-  margin: 0;
-  overflow: auto;
-  white-space: pre-wrap;
-  font-size: 0.95rem;
-  line-height: 1.8;
-}
-
-.ot-workflow-grid,
-.ot-template-grid {
-  display: grid;
-  gap: 16px;
-}
-
-.ot-workflow-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.ot-step {
-  display: inline-flex;
-  width: 44px;
-  height: 44px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: var(--ot-accent-soft);
-  color: var(--ot-accent);
-  font-weight: 700;
-  margin-bottom: 18px;
-}
-
-.ot-panel h3 {
-  margin: 0 0 10px;
-  font-size: 1.4rem;
-}
-
-.ot-proof-list {
-  margin: 0;
-  padding-left: 20px;
-}
-
-.ot-template-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.ot-template {
-  min-height: 180px;
-  border-radius: 24px;
-  padding: 22px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.ot-template span {
-  font-size: 0.82rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.ot-template strong {
-  font-size: 1.08rem;
-  line-height: 1.5;
-}
-
-.ot-template-glass {
-  background:
-    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.86), transparent 32%),
-    linear-gradient(135deg, rgba(17, 97, 73, 0.16), rgba(255, 214, 153, 0.48));
-  border: 1px solid rgba(17, 97, 73, 0.16);
-}
-
-.ot-template-terminal {
-  background:
-    linear-gradient(180deg, rgba(20, 21, 22, 0.98), rgba(39, 42, 43, 0.96));
-  color: #d4f7dc;
-  border: 1px solid rgba(135, 199, 165, 0.15);
-}
-
-.ot-link-stack {
-  display: grid;
-  gap: 14px;
-}
-
-.ot-link-stack a {
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.ot-link-stack a:hover {
-  color: var(--ot-accent);
+@media (max-width: 900px) {
+  .ot-prose {
+    font-size: 1rem;
+    line-height: 1.78;
+  }
 }
 
 @media (max-width: 960px) {

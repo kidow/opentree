@@ -22,16 +22,27 @@ test("root package exposes docs app scripts", async () => {
   assert.equal(packageJson.scripts["docs:test"], "npm --prefix apps/docs run test");
 });
 
-test("docs app includes the planned Fumadocs skeleton", async () => {
+test("docs app includes a custom Next.js + Tailwind docs shell", async () => {
   const docsPackageJson = await readJson(path.join(docsAppDir, "package.json"));
-  const sourceConfig = await readText(path.join(docsAppDir, "source.config.ts"));
-  const sourceLoader = await readText(path.join(docsAppDir, "lib", "source.ts"));
-  const mdxComponents = await readText(path.join(docsAppDir, "mdx-components.tsx"));
   const appLayout = await readText(path.join(docsAppDir, "app", "layout.tsx"));
+  const appStyles = await readText(path.join(docsAppDir, "app", "app.css"));
   const docsLayout = await readText(path.join(docsAppDir, "app", "docs", "layout.tsx"));
   const docsPage = await readText(
     path.join(docsAppDir, "app", "docs", "[[...slug]]", "page.tsx")
   );
+  const docsHelpers = await readText(path.join(docsAppDir, "lib", "docs.ts"));
+  const layoutShared = await readText(path.join(docsAppDir, "lib", "layout.shared.tsx"));
+  const siteHeader = await readText(
+    path.join(docsAppDir, "components", "docs", "site-header.tsx")
+  );
+  const docsSidebar = await readText(
+    path.join(docsAppDir, "components", "docs", "sidebar.tsx")
+  );
+  const tableOfContents = await readText(
+    path.join(docsAppDir, "components", "docs", "table-of-contents.tsx")
+  );
+  const mdxComponents = await readText(path.join(docsAppDir, "mdx-components.tsx"));
+  const nextConfig = await readText(path.join(docsAppDir, "next.config.mjs"));
   const searchRoute = await readText(
     path.join(docsAppDir, "app", "api", "search", "route.ts")
   );
@@ -40,17 +51,40 @@ test("docs app includes the planned Fumadocs skeleton", async () => {
   assert.equal(docsPackageJson.scripts.dev, "next dev");
   assert.equal(docsPackageJson.scripts.build, "next build");
   assert.equal(docsPackageJson.scripts.test, "node --test");
-  assert.equal(docsPackageJson.scripts.postinstall, "fumadocs-mdx");
-  assert.match(docsPackageJson.dependencies.next, /^15\./);
-  assert.match(sourceConfig, /dir:\s*["']content\/docs["']/);
-  assert.match(sourceLoader, /@\/\.source/);
-  assert.match(sourceLoader, /baseUrl:\s*["']\/docs["']/);
-  assert.match(mdxComponents, /useMDXComponents/);
-  assert.match(appLayout, /RootProvider/);
-  assert.match(docsLayout, /DocsLayout/);
-  assert.match(docsPage, /source\.getPage/);
+  assert.equal("postinstall" in docsPackageJson.scripts, false);
+  assert.match(docsPackageJson.dependencies.next, /15\./);
+  assert.deepEqual(Object.keys(docsPackageJson.dependencies).sort(), [
+    "@mdx-js/mdx",
+    "next",
+    "react",
+    "react-dom",
+    "remark-gfm"
+  ]);
+  assert.doesNotMatch(appLayout, /RootProvider/);
+  assert.doesNotMatch(appStyles, /@import .*preset/i);
+  assert.match(appLayout, /SiteHeader/);
+  assert.match(appLayout, /SiteFooter/);
+  assert.doesNotMatch(docsLayout, /DocsLayout/);
+  assert.doesNotMatch(docsPage, /source\.getPage/);
+  assert.match(docsPage, /getCompiledDocPage/);
+  assert.match(docsPage, /DocsSidebar/);
+  assert.match(docsPage, /TableOfContents/);
+  assert.match(docsPage, /useMDXComponents/);
   assert.match(docsPage, /generateStaticParams/);
-  assert.match(searchRoute, /createFromSource/);
+  assert.match(docsHelpers, /meta\.json/);
+  assert.match(docsHelpers, /content[\\/]+docs/);
+  assert.match(docsHelpers, /@mdx-js\/mdx/);
+  assert.match(nextConfig, /reactStrictMode/);
+  assert.doesNotMatch(nextConfig, /createMDX/);
+  assert.match(searchRoute, /NextResponse/);
+  assert.match(siteHeader, /siteLinks/);
+  assert.match(layoutShared, /GitHub/);
+  assert.match(layoutShared, /Docs index/i);
+  assert.match(docsSidebar, /currentPath/);
+  assert.match(tableOfContents, /items/);
+  assert.match(mdxComponents, /slugifyHeading/);
+  await assert.rejects(fs.access(path.join(docsAppDir, "source.config.ts")));
+  await assert.rejects(fs.access(path.join(docsAppDir, "lib", "source.ts")));
 });
 
 test("docs app ships the initial landing and information architecture content", async () => {
@@ -76,9 +110,9 @@ test("docs app ships the initial landing and information architecture content", 
   await fs.access(path.join(docsAppDir, "content", "docs", "reference", "cli-commands.mdx"));
   await fs.access(path.join(docsAppDir, "content", "docs", "reference", "config-schema.mdx"));
 
-  assert.match(homePage, /CLI-first link-in-bio generator/);
-  assert.match(homePage, /init -> edit -> build -> deploy/);
-  assert.match(homePage, /5-minute quick start/i);
+  assert.match(homePage, /control panel, not a theme preset/i);
+  assert.match(homePage, /Install CLI/);
+  assert.match(homePage, /Section map/i);
   assert.match(docsIndex, /Start here/);
   assert.deepEqual(gettingStartedMeta.pages, [
     "installation",
