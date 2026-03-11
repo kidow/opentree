@@ -20,6 +20,7 @@ function createVercelReport(cwd, command) {
   return {
     command,
     cwd,
+    dryRun: false,
     issues: [],
     message: "",
     ok: false,
@@ -175,21 +176,28 @@ async function removeOptionalVercelProjectLink(baseDir = process.cwd()) {
 }
 
 function parseVercelLinkArgs(args) {
+  let dryRun = false;
   let json = false;
 
   for (const arg of args) {
     if (arg === "--json") {
       json = true;
+      continue;
+    }
+
+    if (arg === "--dry-run") {
+      dryRun = true;
       continue;
     }
 
     throw new Error("usage: opentree vercel link [--json]");
   }
 
-  return { json };
+  return { dryRun, json };
 }
 
 function parseVercelUnlinkArgs(args) {
+  let dryRun = false;
   let json = false;
 
   for (const arg of args) {
@@ -198,10 +206,15 @@ function parseVercelUnlinkArgs(args) {
       continue;
     }
 
+    if (arg === "--dry-run") {
+      dryRun = true;
+      continue;
+    }
+
     throw new Error("usage: opentree vercel unlink [--json]");
   }
 
-  return { json };
+  return { dryRun, json };
 }
 
 function parseVercelStatusArgs(args) {
@@ -244,7 +257,8 @@ async function runVercelLink(io, args = [], deps = {}) {
     return 1;
   }
 
-  const { json } = options;
+  const { dryRun, json } = options;
+  report.dryRun = dryRun;
   const statusOut = json ? stderr : stdout;
   const configState = await loadValidatedConfig(cwd, loadConfigImpl);
   if (!configState.ok) {
@@ -317,6 +331,25 @@ async function runVercelLink(io, args = [], deps = {}) {
 
   if (vercelState.username) {
     stderr.write(`[opentree] Vercel CLI authenticated as ${vercelState.username}\n`);
+  }
+
+  if (dryRun) {
+    report.ok = true;
+    report.stage = "dry-run";
+    report.message = `dry run: would link project root and store ${path.relative(cwd, report.projectFilePath)}`;
+    report.result = {
+      dryRun: true,
+      linked: false,
+      project: null,
+      projectFilePath: report.projectFilePath
+    };
+    statusOut.write(
+      `[opentree] dry run: would link project root and store ${path.relative(cwd, report.projectFilePath)}\n`
+    );
+    if (json) {
+      writeJsonReport(stdout, report);
+    }
+    return 0;
   }
 
   report.stage = "link";
@@ -442,8 +475,26 @@ async function runVercelUnlink(io, args = [], deps = {}) {
     return 1;
   }
 
-  const { json } = options;
+  const { dryRun, json } = options;
+  report.dryRun = dryRun;
   const statusOut = json ? stderr : stdout;
+
+  if (dryRun) {
+    report.ok = true;
+    report.stage = "dry-run";
+    report.message = "dry run: would clear local Vercel project linkage";
+    report.result = {
+      dryRun: true,
+      removedCount: 0,
+      removedPaths: pathsToClean.map((targetDir) => getVercelProjectFilePath(targetDir))
+    };
+    statusOut.write("[opentree] dry run: would clear local Vercel project linkage\n");
+    if (json) {
+      writeJsonReport(stdout, report);
+    }
+    return 0;
+  }
+
   report.stage = "remove";
   const removalResults = await Promise.all(pathsToClean.map((targetDir) => removeLinkImpl(targetDir)));
   const removedResults = removalResults.filter((result) => result.removed);

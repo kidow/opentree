@@ -446,13 +446,19 @@ function writeJsonReport(stdout, report) {
   stdout.write(`${JSON.stringify(report, null, 2)}\n`);
 }
 
-function extractJsonFlag(args) {
+function extractCommandFlags(args) {
   const filteredArgs = [];
   let json = false;
+  let dryRun = false;
 
   args.forEach((arg) => {
     if (arg === "--json") {
       json = true;
+      return;
+    }
+
+    if (arg === "--dry-run") {
+      dryRun = true;
       return;
     }
 
@@ -461,6 +467,7 @@ function extractJsonFlag(args) {
 
   return {
     args: filteredArgs,
+    dryRun,
     json
   };
 }
@@ -471,6 +478,7 @@ function createEditReport(cwd, command) {
     config: null,
     configPath: path.join(cwd, CONFIG_FILE_NAME),
     cwd,
+    dryRun: false,
     issues: [],
     message: "",
     ok: false,
@@ -554,6 +562,7 @@ function emitEditFailure(io, report, json, message, issues = []) {
 function emitReportSuccess(io, report, json, message, result, configState, stage = "save") {
   report.ok = true;
   report.stage = stage;
+  report.dryRun = stage === "dry-run";
   report.message = message;
   report.result = result;
   report.config = configState.config;
@@ -570,6 +579,10 @@ function emitReportSuccess(io, report, json, message, result, configState, stage
 
 function emitEditSuccess(io, report, json, message, result, savedConfig) {
   return emitReportSuccess(io, report, json, message, result, savedConfig, "save");
+}
+
+function emitDryRunSuccess(io, report, json, message, result, configState) {
+  return emitReportSuccess(io, report, json, message, result, configState, "dry-run");
 }
 
 function readLinks(config) {
@@ -597,7 +610,7 @@ async function runProfileCommand(io, args = []) {
     return emitEditFailure(io, report, requestedJson, message);
   }
 
-  const { args: filteredArgs, json } = extractJsonFlag(restArgs);
+  const { args: filteredArgs, dryRun, json } = extractCommandFlags(restArgs);
   let updates;
   try {
     updates = parseProfileArgs(filteredArgs);
@@ -633,6 +646,23 @@ async function runProfileCommand(io, args = []) {
     return emitEditFailure(io, report, json, "profile update aborted because the config would be invalid", errors);
   }
 
+  if (dryRun) {
+    return emitDryRunSuccess(
+      io,
+      report,
+      json,
+      `dry run: would update profile fields: ${Object.keys(updates).join(", ")}`,
+      {
+        fields: Object.keys(updates),
+        profile: nextConfig.profile
+      },
+      {
+        config: nextConfig,
+        configPath: loadedConfig.configPath
+      }
+    );
+  }
+
   const savedConfig = await saveConfig(cwd, nextConfig);
 
   return emitEditSuccess(
@@ -655,7 +685,7 @@ async function runLinkCommand(io, args = []) {
 
   if (subcommand === "list") {
     const report = createEditReport(cwd, "link list");
-    const { args: filteredArgs, json } = extractJsonFlag(restArgs);
+    const { args: filteredArgs, json } = extractCommandFlags(restArgs);
 
     if (filteredArgs.length > 0) {
       const message = "usage: opentree link list [--json]";
@@ -716,7 +746,7 @@ async function runLinkCommand(io, args = []) {
   }
 
   const report = createEditReport(cwd, `link ${subcommand}`);
-  const { args: filteredArgs, json } = extractJsonFlag(restArgs);
+  const { args: filteredArgs, dryRun, json } = extractCommandFlags(restArgs);
 
   if (subcommand === "add") {
     let options;
@@ -763,6 +793,24 @@ async function runLinkCommand(io, args = []) {
       report.stage = "validate";
       reportInvalidConfig(io, "link add", errors);
       return emitEditFailure(io, report, json, "link add aborted because the config would be invalid", errors);
+    }
+
+    if (dryRun) {
+      return emitDryRunSuccess(
+        io,
+        report,
+        json,
+        `dry run: would add link #${insertIndex + 1}: ${options.title}`,
+        {
+          index: insertIndex + 1,
+          link: nextConfig.links[insertIndex],
+          linksCount: nextConfig.links.length
+        },
+        {
+          config: nextConfig,
+          configPath: loadedConfig.configPath
+        }
+      );
     }
 
     const savedConfig = await saveConfig(cwd, nextConfig);
@@ -818,6 +866,25 @@ async function runLinkCommand(io, args = []) {
       report.stage = "validate";
       reportInvalidConfig(io, "link preset", errors);
       return emitEditFailure(io, report, json, "link preset aborted because the config would be invalid", errors);
+    }
+
+    if (dryRun) {
+      return emitDryRunSuccess(
+        io,
+        report,
+        json,
+        `dry run: would add ${preset.title} preset`,
+        {
+          index: nextConfig.links.length,
+          link: presetLink,
+          linksCount: nextConfig.links.length,
+          preset: options.name
+        },
+        {
+          config: nextConfig,
+          configPath: loadedConfig.configPath
+        }
+      );
     }
 
     const savedConfig = await saveConfig(cwd, nextConfig);
@@ -889,6 +956,28 @@ async function runLinkCommand(io, args = []) {
       report.stage = "validate";
       reportInvalidConfig(io, "link update", errors);
       return emitEditFailure(io, report, json, "link update aborted because the config would be invalid", errors);
+    }
+
+    if (dryRun) {
+      return emitDryRunSuccess(
+        io,
+        report,
+        json,
+        `dry run: would update link #${options.index}`,
+        {
+          fields: [
+            ...(options.title === undefined ? [] : ["title"]),
+            ...(options.url === undefined ? [] : ["url"])
+          ],
+          index: options.index,
+          link: nextConfig.links[options.index - 1],
+          linksCount: nextConfig.links.length
+        },
+        {
+          config: nextConfig,
+          configPath: loadedConfig.configPath
+        }
+      );
     }
 
     const savedConfig = await saveConfig(cwd, nextConfig);
@@ -967,6 +1056,25 @@ async function runLinkCommand(io, args = []) {
       return emitEditFailure(io, report, json, "link move aborted because the config would be invalid", errors);
     }
 
+    if (dryRun) {
+      return emitDryRunSuccess(
+        io,
+        report,
+        json,
+        `dry run: would move link from #${options.from} to #${options.to}`,
+        {
+          from: options.from,
+          to: options.to,
+          link: movedLink,
+          linksCount: nextConfig.links.length
+        },
+        {
+          config: nextConfig,
+          configPath: loadedConfig.configPath
+        }
+      );
+    }
+
     const savedConfig = await saveConfig(cwd, nextConfig);
 
     return emitEditSuccess(
@@ -1038,6 +1146,24 @@ async function runLinkCommand(io, args = []) {
       return emitEditFailure(io, report, json, "link remove aborted because the config would be invalid", errors);
     }
 
+    if (dryRun) {
+      return emitDryRunSuccess(
+        io,
+        report,
+        json,
+        `dry run: would remove link #${options.index}: ${removedLink.title}`,
+        {
+          index: options.index,
+          link: removedLink,
+          linksCount: nextConfig.links.length
+        },
+        {
+          config: nextConfig,
+          configPath: loadedConfig.configPath
+        }
+      );
+    }
+
     const savedConfig = await saveConfig(cwd, nextConfig);
 
     return emitEditSuccess(
@@ -1077,7 +1203,7 @@ async function runThemeCommand(io, args = []) {
     return emitEditFailure(io, report, requestedJson, message);
   }
 
-  const { args: filteredArgs, json } = extractJsonFlag(restArgs);
+  const { args: filteredArgs, dryRun, json } = extractCommandFlags(restArgs);
   let updates;
   try {
     updates = parseThemeArgs(filteredArgs);
@@ -1113,6 +1239,23 @@ async function runThemeCommand(io, args = []) {
     return emitEditFailure(io, report, json, "theme update aborted because the config would be invalid", errors);
   }
 
+  if (dryRun) {
+    return emitDryRunSuccess(
+      io,
+      report,
+      json,
+      `dry run: would update theme fields: ${Object.keys(updates).join(", ")}`,
+      {
+        fields: Object.keys(updates),
+        theme: nextConfig.theme
+      },
+      {
+        config: nextConfig,
+        configPath: loadedConfig.configPath
+      }
+    );
+  }
+
   const savedConfig = await saveConfig(cwd, nextConfig);
 
   return emitEditSuccess(
@@ -1140,7 +1283,7 @@ async function runSiteCommand(io, args = []) {
     return emitEditFailure(io, report, requestedJson, message);
   }
 
-  const { args: filteredArgs, json } = extractJsonFlag(restArgs);
+  const { args: filteredArgs, dryRun, json } = extractCommandFlags(restArgs);
   let updates;
   try {
     updates = parseSiteArgs(filteredArgs);
@@ -1171,6 +1314,26 @@ async function runSiteCommand(io, args = []) {
     report.stage = "validate";
     reportInvalidConfig(io, "site update", errors);
     return emitEditFailure(io, report, json, "site update aborted because the config would be invalid", errors);
+  }
+
+  if (dryRun) {
+    return emitDryRunSuccess(
+      io,
+      report,
+      json,
+      "dry run: would update site fields: siteUrl",
+      {
+        fields: ["siteUrl"],
+        site: {
+          analytics: nextConfig.analytics,
+          siteUrl: nextConfig.siteUrl
+        }
+      },
+      {
+        config: nextConfig,
+        configPath: loadedConfig.configPath
+      }
+    );
   }
 
   const savedConfig = await saveConfig(cwd, nextConfig);
@@ -1204,7 +1367,7 @@ async function runMetaCommand(io, args = []) {
     return emitEditFailure(io, report, requestedJson, message);
   }
 
-  const { args: filteredArgs, json } = extractJsonFlag(restArgs);
+  const { args: filteredArgs, dryRun, json } = extractCommandFlags(restArgs);
   let updates;
   try {
     updates = parseMetaArgs(filteredArgs);
@@ -1250,6 +1413,23 @@ async function runMetaCommand(io, args = []) {
     report.stage = "validate";
     reportInvalidConfig(io, "meta update", errors);
     return emitEditFailure(io, report, json, "meta update aborted because the config would be invalid", errors);
+  }
+
+  if (dryRun) {
+    return emitDryRunSuccess(
+      io,
+      report,
+      json,
+      `dry run: would update metadata fields: ${Object.keys(updates).join(", ")}`,
+      {
+        fields: Object.keys(updates),
+        metadata: nextConfig.metadata
+      },
+      {
+        config: nextConfig,
+        configPath: loadedConfig.configPath
+      }
+    );
   }
 
   const savedConfig = await saveConfig(cwd, nextConfig);

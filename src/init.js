@@ -208,6 +208,7 @@ function parseInitArgs(args) {
 
 function parseInitCommandArgs(args) {
   const filteredArgs = [];
+  let dryRun = false;
   let json = false;
 
   args.forEach((arg) => {
@@ -216,10 +217,16 @@ function parseInitCommandArgs(args) {
       return;
     }
 
+    if (arg === "--dry-run") {
+      dryRun = true;
+      return;
+    }
+
     filteredArgs.push(arg);
   });
 
   return {
+    dryRun,
     json,
     overrides: parseInitArgs(filteredArgs)
   };
@@ -245,7 +252,7 @@ async function runInit(io, args = []) {
     return 1;
   }
 
-  const { json, overrides } = options;
+  const { dryRun, json, overrides } = options;
   const config = createDefaultConfig();
   config.profile = {
     ...config.profile,
@@ -264,25 +271,53 @@ async function runInit(io, args = []) {
   }
 
   try {
-    await fs.writeFile(`${configPath}`, JSON.stringify(config, null, 2) + "\n", {
-      flag: "wx"
-    });
+    await fs.access(configPath);
+    throw Object.assign(new Error(`${CONFIG_FILE_NAME} already exists`), { code: "EEXIST" });
   } catch (error) {
-    report.stage = "write";
+    if (error && error.code === "ENOENT") {
+      // fall through to create or preview the file
+    } else {
+      report.stage = "write";
 
-    if (error && error.code === "EEXIST") {
-      report.message = `init aborted because ${CONFIG_FILE_NAME} already exists`;
-      report.issues = [`${CONFIG_FILE_NAME} already exists`];
-      stderr.write(`[opentree] ${CONFIG_FILE_NAME} already exists\n`);
-      stderr.write("[opentree] init aborted to avoid overwriting your config\n");
-      if (json) {
-        writeJsonReport(stdout, report);
+      if (error && error.code === "EEXIST") {
+        report.message = `init aborted because ${CONFIG_FILE_NAME} already exists`;
+        report.issues = [`${CONFIG_FILE_NAME} already exists`];
+        stderr.write(`[opentree] ${CONFIG_FILE_NAME} already exists\n`);
+        stderr.write("[opentree] init aborted to avoid overwriting your config\n");
+        if (json) {
+          writeJsonReport(stdout, report);
+        }
+        return 1;
       }
-      return 1;
+
+      throw error;
+    }
+  }
+
+  if (dryRun) {
+    report.stage = "write";
+    report.ok = true;
+    report.dryRun = true;
+    report.stage = "dry-run";
+    report.message = `dry run: would create ${CONFIG_FILE_NAME}`;
+    report.config = config;
+    report.result = {
+      created: false,
+      dryRun: true
+    };
+
+    if (json) {
+      writeJsonReport(stdout, report);
+      return 0;
     }
 
-    throw error;
+    stdout.write(`[opentree] dry run: would create ${CONFIG_FILE_NAME}\n`);
+    return 0;
   }
+
+  await fs.writeFile(`${configPath}`, JSON.stringify(config, null, 2) + "\n", {
+    flag: "wx"
+  });
 
   report.ok = true;
   report.stage = "write";

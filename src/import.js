@@ -2,6 +2,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { loadConfig, saveConfig, validateConfig } = require("./config");
 const { CONFIG_FILE_NAME } = require("./init");
+const { resolveSandboxedPath } = require("./path-security");
 
 function writeJsonReport(stdout, report) {
   stdout.write(`${JSON.stringify(report, null, 2)}\n`);
@@ -13,6 +14,7 @@ function createImportReport(cwd) {
     config: null,
     configPath: path.join(cwd, CONFIG_FILE_NAME),
     cwd,
+    dryRun: false,
     issues: [],
     message: "",
     ok: false,
@@ -23,6 +25,7 @@ function createImportReport(cwd) {
 
 function parseImportArgs(args) {
   const options = {
+    dryRun: false,
     replace: false
   };
 
@@ -42,6 +45,11 @@ function parseImportArgs(args) {
 
     if (arg === "--replace") {
       options.replace = true;
+      continue;
+    }
+
+    if (arg === "--dry-run") {
+      options.dryRun = true;
       continue;
     }
 
@@ -110,6 +118,29 @@ async function runImportCommand(io, args = []) {
     }
     return 1;
   }
+  report.dryRun = options.dryRun;
+  let importFileCandidate = options.file;
+  if (path.isAbsolute(importFileCandidate)) {
+    try {
+      importFileCandidate = await fs.realpath(importFileCandidate);
+    } catch (error) {
+      if (!error || error.code !== "ENOENT") {
+        throw error;
+      }
+    }
+  }
+  let importFilePath;
+  try {
+    importFilePath = resolveSandboxedPath(cwd, importFileCandidate, "--file");
+  } catch (error) {
+    stderr.write(`[opentree] ${error.message}\n`);
+    if (options.json) {
+      report.message = error.message;
+      report.issues = [error.message];
+      writeJsonReport(stdout, report);
+    }
+    return 1;
+  }
 
   report.stage = "load";
   let loadedConfig;
@@ -133,7 +164,7 @@ async function runImportCommand(io, args = []) {
 
   let importedLinks;
   try {
-    const raw = await fs.readFile(path.resolve(cwd, options.file), "utf8");
+    const raw = await fs.readFile(importFilePath, "utf8");
     importedLinks = normalizeImportedLinks(JSON.parse(raw));
   } catch (error) {
     const message = error instanceof SyntaxError ? "import file is not valid JSON" : error.message;
@@ -162,6 +193,29 @@ async function runImportCommand(io, args = []) {
       writeJsonReport(stdout, report);
     }
     return 1;
+  }
+
+  if (options.dryRun) {
+    report.ok = true;
+    report.stage = "dry-run";
+    report.message = `dry run: would import ${importedLinks.length} link(s)`;
+    report.result = {
+      dryRun: true,
+      importedCount: importedLinks.length,
+      links: nextConfig.links,
+      linksCount: nextConfig.links.length,
+      replace: options.replace
+    };
+    report.config = nextConfig;
+    report.configPath = loadedConfig.configPath;
+
+    if (options.json) {
+      writeJsonReport(stdout, report);
+      return 0;
+    }
+
+    stdout.write(`[opentree] ${report.message}\n`);
+    return 0;
   }
 
   const savedConfig = await saveConfig(cwd, nextConfig);

@@ -28,13 +28,14 @@ This creates `opentree.config.json`, updates it through CLI commands, builds a s
 - Generates a link page from `opentree.config.json`
 - Updates profile, site, metadata, theme, and links from the CLI
 - Adds guided setup, link presets, JSON import, and deterministic prompt editing
+- Exposes runtime command schemas with `opentree schema --json`
 - Validates config before build and deploy
 - Produces static HTML output plus generated favicon and social image assets
 - Supports glass and terminal templates, optional QR output, local click tracking, and richer social card defaults
 - Previews the page locally with live config reload on refresh
 - Integrates with Vercel for linking, status checks, and deployment
 - Includes task-oriented help output and shell completion generation for bash and zsh
-- Supports `--json` output on major commands for scripts and CI
+- Supports `--json` output and `--dry-run` previews on mutating commands for scripts and CI
 
 ## Core Commands
 
@@ -46,6 +47,7 @@ opentree build
 opentree dev
 opentree deploy
 opentree import links --file ./links.json --replace
+opentree schema build --json
 opentree prompt "set my bio to Shipping links"
 
 opentree config show
@@ -67,6 +69,8 @@ opentree vercel unlink
 opentree doctor
 opentree completion zsh
 ```
+
+Most mutating commands also support `--dry-run`, including `init`, `build`, `deploy`, `import links`, `prompt`, config edit commands, `link` mutations, and `vercel link` / `vercel unlink`.
 
 ## Deploy Flow
 
@@ -193,11 +197,16 @@ Most operational commands support `--json`, including:
 - `deploy`
 - `doctor`
 - `import links`
+- `schema`
+- `prompt`
 - `config show`
 - config mutation commands such as `profile set`, `link add`, and `theme set`
 - `vercel link`, `vercel status`, and `vercel unlink`
+- `completion`
 
 This makes `opentree` usable from shell scripts, CI jobs, and other tooling.
+
+Most mutating commands also support `--dry-run`, so agents and scripts can validate the request and inspect the predicted result without writing files or invoking remote side effects.
 
 Common top-level fields:
 
@@ -220,6 +229,7 @@ Stage guidance:
 - `link`: project linking or reusable link inspection
 - `build`: build step execution
 - `deploy`: active deployment step
+- `dry-run`: validated preview with no side effects
 - `write`: file generation or persistence step
 - `save`: local metadata or link persistence step
 - `remove`: local cleanup step

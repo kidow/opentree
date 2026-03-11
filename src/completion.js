@@ -4,7 +4,7 @@ _opentree_completion() {
   local cur prev words cword
   _init_completion || return
 
-  local commands="init build dev deploy doctor validate config profile site meta theme link vercel completion help"
+  local commands="init build dev deploy doctor validate import schema prompt config profile site meta theme link vercel completion help"
 
   if [[ $cword -eq 1 ]]; then
     COMPREPLY=( $(compgen -W "$commands" -- "$cur") )
@@ -46,6 +46,9 @@ _opentree() {
     'deploy:Build and deploy'
     'doctor:Check readiness'
     'validate:Validate the config'
+    'import:Import links from JSON'
+    'schema:Print runtime command schemas'
+    'prompt:Apply deterministic prompt edits'
     'config:Inspect config'
     'profile:Edit profile fields'
     'site:Edit site URL'
@@ -88,19 +91,60 @@ _opentree "$@"
 async function runCompletionCommand(io, args = []) {
   const stdout = io.stdout ?? process.stdout;
   const stderr = io.stderr ?? process.stderr;
-  const [shell] = args;
+  const requestedJson = args.includes("--json");
+  const filteredArgs = args.filter((arg) => arg !== "--json");
+  const [shell] = filteredArgs;
+  const report = {
+    command: "completion",
+    issues: [],
+    message: "",
+    ok: false,
+    result: null,
+    stage: "args"
+  };
 
   if (shell === "bash") {
-    stdout.write(buildBashCompletion());
+    const script = buildBashCompletion();
+    if (requestedJson) {
+      report.ok = true;
+      report.message = "generated bash completion";
+      report.result = {
+        script,
+        shell
+      };
+      report.stage = "load";
+      stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+      return 0;
+    }
+
+    stdout.write(script);
     return 0;
   }
 
   if (shell === "zsh") {
-    stdout.write(buildZshCompletion());
+    const script = buildZshCompletion();
+    if (requestedJson) {
+      report.ok = true;
+      report.message = "generated zsh completion";
+      report.result = {
+        script,
+        shell
+      };
+      report.stage = "load";
+      stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+      return 0;
+    }
+
+    stdout.write(script);
     return 0;
   }
 
+  report.issues = ["usage: opentree completion <bash|zsh>"];
+  report.message = "usage: opentree completion <bash|zsh>";
   stderr.write("[opentree] usage: opentree completion <bash|zsh>\n");
+  if (requestedJson) {
+    stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+  }
   return 1;
 }
 

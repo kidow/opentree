@@ -55,6 +55,7 @@ function getDeployTarget(mode) {
 }
 
 function parseDeployArgs(args) {
+  let dryRun = false;
   let mode = "preview";
   let modeWasExplicit = false;
   let json = false;
@@ -66,6 +67,11 @@ function parseDeployArgs(args) {
 
     if (arg === "--json") {
       json = true;
+      continue;
+    }
+
+    if (arg === "--dry-run") {
+      dryRun = true;
       continue;
     }
 
@@ -83,6 +89,7 @@ function parseDeployArgs(args) {
   }
 
   return {
+    dryRun,
     json,
     mode,
     vercelArgs: mode === "prod" ? ["--prod"] : []
@@ -104,6 +111,7 @@ async function runDeploy(io, args = [], deps = {}) {
   let report = {
     command: "deploy",
     cwd,
+    dryRun: false,
     deploymentUrl: null,
     inspectUrl: null,
     issues: [],
@@ -119,6 +127,7 @@ async function runDeploy(io, args = [], deps = {}) {
 
   try {
     options = parseDeployArgs(args);
+    report.dryRun = options.dryRun;
     report.mode = options.mode;
     report.target = getDeployTarget(options.mode);
   } catch (error) {
@@ -218,6 +227,29 @@ async function runDeploy(io, args = [], deps = {}) {
 
   report.project = vercelStatus.result.link.project;
   report.projectFilePath = vercelStatus.result.link.projectFilePath;
+
+  if (options.dryRun) {
+    report.ok = true;
+    report.stage = "dry-run";
+    report.message = `dry run: would deploy ${OUTPUT_DIR_NAME} to ${report.target}`;
+    report.result = {
+      deploymentUrl: null,
+      dryRun: true,
+      inspectUrl: null,
+      mode: report.mode,
+      outputDir: report.outputDir,
+      project: report.project,
+      projectFilePath: report.projectFilePath,
+      target: report.target
+    };
+    if (options.json) {
+      writeJsonReport(stdout, report);
+    } else {
+      stdout.write(`[opentree] ${report.message}\n`);
+    }
+    return 0;
+  }
+
   report.stage = "build";
   const buildExitCode = await runBuildImpl({
     ...io,

@@ -2,6 +2,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { CONFIG_FILE_NAME } = require("./init");
 const { loadConfig, validateConfig } = require("./config");
+const { resolveSandboxedPath } = require("./path-security");
 
 const OUTPUT_DIR_NAME = "dist";
 const OUTPUT_FILE_NAME = "index.html";
@@ -314,6 +315,7 @@ async function removeOptionalFile(filePath) {
 
 function parseBuildArgs(args) {
   const options = {
+    dryRun: false,
     json: false
   };
 
@@ -323,6 +325,11 @@ function parseBuildArgs(args) {
 
     if (arg === "--json") {
       options.json = true;
+      continue;
+    }
+
+    if (arg === "--dry-run") {
+      options.dryRun = true;
       continue;
     }
 
@@ -344,6 +351,7 @@ function parseBuildArgs(args) {
   }
 
   return {
+    dryRun: options.dryRun,
     json: options.json,
     outputDir: options.outputDir ?? OUTPUT_DIR_NAME
   };
@@ -612,6 +620,7 @@ async function runBuild(io, args = []) {
     command: "build",
     configPath: path.join(cwd, CONFIG_FILE_NAME),
     cwd,
+    dryRun: false,
     files: {
       favicon: null,
       indexHtml: null,
@@ -640,9 +649,20 @@ async function runBuild(io, args = []) {
     return 1;
   }
 
-  report.outputDir = path.resolve(cwd, options.outputDir);
+  try {
+    report.outputDir = resolveSandboxedPath(cwd, options.outputDir, "--output");
+  } catch (error) {
+    report.issues = [error.message];
+    report.message = error.message;
+    stderr.write(`[opentree] ${error.message}\n`);
+    if (requestedJson) {
+      writeJsonReport(stdout, report);
+    }
+    return 1;
+  }
+  report.dryRun = options.dryRun;
   const buildStdout = options.json ? stderr : stdout;
-  const outputDir = path.resolve(cwd, options.outputDir);
+  const outputDir = report.outputDir;
   const faviconPath = path.join(outputDir, FAVICON_FILE_NAME);
   const outputPath = path.join(outputDir, OUTPUT_FILE_NAME);
   const ogImagePath = path.join(outputDir, OG_IMAGE_FILE_NAME);
@@ -706,6 +726,32 @@ async function runBuild(io, args = []) {
   report.stage = "write";
   const metadata = resolvePageMetadata(loadedConfig.config);
   report.metadata = metadata;
+
+  if (options.dryRun) {
+    report.ok = true;
+    report.stage = "dry-run";
+    report.files = {
+      favicon: faviconPath,
+      indexHtml: outputPath,
+      ogImage: ogImagePath,
+      robots: metadata.siteUrl ? robotsPath : null,
+      sitemap: metadata.siteUrl ? sitemapPath : null
+    };
+    report.message = `dry run: would build ${path.relative(cwd, outputPath)}`;
+    report.result = {
+      dryRun: true,
+      files: report.files,
+      metadata: report.metadata,
+      outputDir: report.outputDir
+    };
+    if (options.json) {
+      writeJsonReport(stdout, report);
+      return 0;
+    }
+
+    stdout.write(`[opentree] dry run: would build ${path.relative(cwd, outputPath)}\n`);
+    return 0;
+  }
 
   await fs.mkdir(outputDir, { recursive: true });
   await fs.writeFile(faviconPath, renderFaviconSvg(loadedConfig.config), "utf8");

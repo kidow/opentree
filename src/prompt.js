@@ -2,6 +2,24 @@ const { loadConfig, saveConfig, validateConfig } = require("./config");
 const { LINK_PRESETS, TEMPLATE_VALUES } = require("./catalog");
 const { CONFIG_FILE_NAME } = require("./init");
 
+function writeJsonReport(stdout, report) {
+  stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+}
+
+function createPromptReport(cwd) {
+  return {
+    command: "prompt",
+    configPath: `${cwd}/${CONFIG_FILE_NAME}`,
+    cwd,
+    dryRun: false,
+    issues: [],
+    message: "",
+    ok: false,
+    result: null,
+    stage: "args"
+  };
+}
+
 function applyPromptInstruction(config, instruction) {
   let changed = false;
   const text = instruction.trim();
@@ -50,10 +68,22 @@ async function runPromptCommand(io, args = []) {
   const cwd = io.cwd ?? process.cwd();
   const stdout = io.stdout ?? process.stdout;
   const stderr = io.stderr ?? process.stderr;
-  const instruction = args.join(" ").trim();
+  const requestedJson = args.includes("--json");
+  const dryRun = args.includes("--dry-run");
+  const instruction = args
+    .filter((arg) => arg !== "--dry-run" && arg !== "--json")
+    .join(" ")
+    .trim();
+  const report = createPromptReport(cwd);
+  report.dryRun = dryRun;
 
   if (!instruction) {
+    report.message = "usage: opentree prompt <instruction>";
+    report.issues = [report.message];
     stderr.write("[opentree] usage: opentree prompt <instruction>\n");
+    if (requestedJson) {
+      writeJsonReport(stdout, report);
+    }
     return 1;
   }
 
@@ -61,30 +91,77 @@ async function runPromptCommand(io, args = []) {
   try {
     loadedConfig = await loadConfig(cwd);
   } catch (error) {
+    report.stage = "load";
     if (error && error.code === "ENOENT") {
+      report.message = `${CONFIG_FILE_NAME} was not found in ${cwd}`;
+      report.issues = [report.message];
       stderr.write(`[opentree] ${CONFIG_FILE_NAME} was not found in ${cwd}\n`);
+      if (requestedJson) {
+        writeJsonReport(stdout, report);
+      }
       return 1;
     }
 
     throw error;
   }
+  report.configPath = loadedConfig.configPath;
 
   const nextConfig = structuredClone(loadedConfig.config);
   const changed = applyPromptInstruction(nextConfig, instruction);
 
   if (!changed) {
+    report.stage = "validate";
+    report.message = "no supported edits were found in the instruction";
+    report.issues = [report.message];
     stderr.write("[opentree] no supported edits were found in the instruction\n");
+    if (requestedJson) {
+      writeJsonReport(stdout, report);
+    }
     return 1;
   }
 
   const errors = validateConfig(nextConfig);
   if (errors.length > 0) {
+    report.stage = "validate";
+    report.message = "prompt edit aborted because the config would be invalid";
+    report.issues = errors;
     stderr.write("[opentree] prompt edit aborted because the config would be invalid\n");
     errors.forEach((error) => stderr.write(`- ${error}\n`));
+    if (requestedJson) {
+      writeJsonReport(stdout, report);
+    }
     return 1;
   }
 
+  if (dryRun) {
+    report.ok = true;
+    report.stage = "dry-run";
+    report.message = "dry run: would apply prompt edits";
+    report.result = {
+      config: nextConfig,
+      dryRun: true
+    };
+    if (requestedJson) {
+      writeJsonReport(stdout, report);
+      return 0;
+    }
+
+    stdout.write("[opentree] dry run: would apply prompt edits\n");
+    return 0;
+  }
+
   await saveConfig(cwd, nextConfig);
+  report.ok = true;
+  report.stage = "save";
+  report.message = "applied prompt edits";
+  report.result = {
+    config: nextConfig
+  };
+  if (requestedJson) {
+    writeJsonReport(stdout, report);
+    return 0;
+  }
+
   stdout.write("[opentree] applied prompt edits\n");
   return 0;
 }

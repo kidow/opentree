@@ -256,6 +256,28 @@ test("init supports structured json output", async () => {
   assert.equal(report.configPath, expectedConfigPath);
 });
 
+test("init supports dry-run without writing the starter config", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-init-dry-run-"));
+  const configPath = path.join(tempDir, configFilePath);
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "init", "--name", "Kidow", "--dry-run", "--json"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(report.ok, true);
+  assert.equal(report.command, "init");
+  assert.equal(report.stage, "dry-run");
+  assert.equal(report.dryRun, true);
+  assert.equal(report.config.profile.name, "Kidow");
+  await assert.rejects(fs.access(configPath), { code: "ENOENT" });
+});
+
 test("init rejects invalid metadata overrides", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-init-invalid-"));
   const result = spawnSync(
@@ -761,6 +783,31 @@ test("build supports structured json output", async () => {
   assert.match(result.stderr, /\[opentree\] wrote public\/site\/index\.html/);
 });
 
+test("build supports dry-run without writing output files", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-build-dry-run-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "build", "--json", "--dry-run", "--output", "preview"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(report.ok, true);
+  assert.equal(report.command, "build");
+  assert.equal(report.stage, "dry-run");
+  assert.equal(report.dryRun, true);
+  await assert.rejects(fs.access(path.join(tempDir, "preview", "index.html")), { code: "ENOENT" });
+});
+
 test("build rejects unknown or incomplete output options", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-build-output-invalid-"));
   spawnSync(process.execPath, [cliPath, "init"], {
@@ -789,6 +836,36 @@ test("build rejects unknown or incomplete output options", async () => {
   assert.match(missingValueResult.stderr, /\[opentree\] missing value for --output/);
   assert.equal(unknownOptionResult.status, 1);
   assert.match(unknownOptionResult.stderr, /\[opentree\] unknown option: --target/);
+});
+
+test("build rejects output paths outside the current workspace", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-build-output-sandbox-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const traversalResult = spawnSync(
+    process.execPath,
+    [cliPath, "build", "--output", "../escape"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const encodedTraversalResult = spawnSync(
+    process.execPath,
+    [cliPath, "build", "--output", "%2e%2e/escape"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+
+  assert.equal(traversalResult.status, 1);
+  assert.match(traversalResult.stderr, /--output must stay within the current working directory/);
+  assert.equal(encodedTraversalResult.status, 1);
+  assert.match(encodedTraversalResult.stderr, /--output must not include percent-encoded dot segments/);
 });
 
 test("build supports structured json output for argument failures", async () => {
@@ -1026,6 +1103,34 @@ test("profile set supports structured json output", async () => {
   assert.equal(report.result.profile.bio, "Shipping links.");
   assert.equal(report.config.profile.name, "Kidow");
   assert.equal(report.configPath, expectedConfigPath);
+});
+
+test("profile set supports dry-run without saving config changes", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-profile-set-dry-run-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const beforeConfig = JSON.parse(await fs.readFile(path.join(tempDir, configFilePath), "utf8"));
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "profile", "set", "--name", "Kidow", "--dry-run", "--json"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const report = JSON.parse(result.stdout);
+  const afterConfig = JSON.parse(await fs.readFile(path.join(tempDir, configFilePath), "utf8"));
+
+  assert.equal(result.status, 0);
+  assert.equal(report.ok, true);
+  assert.equal(report.command, "profile set");
+  assert.equal(report.stage, "dry-run");
+  assert.equal(report.dryRun, true);
+  assert.equal(report.result.profile.name, "Kidow");
+  assert.deepEqual(afterConfig, beforeConfig);
 });
 
 test("profile set rejects invalid updates", async () => {
@@ -1988,6 +2093,45 @@ test("vercel link supports structured json output", async () => {
   assert.match(stderr.buffer, /Linked via Vercel CLI/);
 });
 
+test("vercel link supports dry-run without invoking the Vercel CLI", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-vercel-link-dry-run-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+  await writeConfigFile(tempDir, {
+    siteUrl: "https://links.example.com"
+  });
+
+  const exitCode = await runVercelCommand(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr,
+      env: { ...process.env }
+    },
+    ["link", "--dry-run", "--json"],
+    {
+      inspectVercelAuth: async () => ({
+        ok: true,
+        installed: true,
+        authenticated: true,
+        username: "kidow"
+      }),
+      spawn: () => {
+        throw new Error("spawn should not be called during dry-run");
+      }
+    }
+  );
+
+  const report = JSON.parse(stdout.buffer);
+
+  assert.equal(exitCode, 0);
+  assert.equal(report.ok, true);
+  assert.equal(report.command, "vercel link");
+  assert.equal(report.stage, "dry-run");
+  assert.equal(report.dryRun, true);
+  await assert.rejects(fs.access(path.join(tempDir, rootVercelProjectFilePath)), { code: "ENOENT" });
+});
+
 test("vercel link fails when the reusable root link is missing", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-vercel-link-missing-"));
   const stdout = new MemoryWritable();
@@ -2411,6 +2555,93 @@ test("deploy supports structured json output on success", async () => {
   assert.match(stderr.buffer, /\[opentree\] production deployment ready/);
   assert.match(stderr.buffer, /\[opentree\] deployment url: https:\/\/opentree-json\.vercel\.app/);
   assert.match(stderr.buffer, /\[opentree\] inspect url: https:\/\/vercel\.com\/kidow\/opentree-json/);
+});
+
+test("deploy supports dry-run without building or invoking Vercel", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-deploy-dry-run-"));
+  const stdout = new MemoryWritable();
+  const stderr = new MemoryWritable();
+  await writeConfigFile(tempDir, {
+    siteUrl: "https://links.example.com"
+  });
+  await writeVercelProjectFile(tempDir);
+
+  const exitCode = await runDeploy(
+    {
+      cwd: tempDir,
+      stdout,
+      stderr,
+      env: { ...process.env }
+    },
+    ["--prod", "--dry-run", "--json"],
+    {
+      collectVercelStatus: async () => ({
+        checks: [
+          {
+            id: "vercel",
+            status: "pass",
+            message: "CLI is installed",
+            hints: [],
+            details: []
+          },
+          {
+            id: "vercel auth",
+            status: "pass",
+            message: "logged in as kidow",
+            hints: [],
+            details: []
+          },
+          {
+            id: "vercel link",
+            status: "pass",
+            message: "project root is linked to opentree (prj_123)",
+            hints: [],
+            details: []
+          }
+        ],
+        result: {
+          auth: {
+            authenticated: true,
+            checked: true,
+            installed: true,
+            username: "kidow"
+          },
+          cli: {
+            installed: true
+          },
+          link: {
+            kind: "linked",
+            linked: true,
+            project: {
+              projectId: "prj_123",
+              orgId: "team_456",
+              projectName: "opentree"
+            },
+            projectFilePath: path.join(tempDir, rootVercelProjectFilePath)
+          }
+        }
+      }),
+      runBuild: async () => {
+        throw new Error("runBuild should not be called during dry-run");
+      },
+      spawn: () => {
+        throw new Error("spawn should not be called during dry-run");
+      },
+      syncVercelProjectLink: async () => {
+        throw new Error("syncVercelProjectLink should not be called during dry-run");
+      }
+    }
+  );
+
+  const report = JSON.parse(stdout.buffer);
+
+  assert.equal(exitCode, 0);
+  assert.equal(report.ok, true);
+  assert.equal(report.command, "deploy");
+  assert.equal(report.stage, "dry-run");
+  assert.equal(report.mode, "prod");
+  assert.equal(report.dryRun, true);
+  await assert.rejects(fs.access(path.join(tempDir, distVercelProjectFilePath)), { code: "ENOENT" });
 });
 
 test("deploy reports a missing vercel cli", async () => {
@@ -3078,6 +3309,21 @@ test("unknown commands fail with guidance", () => {
   assert.match(result.stderr, /opentree --help/);
 });
 
+test("unknown commands return structured json when requested", () => {
+  const result = spawnSync(process.execPath, [cliPath, "unknown", "--json"], {
+    cwd: path.join(__dirname, ".."),
+    encoding: "utf8"
+  });
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 1);
+  assert.equal(report.ok, false);
+  assert.equal(report.command, "unknown");
+  assert.equal(report.stage, "args");
+  assert.equal(report.message, "unknown command: unknown");
+  assert.deepEqual(report.issues, ["unknown command: unknown"]);
+});
+
 test("help output includes task-oriented examples", () => {
   const result = spawnSync(process.execPath, [cliPath, "--help"], {
     cwd: path.join(__dirname, ".."),
@@ -3090,6 +3336,50 @@ test("help output includes task-oriented examples", () => {
   assert.match(result.stdout, /opentree init --name "Kidow"/);
   assert.match(result.stdout, /opentree deploy --prod/);
   assert.match(result.stdout, /opentree doctor/);
+});
+
+test("schema command returns structured json for all commands", () => {
+  const result = spawnSync(process.execPath, [cliPath, "schema", "--json"], {
+    cwd: path.join(__dirname, ".."),
+    encoding: "utf8"
+  });
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(report.ok, true);
+  assert.equal(report.command, "schema");
+  assert.equal(report.stage, "load");
+  assert.ok(report.result.commands.length > 10);
+  assert.ok(report.result.commands.some((entry) => entry.name === "build"));
+  assert.ok(report.result.commands.some((entry) => entry.name === "profile set"));
+});
+
+test("schema command returns a specific command schema", () => {
+  const result = spawnSync(process.execPath, [cliPath, "schema", "build", "--json"], {
+    cwd: path.join(__dirname, ".."),
+    encoding: "utf8"
+  });
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(report.ok, true);
+  assert.equal(report.result.command.name, "build");
+  assert.ok(report.result.command.flags.some((flag) => flag.name === "--output"));
+  assert.ok(report.result.command.flags.some((flag) => flag.name === "--dry-run"));
+});
+
+test("schema command rejects unknown command paths", () => {
+  const result = spawnSync(process.execPath, [cliPath, "schema", "warp-drive", "--json"], {
+    cwd: path.join(__dirname, ".."),
+    encoding: "utf8"
+  });
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 1);
+  assert.equal(report.ok, false);
+  assert.equal(report.command, "schema");
+  assert.equal(report.stage, "args");
+  assert.equal(report.message, "unknown command schema: warp-drive");
 });
 
 test("completion command prints bash completion", () => {
@@ -3114,6 +3404,21 @@ test("completion command prints zsh completion", () => {
   assert.match(result.stdout, /_arguments/);
 });
 
+test("completion command supports structured json output", () => {
+  const result = spawnSync(process.execPath, [cliPath, "completion", "bash", "--json"], {
+    cwd: path.join(__dirname, ".."),
+    encoding: "utf8"
+  });
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(report.ok, true);
+  assert.equal(report.command, "completion");
+  assert.equal(report.stage, "load");
+  assert.equal(report.result.shell, "bash");
+  assert.match(report.result.script, /complete -F _opentree_completion opentree/);
+});
+
 test("completion command rejects unsupported shells", () => {
   const result = spawnSync(process.execPath, [cliPath, "completion", "fish"], {
     cwd: path.join(__dirname, ".."),
@@ -3122,6 +3427,20 @@ test("completion command rejects unsupported shells", () => {
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /\[opentree\] usage: opentree completion <bash\|zsh>/);
+});
+
+test("completion command returns structured json for unsupported shells", () => {
+  const result = spawnSync(process.execPath, [cliPath, "completion", "fish", "--json"], {
+    cwd: path.join(__dirname, ".."),
+    encoding: "utf8"
+  });
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 1);
+  assert.equal(report.ok, false);
+  assert.equal(report.command, "completion");
+  assert.equal(report.stage, "args");
+  assert.equal(report.message, "usage: opentree completion <bash|zsh>");
 });
 
 test("init supports template selection", async () => {
@@ -3215,6 +3534,72 @@ test("import links loads links from a JSON file", async () => {
   assert.equal(report.result.links[0].title, "Docs");
 });
 
+test("import links rejects unsafe file paths", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-import-links-unsafe-"));
+  const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-import-links-outside-"));
+  const outsideFile = path.join(outsideDir, "links.json");
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+  await fs.writeFile(outsideFile, JSON.stringify([{ title: "Docs", url: "https://example.com/docs" }]) + "\n");
+
+  const outsideResult = spawnSync(
+    process.execPath,
+    [cliPath, "import", "links", "--file", outsideFile],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const queryResult = spawnSync(
+    process.execPath,
+    [cliPath, "import", "links", "--file", "links.json?raw=1"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+
+  assert.equal(outsideResult.status, 1);
+  assert.match(outsideResult.stderr, /--file must stay within the current working directory/);
+  assert.equal(queryResult.status, 1);
+  assert.match(queryResult.stderr, /--file must not include query or hash fragments/);
+});
+
+test("import links supports dry-run without saving imported links", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-import-links-dry-run-"));
+  const importFile = path.join(tempDir, "links.json");
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+  await fs.writeFile(
+    importFile,
+    JSON.stringify([{ title: "Docs", url: "https://example.com/docs" }]) + "\n"
+  );
+
+  const beforeConfig = JSON.parse(await fs.readFile(path.join(tempDir, configFilePath), "utf8"));
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "import", "links", "--file", importFile, "--dry-run", "--json"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const report = JSON.parse(result.stdout);
+  const afterConfig = JSON.parse(await fs.readFile(path.join(tempDir, configFilePath), "utf8"));
+
+  assert.equal(result.status, 0);
+  assert.equal(report.ok, true);
+  assert.equal(report.command, "import links");
+  assert.equal(report.stage, "dry-run");
+  assert.equal(report.dryRun, true);
+  assert.equal(report.result.importedCount, 1);
+  assert.deepEqual(afterConfig, beforeConfig);
+});
+
 test("prompt command applies deterministic natural language edits", async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-prompt-"));
   spawnSync(process.execPath, [cliPath, "init"], {
@@ -3236,6 +3621,78 @@ test("prompt command applies deterministic natural language edits", async () => 
   assert.equal(config.profile.name, "Kidow");
   assert.equal(config.template, "terminal");
   assert.equal(config.links.at(-1).url, "https://example.com/docs");
+});
+
+test("prompt command supports structured json output", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-prompt-json-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "prompt", "--json", "set my bio to Shipping links and set template to terminal"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(report.ok, true);
+  assert.equal(report.command, "prompt");
+  assert.equal(report.stage, "save");
+  assert.equal(report.result.config.profile.bio, "Shipping links");
+  assert.equal(report.result.config.template, "terminal");
+});
+
+test("prompt command returns structured json for unsupported instructions", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-prompt-json-invalid-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "prompt", "--json", "turn this into a spaceship"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 1);
+  assert.equal(report.ok, false);
+  assert.equal(report.command, "prompt");
+  assert.equal(report.stage, "validate");
+  assert.equal(report.message, "no supported edits were found in the instruction");
+});
+
+test("prompt command supports dry-run without saving prompt edits", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "opentree-prompt-dry-run-"));
+  spawnSync(process.execPath, [cliPath, "init"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+
+  const beforeConfig = JSON.parse(await fs.readFile(path.join(tempDir, configFilePath), "utf8"));
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "prompt", "--dry-run", "set my name to Kidow and set template to terminal"],
+    {
+      cwd: tempDir,
+      encoding: "utf8"
+    }
+  );
+  const afterConfig = JSON.parse(await fs.readFile(path.join(tempDir, configFilePath), "utf8"));
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /\[opentree\] dry run: would apply prompt edits/);
+  assert.deepEqual(afterConfig, beforeConfig);
 });
 
 test("build supports alternate templates, qr, click tracking, and social card customization", async () => {

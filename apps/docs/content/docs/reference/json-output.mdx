@@ -5,7 +5,7 @@ description: Understand the stable top-level fields returned by major commands w
 
 # JSON output
 
-Most operational commands support `--json`, including `init`, `validate`, `build`, `dev`, `deploy`, `doctor`, `import links`, `config show`, edit commands, and Vercel commands.
+Most operational commands support `--json`, including `init`, `validate`, `build`, `dev`, `deploy`, `doctor`, `import links`, `schema`, `prompt`, `config show`, edit commands, Vercel commands, and `completion`.
 
 ## Common fields
 
@@ -15,6 +15,8 @@ Most operational commands support `--json`, including `init`, `validate`, `build
 - `ok`
 - `issues`
 - `result`
+
+Mutating commands that support `--dry-run` also include a top-level `dryRun` boolean and use the `dry-run` stage when the command succeeds without side effects.
 
 ## Stage meanings
 
@@ -26,6 +28,7 @@ Most operational commands support `--json`, including `init`, `validate`, `build
 - `link`: reusable link inspection or linking failure
 - `build`: static output generation
 - `deploy`: remote deployment handoff
+- `dry-run`: validated preview with no side effects
 
 ## Compatibility guideline
 

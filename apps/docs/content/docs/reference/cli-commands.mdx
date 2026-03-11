@@ -17,6 +17,7 @@ description: Scan the full command map in the same task-oriented grouping used b
 - `opentree dev`
 - `opentree deploy`
 - `opentree doctor`
+- `opentree schema [command] --json`
 
 ## Config editing
 
@@ -50,6 +51,12 @@ description: Scan the full command map in the same task-oriented grouping used b
 
 - `opentree completion bash`
 - `opentree completion zsh`
+
+## Agent-first helpers
+
+- use `--json` on operational commands when you need a stable machine-readable contract
+- use `--dry-run` on mutating commands to preview changes without writing files or invoking remote deploy steps
+- use `opentree schema --json` or `opentree schema <command> --json` to inspect supported flags, required values, and enums at runtime
 
 ## Accuracy note
 
