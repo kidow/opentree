@@ -39,15 +39,6 @@ export default function RootLayout({
                 <article className="prose max-w-[672px]">{children}</article>
               </div>
             </div>
-            <button
-              type="button"
-              className="docs-ai-button fixed bottom-5 right-4 z-40 hidden items-center gap-2 rounded-xl px-4 py-3 text-[13px] font-medium text-foreground shadow-[0_12px_24px_rgba(0,0,0,0.32)] transition hover:-translate-y-0.5 md:inline-flex"
-            >
-              Ask AI
-              <span className="rounded border border-black/8 bg-black/5 px-1.5 py-0.5 text-[10px] leading-none text-black/50">
-                ⌘ I
-              </span>
-            </button>
           </main>
         </ThemeProvider>
       </body>

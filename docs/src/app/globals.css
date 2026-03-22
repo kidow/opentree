@@ -76,11 +76,6 @@ body::after {
   backdrop-filter: blur(14px);
 }
 
-.docs-ai-button {
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: rgba(251, 251, 249, 0.95);
-}
-
 /* Shiki dual theme */
 .shiki,
 .shiki span {
