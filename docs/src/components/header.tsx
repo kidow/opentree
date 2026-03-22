@@ -3,11 +3,11 @@ import { ThemeToggle } from "./theme-toggle";
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-50 h-14 border-b border-white/6 bg-[#0b0b0a]/84 backdrop-blur-xl">
+    <header className="docs-header sticky top-0 z-50 h-14 backdrop-blur-xl">
       <div className="mx-auto flex h-full max-w-[1280px] items-center justify-between px-4 md:px-6">
         <Link
           href="/"
-          className="flex items-center gap-3 text-[13px] font-medium tracking-[-0.01em] text-white"
+          className="docs-header-link flex items-center gap-3 text-[13px] font-medium tracking-[-0.01em]"
         >
           <svg
             width="10"
@@ -19,13 +19,13 @@ export function Header() {
           >
             <path d="M5 0 10 10H0Z" />
           </svg>
-          <span className="text-white/45">/</span>
+          <span className="docs-header-slash">/</span>
           opentree
         </Link>
         <div className="flex items-center gap-2">
           <button
             type="button"
-            className="docs-button hidden h-9 items-center gap-2 px-3 text-[12px] text-white/68 md:inline-flex"
+            className="docs-button docs-chrome-muted hidden h-9 items-center gap-2 px-3 text-[12px] md:inline-flex"
           >
             <svg
               width="13"
@@ -42,7 +42,7 @@ export function Header() {
               <path d="m21 21-4.35-4.35" />
             </svg>
             Search docs
-            <span className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] leading-none text-white/55">
+            <span className="docs-kbd rounded px-1.5 py-0.5 text-[10px] leading-none">
               ⌘ K
             </span>
           </button>
@@ -50,7 +50,7 @@ export function Header() {
             href="https://github.com/kidow/opentree"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[12px] text-white/65 transition hover:text-white"
+            className="docs-chrome-muted inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[12px] transition"
             aria-label="GitHub"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -62,7 +62,7 @@ export function Header() {
             href="https://www.npmjs.com/package/opentree-cli"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex h-9 items-center rounded-lg px-2.5 text-[12px] text-white/65 transition hover:text-white"
+            className="docs-chrome-muted inline-flex h-9 items-center rounded-lg px-2.5 text-[12px] transition"
           >
             npm
           </a>

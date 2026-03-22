@@ -70,10 +70,70 @@ body::after {
 }
 
 .docs-button {
-  border: 1px solid var(--border);
+  border: 1px solid rgba(17, 17, 17, 0.08);
   border-radius: 0.7rem;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(17, 17, 17, 0.02);
   backdrop-filter: blur(14px);
+}
+
+:where(.dark, .dark *) .docs-button {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.docs-header {
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground) 8%, transparent);
+  background: color-mix(in srgb, var(--background) 84%, transparent);
+}
+
+.docs-header-link {
+  color: var(--foreground);
+}
+
+.docs-header-slash {
+  color: color-mix(in srgb, var(--foreground) 38%, transparent);
+}
+
+.docs-chrome-muted {
+  color: color-mix(in srgb, var(--foreground) 62%, transparent);
+}
+
+.docs-chrome-muted:hover {
+  color: var(--foreground);
+}
+
+.docs-kbd {
+  border: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
+  color: color-mix(in srgb, var(--foreground) 48%, transparent);
+}
+
+.docs-sidebar-heading {
+  color: color-mix(in srgb, var(--foreground) 30%, transparent);
+}
+
+.docs-sidebar-link {
+  color: color-mix(in srgb, var(--foreground) 45%, transparent);
+}
+
+.docs-sidebar-link:hover {
+  color: color-mix(in srgb, var(--foreground) 80%, transparent);
+}
+
+.docs-sidebar-link.is-active {
+  color: var(--foreground);
+}
+
+.docs-copy-button {
+  color: color-mix(in srgb, var(--foreground) 52%, transparent);
+}
+
+.docs-copy-button:hover {
+  color: color-mix(in srgb, var(--foreground) 85%, transparent);
+}
+
+.docs-theme-toggle:hover {
+  background: color-mix(in srgb, var(--foreground) 4%, transparent);
+  color: var(--foreground);
 }
 
 /* Shiki dual theme */

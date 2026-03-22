@@ -27,7 +27,7 @@ export function Sidebar() {
           {navigation.map((group, i) => (
             <div key={i} className="flex flex-col gap-1.5">
               {group.title && (
-                <h4 className="mb-1 px-2 text-[10px] font-medium uppercase tracking-[0.24em] text-white/30">
+                <h4 className="docs-sidebar-heading mb-1 px-2 text-[10px] font-medium uppercase tracking-[0.24em]">
                   {group.title}
                 </h4>
               )}
@@ -48,10 +48,10 @@ export function Sidebar() {
                     href={item.href}
                     onClick={() => setHash(itemHash)}
                     className={cn(
-                      "rounded-lg px-2 py-1 text-[13px] leading-6 transition-colors",
+                      "docs-sidebar-link rounded-lg px-2 py-1 text-[13px] leading-6 transition-colors",
                       isActive
-                        ? "text-white"
-                        : "text-white/48 hover:text-white/82"
+                        ? "is-active"
+                        : undefined
                     )}
                   >
                     {item.title}

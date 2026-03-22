@@ -16,7 +16,7 @@ export function ThemeToggle() {
   return (
     <button
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-      className="inline-flex size-9 items-center justify-center rounded-lg text-white/65 transition hover:bg-white/[0.035] hover:text-white"
+      className="docs-chrome-muted docs-theme-toggle inline-flex size-9 items-center justify-center rounded-lg transition"
       aria-label="Toggle theme"
     >
       {resolvedTheme === "dark" ? (

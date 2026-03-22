@@ -22,7 +22,7 @@ export function CopyPageButton() {
     <button
       type="button"
       onClick={handleCopy}
-      className="docs-button inline-flex h-9 items-center gap-2 self-end px-3 text-[12px] text-white/55 transition hover:text-white/88"
+      className="docs-button docs-copy-button inline-flex h-9 items-center gap-2 self-end px-3 text-[12px] transition"
     >
       <svg
         width="13"
