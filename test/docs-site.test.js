@@ -4,7 +4,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 
 const rootDir = path.join(__dirname, "..");
-const docsAppDir = path.join(rootDir, "examples", "docs");
+const docsAppDir = path.join(rootDir, "docs");
 
 async function readJson(filePath) {
   return JSON.parse(await fs.readFile(filePath, "utf8"));
