@@ -4,7 +4,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 
 const rootDir = path.join(__dirname, "..");
-const docsAppDir = path.join(rootDir, "apps", "docs");
+const docsAppDir = path.join(rootDir, "examples", "docs");
 
 async function readJson(filePath) {
   return JSON.parse(await fs.readFile(filePath, "utf8"));
@@ -14,12 +14,12 @@ async function readText(filePath) {
   return fs.readFile(filePath, "utf8");
 }
 
-test("root package exposes docs app scripts", async () => {
+test("root package does not contain docs proxy scripts", async () => {
   const packageJson = await readJson(path.join(rootDir, "package.json"));
 
-  assert.equal(packageJson.scripts["docs:dev"], "npm --prefix apps/docs run dev");
-  assert.equal(packageJson.scripts["docs:build"], "npm --prefix apps/docs run build");
-  assert.equal(packageJson.scripts["docs:test"], "npm --prefix apps/docs run test");
+  assert.equal("docs:dev" in packageJson.scripts, false);
+  assert.equal("docs:build" in packageJson.scripts, false);
+  assert.equal("docs:test" in packageJson.scripts, false);
 });
 
 test("docs app includes a custom Next.js + Tailwind docs shell", async () => {
