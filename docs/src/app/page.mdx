@@ -1,0 +1,46 @@
+# opentree
+
+CLI-first link-in-bio static site generator. Build your profile page from the terminal,
+deploy anywhere.
+
+```bash
+npm install -g opentree-cli
+```
+
+## Features
+
+- **CLI-first** — Create, edit, and deploy your profile entirely from the terminal
+- **Zero dependencies** — Built with native Node.js modules only
+- **Static output** — Generates a single `index.html` file, deploy anywhere
+- **JSON output** — Every command supports `--json` for scripting and automation
+- **Dry-run** — Preview any change before applying with `--dry-run`
+- **Templates** — Choose from built-in templates like `glass` and `terminal`
+
+## Works with
+
+Claude Code, Cursor, GitHub Copilot, and any agent that can run shell commands.
+
+## Example
+
+```bash
+# Create a config
+opentree init --name "Kidow" --bio "CLI-first profile"
+
+# Add links
+opentree link add --title "GitHub" --url "https://github.com/kidow"
+opentree link preset --name twitter --handle kidow
+
+# Build and preview
+opentree build
+opentree dev
+```
+
+## Architecture
+
+1. **Config** — `opentree.config.json` stores your profile, links, theme, and metadata
+2. **Build** — Generates a static HTML page from your config
+3. **Deploy** — Push to Vercel with `opentree deploy --prod`
+
+## Platforms
+
+Native Node.js binaries for macOS, Linux, and Windows.

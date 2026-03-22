@@ -1,78 +1,71 @@
-import Link from "next/link";
-import { slugifyHeading } from "@/lib/docs";
 import type { MDXComponents } from "mdx/types";
-import { isValidElement, type ComponentPropsWithoutRef, type ReactNode } from "react";
+import Link from "next/link";
+import { CodeBlock } from "@/components/code-block";
+import { type ComponentPropsWithoutRef } from "react";
 
-function flattenText(value: ReactNode): string {
-  if (typeof value === "string" || typeof value === "number") {
-    return String(value);
-  }
-
-  if (Array.isArray(value)) {
-    return value.map(flattenText).join(" ");
-  }
-
-  if (isValidElement<{ children?: ReactNode }>(value)) {
-    return flattenText(value.props.children as ReactNode);
-  }
-
-  return "";
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .trim();
 }
 
-function SmartLink({ href = "", ...props }: ComponentPropsWithoutRef<"a">) {
-  if (typeof href !== "string") {
-    return <a href={href} {...props} />;
-  }
+function createHeading(level: 1 | 2 | 3 | 4) {
+  const Tag = `h${level}` as const;
+  return function Heading(props: ComponentPropsWithoutRef<typeof Tag>) {
+    const text =
+      typeof props.children === "string" ? props.children : String(props.children);
+    const id = props.id ?? slugify(text);
+    return <Tag {...props} id={id} />;
+  };
+}
+
+function SmartLink(props: ComponentPropsWithoutRef<"a">) {
+  const { href, children, ...rest } = props;
+  if (!href) return <a {...props} />;
 
   if (href.startsWith("/")) {
-    return <Link href={href} {...props} />;
+    return (
+      <Link href={href} {...rest}>
+        {children}
+      </Link>
+    );
   }
 
   if (href.startsWith("#")) {
-    return <a href={href} {...props} />;
+    return (
+      <a href={href} {...rest}>
+        {children}
+      </a>
+    );
   }
 
-  return <a href={href} rel="noreferrer" target="_blank" {...props} />;
-}
-
-function createHeading<TagName extends "h2" | "h3" | "h4">(tagName: TagName) {
-  return function Heading({
-    children,
-    id,
-    ...props
-  }: ComponentPropsWithoutRef<TagName>) {
-    const resolvedId = id ?? slugifyHeading(flattenText(children));
-
-    if (tagName === "h2") {
-      return (
-        <h2 id={resolvedId} {...props}>
-          {children}
-        </h2>
-      );
-    }
-
-    if (tagName === "h3") {
-      return (
-        <h3 id={resolvedId} {...props}>
-          {children}
-        </h3>
-      );
-    }
-
-    return (
-      <h4 id={resolvedId} {...props}>
-        {children}
-      </h4>
-    );
-  };
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" {...rest}>
+      {children}
+    </a>
+  );
 }
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
-    a: SmartLink,
-    h2: createHeading("h2"),
-    h3: createHeading("h3"),
-    h4: createHeading("h4"),
-    ...components
+    ...components,
+    h1: createHeading(1),
+    h2: createHeading(2),
+    h3: createHeading(3),
+    h4: createHeading(4),
+    a: SmartLink as MDXComponents["a"],
+    pre: async (props: ComponentPropsWithoutRef<"pre">) => {
+      const codeEl = props.children as React.ReactElement<{
+        className?: string;
+        children?: string;
+      }>;
+      const className = codeEl?.props?.className ?? "";
+      const lang = className.replace(/language-/, "") || "bash";
+      const code = (codeEl?.props?.children ?? "").trim();
+      return <CodeBlock code={code} lang={lang} />;
+    },
   };
 }

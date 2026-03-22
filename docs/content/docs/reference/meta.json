@@ -1,9 +1,0 @@
-{
-  "title": "Reference",
-  "pages": [
-    "cli-commands",
-    "config-schema",
-    "json-output",
-    "templates-presets-and-analytics"
-  ]
-}
