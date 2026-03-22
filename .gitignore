@@ -2,3 +2,4 @@ node_modules
 dist
 .vercel
 .omc
+.claude/settings.local.json
