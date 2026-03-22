@@ -5,6 +5,11 @@
       "source": "jpoehnelt/skills",
       "sourceType": "github",
       "computedHash": "1d2aa0d3cfa03501af8656283631b61f572f6458ed7958f232f8acd5601386fa"
+    },
+    "cli-developer": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "computedHash": "2eb0cf6f78a8b861b6fb8da535c0737debbda228ac47f7b50594f03c1d5934d7"
     }
   }
 }

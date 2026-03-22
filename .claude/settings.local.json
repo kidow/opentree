@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -v \"^\\\\.$\\\\|^\\\\.\\\\.$\")",
+      "Bash(wc -l /Users/gimdong-ug/Documents/dev/projects/opentree/src/*.js)",
+      "Bash(head -20 /Users/gimdong-ug/Documents/dev/projects/opentree/src/*.js)",
+      "Bash(ls:*)",
+      "Bash(time node:*)",
+      "Bash(node:*)",
+      "Bash(echo \"EXIT: $?\")"
+    ]
+  }
+}
