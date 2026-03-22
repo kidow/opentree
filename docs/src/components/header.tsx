@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ThemeToggle } from "./theme-toggle";
+import { SearchDialog } from "./search-dialog";
 
 export function Header() {
   return (
@@ -23,29 +24,7 @@ export function Header() {
           opentree
         </Link>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="docs-button docs-chrome-muted hidden h-9 items-center gap-2 px-3 text-[12px] md:inline-flex"
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="7" />
-              <path d="m21 21-4.35-4.35" />
-            </svg>
-            Search docs
-            <span className="docs-kbd rounded px-1.5 py-0.5 text-[10px] leading-none">
-              ⌘ K
-            </span>
-          </button>
+          <SearchDialog />
           <a
             href="https://github.com/kidow/opentree"
             target="_blank"
