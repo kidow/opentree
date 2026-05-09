@@ -1,10 +1,14 @@
+type Tab = "links" | "design";
+
 interface Props {
   dirty: boolean;
+  activeTab: Tab;
+  onTabChange: (tab: Tab) => void;
   onSave: () => void;
   onExport: () => void;
 }
 
-export default function Sidebar({ dirty, onSave, onExport }: Props) {
+export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExport }: Props) {
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
@@ -12,7 +16,18 @@ export default function Sidebar({ dirty, onSave, onExport }: Props) {
         {dirty && <span className="dirty-dot" title="저장되지 않은 변경사항" />}
       </div>
       <nav className="sidebar-nav">
-        <button className="sidebar-nav-item active">Links</button>
+        <button
+          className={`sidebar-nav-item ${activeTab === "links" ? "active" : ""}`}
+          onClick={() => onTabChange("links")}
+        >
+          Links
+        </button>
+        <button
+          className={`sidebar-nav-item ${activeTab === "design" ? "active" : ""}`}
+          onClick={() => onTabChange("design")}
+        >
+          Design
+        </button>
       </nav>
       <div className="sidebar-actions">
         <button className="sidebar-save-btn" onClick={onSave} disabled={!dirty}>
@@ -51,7 +66,7 @@ export default function Sidebar({ dirty, onSave, onExport }: Props) {
           background: #f59e0b;
           display: inline-block;
         }
-        .sidebar-nav { flex: 1; }
+        .sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 2px; }
         .sidebar-nav-item {
           width: 100%;
           text-align: left;
@@ -64,6 +79,7 @@ export default function Sidebar({ dirty, onSave, onExport }: Props) {
         .sidebar-nav-item.active {
           background: var(--bg);
           color: var(--text);
+          font-weight: 600;
         }
         .sidebar-actions {
           display: flex;

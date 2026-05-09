@@ -6,13 +6,17 @@ import { useAppStore } from "./store";
 import type { Config } from "./types";
 import Sidebar from "./components/Sidebar";
 import Editor from "./components/Editor";
+import Design from "./components/Design";
 import PhonePreview from "./components/PhonePreview";
 import Welcome from "./components/Welcome";
 import CloseConfirmDialog from "./components/CloseConfirmDialog";
 import "./App.css";
 
+type Tab = "links" | "design";
+
 export default function App() {
   const store = useAppStore(null);
+  const [activeTab, setActiveTab] = useState<Tab>("links");
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const dirtyRef = useRef(store.dirty);
   useEffect(() => { dirtyRef.current = store.dirty; }, [store.dirty]);
@@ -29,7 +33,7 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [store.config, store.projectPath]);
 
-  // 창 닫기 경고 — 인앱 다이얼로그로 처리 (OS 다이얼로그 async race 방지)
+  // 창 닫기 경고
   useEffect(() => {
     const win = getCurrentWindow();
     let unlisten: (() => void) | undefined;
@@ -103,8 +107,18 @@ export default function App() {
 
   return (
     <div className="app-layout">
-      <Sidebar dirty={store.dirty} onSave={handleSave} onExport={handleExport} />
-      <Editor store={store} />
+      <Sidebar
+        dirty={store.dirty}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onSave={handleSave}
+        onExport={handleExport}
+      />
+      {activeTab === "links" ? (
+        <Editor store={store} />
+      ) : (
+        <Design store={store} />
+      )}
       <PhonePreview config={store.config} />
       {showCloseConfirm && (
         <CloseConfirmDialog
