@@ -1,0 +1,67 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: SEO
+description: Title, description, Open Graph image, sitemap, and robots — what Opentree generates and how to override it.
+---
+
+The renderer auto-generates a reasonable set of meta tags from your `profile`. You only need to override fields when you want something different.
+
+## What's auto-generated
+
+For every published page:
+
+- `<title>` — your `profile.name`
+- `<meta name="description">` — your `profile.bio`
+- Open Graph: `og:title`, `og:type`, `og:description`, `og:image` (your avatar), `og:url`
+- Twitter Card: `twitter:card="summary"`, `twitter:title`, `twitter:description`, `twitter:image`
+- JSON-LD `schema.org/Person` with `sameAs` populated from your link blocks (so search engines can map your social profiles to a single identity)
+- `<html lang>` from `config.locale`
+
+Plus, at build time:
+
+- `robots.txt` (with a `Sitemap:` reference if `siteUrl` is set)
+- `sitemap.xml` (when `siteUrl` is set)
+
+All of this ships with every deploy and on local export.
+
+## Overriding
+
+To customize any of the meta fields, fill in the **Settings → SEO** section. The values land in the `seo` field of your config:
+
+```json
+{
+  "seo": {
+    "title": "Your Name — links",
+    "description": "Custom one-line description for search snippets.",
+    "ogImage": "assets/og.png"
+  }
+}
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `title`       | `string \| null` | Overrides `<title>` and `og:title`. |
+| `description` | `string \| null` | Overrides `<meta description>` and `og:description`. |
+| `ogImage`     | `string \| null` | Asset path or external URL. Overrides `og:image` and `twitter:image`. |
+
+Any field set to `null` (or omitted) falls back to the auto-generated value.
+
+## OG image best practices
+
+- Recommended size: **1200×630**.
+- File format: PNG or JPG.
+- Keep important content centered — some platforms crop edges.
+- Use a project asset (`"assets/og.png"`) if you want it shipped with the build, or an external URL if you host it elsewhere.
+
+## Sitemap & robots
+
+Both files are generated at build time and uploaded by every deploy provider (Vercel, Cloudflare Pages, GitHub Pages).
+
+- `robots.txt` allows everything by default and points to the sitemap.
+- `sitemap.xml` includes the root URL plus every `localeVariants` path.
+
+To suppress them, leave `siteUrl` unset — without it, robots.txt has no Sitemap line and sitemap.xml is not emitted.
+
+## Page locale
+
+The `<html lang>` attribute is set from `config.locale`. See [Multi-locale](/docs/i18n) for the full story.

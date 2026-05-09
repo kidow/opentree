@@ -1,0 +1,64 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Scheduling
+description: Publish or unpublish individual blocks at specific times. Build-time exclusion + client-side fallback.
+---
+
+Every block can have an optional **publish window** — a start time, an end time, or both. Outside that window the block doesn't appear on your published page.
+
+Useful for: announcement banners with a clear expiry, time-limited promo links, scheduled product launches, holiday content.
+
+## Setting a schedule
+
+1. Click the schedule icon on a block in the **Links** tab (or ask the AI: *"Schedule this block to publish next Monday at 9am UTC"*).
+2. Set **Publish at** (start), **Unpublish at** (end), or both. Datetimes are stored as RFC3339 UTC strings.
+3. Click **Apply**.
+
+To clear a schedule, click **제거 (Remove)** in the schedule editor.
+
+## How it works
+
+Schedules are evaluated in **two places** — both run, so blocks behave correctly whether or not the page has been re-built.
+
+### Build-time exclusion
+
+When you publish, the renderer checks every block's schedule against the current time. Blocks fully outside their window are **omitted from the rendered HTML entirely** — they're not just hidden with CSS, they don't ship.
+
+This means scheduled blocks are invisible to scrapers, search engines, and `view-source` until their publish time.
+
+### Client-side fallback
+
+For visitors who already have your page open across a publish boundary, the renderer also injects a small script that re-evaluates schedules every 60 seconds and toggles a `.scheduled-hidden` class on the wrapper.
+
+This handles the case where someone opens your page at 8:59pm and a block is scheduled to unpublish at 9:00pm — they'll see it disappear without refreshing.
+
+## Schema
+
+```json
+{
+  "schedules": {
+    "abc123": {
+      "publishAt": "2026-06-01T09:00:00Z",
+      "unpublishAt": "2026-06-15T23:59:59Z"
+    },
+    "def456": {
+      "unpublishAt": "2026-12-31T23:59:59Z"
+    }
+  }
+}
+```
+
+`schedules` is a top-level field — a map from block `id` to a schedule object.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `publishAt`   | `string \| null` | no — RFC3339 UTC. Block hidden before this time. |
+| `unpublishAt` | `string \| null` | no — RFC3339 UTC. Block hidden after this time. |
+
+If both are absent (or both `null`), the block has no schedule.
+
+## Notes & limitations
+
+- **Time zones**: schedules are stored in UTC. The Block editor shows your local time but converts to UTC on save.
+- **No cron**: re-publishing happens manually. If you set `publishAt` to next Monday but never click Publish again, the block won't appear in the rendered HTML — only the client-side script will reveal it for visitors with the page already open. For full automation, set up a scheduled rebuild on your hosting provider (GitHub Actions cron, Vercel cron, Cloudflare Worker on cron) — provider auto-setup is a planned feature.
+- **AI shortcut**: ask the AI Chat *"schedule the announcement block to unpublish next Friday at midnight UTC"* — it'll call `set_schedule` and you preview the change.

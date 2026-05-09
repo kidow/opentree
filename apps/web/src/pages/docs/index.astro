@@ -1,61 +1,70 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
 
-const cards = [
+const groups = [
   {
-    label: 'Guide',
-    title: 'Deploy',
-    body: 'Connect Vercel, Cloudflare Pages, or GitHub Pages. Tokens, project setup, first publish.',
-    href: '/docs/deploy',
+    title: 'Editing',
+    cards: [
+      { title: 'Block types', body: 'All 20 block types — link, image, music, video, form, commerce, and more.', href: '/docs/blocks' },
+      { title: 'Design', body: 'Colors, button styles, layouts, backgrounds, fonts, custom CSS.', href: '/docs/design' },
+      { title: 'AI editing', body: 'Edit your page with Claude or GPT. Tool-driven, preview before apply.', href: '/docs/ai-chat' },
+      { title: 'Scheduling', body: 'Publish or unpublish blocks at specific times. UTC, build-time + client-side.', href: '/docs/scheduling' },
+    ],
   },
   {
-    label: 'Guide',
-    title: 'Custom domains',
-    body: 'Point your own domain at your published site. DNS records and verification per provider.',
-    href: '/docs/domains',
+    title: 'Publishing',
+    cards: [
+      { title: 'Deploy', body: 'Vercel, Cloudflare Pages, GitHub Pages — token setup and first publish.', href: '/docs/deploy' },
+      { title: 'Custom domains', body: 'Point your own domain. DNS records and verification per provider.', href: '/docs/domains' },
+      { title: 'SEO', body: 'Title, description, OG image, sitemap, robots — auto-generated and overrides.', href: '/docs/seo' },
+      { title: 'Multi-locale', body: 'Publish your page in multiple languages from one config.', href: '/docs/i18n' },
+      { title: 'Analytics', body: 'Plausible integration — visitors, pageviews, per-block clicks.', href: '/docs/analytics' },
+    ],
   },
   {
-    label: 'Reference',
-    title: 'Config schema',
-    body: 'Field-by-field reference for the opentree.config.json file: profile, blocks, theme.',
-    href: '/docs/schema',
-  },
-  {
-    label: 'Reference',
-    title: 'Troubleshooting',
-    body: 'Common deploy errors, token validation failures, and how to fix them.',
-    href: '/docs/troubleshooting',
+    title: 'Reference',
+    cards: [
+      { title: 'Config schema', body: 'Top-level structure of opentree.config.json.', href: '/docs/schema' },
+      { title: 'Troubleshooting', body: 'Common deploy errors, token failures, and how to fix them.', href: '/docs/troubleshooting' },
+    ],
   },
 ];
 ---
 
 <DocsLayout
   title="Documentation"
-  description="Everything you need to get Opentree deployed, connected to your domain, and edited with confidence."
+  description="Everything Opentree exposes outside the app: deploys, domains, the JSON schema, AI editing, analytics, scheduling, and more."
 >
   <p>
-    Opentree is a desktop app for macOS that turns a single
+    Opentree is a desktop app for macOS and Windows that turns a single
     <code>opentree.config.json</code> file on your disk into a published
     link-in-bio site. These docs cover the parts that touch the outside world —
-    deploys, domains, and the schema — so the app's UI can stay quiet.
+    deploys, domains, the schema, and the optional integrations — so the app's
+    UI can stay quiet.
   </p>
 
   <p>
-    If you just installed the app, open it and add a few link blocks first. You
-    only need these guides when you connect a hosting provider or want to read
-    your config file directly.
+    If you just installed the app, open it and add a few blocks first. You only
+    need these guides when you connect a hosting provider, attach a domain, or
+    want to read your config file directly.
   </p>
 
-  <div class="not-prose grid sm:grid-cols-2 gap-3 mt-10">
-    {cards.map((card) => (
-      <a
-        href={card.href}
-        class="group block p-5 rounded-xl border border-hairline dark:border-hairline-dark bg-canvas dark:bg-white/[0.02] hover:border-stone dark:hover:border-stone hover:bg-surface-soft dark:hover:bg-white/[0.05] transition-colors"
-      >
-        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-accent mb-2">{card.label}</p>
-        <h3 class="text-base font-semibold text-ink dark:text-white mb-1.5 group-hover:text-accent transition-colors">{card.title}</h3>
-        <p class="text-sm text-stone leading-relaxed">{card.body}</p>
-      </a>
+  <div class="not-prose space-y-10 mt-12">
+    {groups.map((group) => (
+      <section>
+        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone mb-4">{group.title}</p>
+        <div class="grid sm:grid-cols-2 gap-3">
+          {group.cards.map((card) => (
+            <a
+              href={card.href}
+              class="group block p-5 rounded-xl border border-hairline dark:border-hairline-dark bg-canvas dark:bg-white/[0.02] hover:border-stone dark:hover:border-stone hover:bg-surface-soft dark:hover:bg-white/[0.05] transition-colors"
+            >
+              <h3 class="text-base font-semibold text-ink dark:text-white mb-1.5 group-hover:text-accent transition-colors">{card.title}</h3>
+              <p class="text-sm text-stone leading-relaxed">{card.body}</p>
+            </a>
+          ))}
+        </div>
+      </section>
     ))}
   </div>
 </DocsLayout>

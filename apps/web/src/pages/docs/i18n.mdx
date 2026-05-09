@@ -1,0 +1,94 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Multi-locale
+description: Publish your link page in multiple languages from one config. Per-locale subdirectories with a language switcher block.
+---
+
+Opentree supports two kinds of language settings:
+
+1. **Page locale** — sets the `<html lang>` attribute on your published site (one language).
+2. **Locale variants** — multi-language builds: one config produces `/`, `/ko`, `/en`, etc., each with its own profile and block content. The desktop UI's own language is independent of both.
+
+## Page locale
+
+A single field on the config that controls the rendered `<html lang>`:
+
+```json
+{ "locale": "en" }
+```
+
+If absent, defaults to English. Use any [BCP 47 language code](https://en.wikipedia.org/wiki/IETF_language_tag) (e.g. `ko`, `en`, `ja`, `pt-BR`).
+
+Set in **Settings → SEO → Page locale**.
+
+## Locale variants (multi-language builds)
+
+For sites that need multiple language versions, define `localeVariants`:
+
+```json
+{
+  "locale": "ko",
+  "localeVariants": [
+    {
+      "code": "en",
+      "path": "en",
+      "label": "English",
+      "profile": { "name": "Your Name", "bio": "Bio in English" },
+      "blocks": {
+        "abc123": { "title": "My Website" },
+        "def456": { "text": "Projects" }
+      }
+    }
+  ]
+}
+```
+
+| Field | Type | Required |
+|-------|------|----------|
+| `code`   | `string` | yes — BCP 47 code |
+| `path`   | `string` | yes — subdirectory under your site (e.g. `"en"` → `https://yoursite.com/en/`) |
+| `label`  | `string` | no — shown in the language switcher block |
+| `profile`| `object` | no — overrides for `name`, `bio`, `avatarUrl` |
+| `blocks` | `object` | no — block id → field overrides for the translated fields |
+
+The default locale uses the top-level `profile` and `blocks` values. Each variant overrides selected fields.
+
+### How blocks get translated
+
+The `blocks` map only includes the blocks (and fields) you want overridden. Fields you don't override fall back to the default. Example: a `link` block keeps the same `url` everywhere but gets a translated `title` per variant.
+
+### Build output
+
+```
+dist/
+├── index.html       # default locale (config.locale)
+├── en/index.html    # variant en
+└── ja/index.html    # variant ja
+```
+
+All deploy providers handle the subdirectory layout (Vercel, Cloudflare Pages, GitHub Pages).
+
+## Language switcher block
+
+Drop a `languageSwitcher` block into `blocks` to give visitors a way to jump between locales:
+
+```json
+{ "id": "lang", "type": "languageSwitcher", "enabled": true, "style": "links" }
+```
+
+`style` is `"links"` (inline pills) or `"select"` (dropdown). The block automatically lists all variants from `localeVariants`.
+
+## Desktop UI language
+
+Independent of your page content. The app interface itself is available in:
+
+- 한국어 (Korean)
+- English
+
+Switch in **Settings → Language**. The choice is stored in localStorage and auto-detects from `navigator.language` on first launch.
+
+## Notes
+
+- Variant `path` must be unique. The default locale renders at `/`; variants render at `/{path}/`.
+- Search engines see each variant as a separate page. Adding `<link rel="alternate" hreflang>` tags is on the roadmap.
+- If you only need one language, leave `localeVariants` empty (`[]`) — only `locale` matters.

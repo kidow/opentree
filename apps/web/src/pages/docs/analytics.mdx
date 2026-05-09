@@ -1,0 +1,100 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Analytics
+description: Connect Plausible Analytics to track visitors and per-block clicks. Privacy-friendly, no cookies, no PII.
+---
+
+Opentree integrates with [Plausible Analytics](https://plausible.io) — privacy-friendly, no cookies, no personal data. Both the hosted Plausible service and self-hosted instances are supported.
+
+## Why Plausible
+
+- No cookies, GDPR-compliant out of the box
+- No personal data collected
+- Lightweight script (~1 KB)
+- Supports custom events for per-block click tracking
+
+Other analytics providers are not yet supported.
+
+## Setup
+
+### 1. Get a Plausible site
+
+If you don't have one yet, sign up at [plausible.io](https://plausible.io) and add a site. Copy the **domain** you registered (e.g. `links.example.com`).
+
+### 2. Generate an API token (for the Stats tab)
+
+The in-app Stats tab pulls data via the Plausible Stats API. To enable it:
+
+1. Open Plausible → **Account Settings → API Tokens**.
+2. Create a token, copy it.
+3. In Opentree: **Settings → 연결 (Connections) → Plausible**.
+4. Paste the token. For self-hosted instances, also fill the **Self-host base URL**.
+
+The token is stored in your OS Keychain.
+
+### 3. Enable analytics on your published site
+
+1. Open **Settings → Analytics**.
+2. Enable Plausible.
+3. Enter the **Site ID** (your Plausible domain).
+4. (Optional) Enter the self-host base URL if you're not using `plausible.io`.
+
+The next publish injects the Plausible script into your page's `<head>`.
+
+## What gets tracked
+
+### Pageviews
+
+Every page view, with the same metadata Plausible normally captures (referrer, country, device).
+
+### Per-block clicks
+
+Every clickable block (link, commerce, support, etc.) emits a custom event when clicked:
+
+```
+event: BlockClick
+props:
+  block_id:    "abc123"
+  block_type:  "link"
+  label:       "My Website"
+```
+
+These events appear in Plausible under **Goals → Custom Events → BlockClick**, with the `props` available as filters.
+
+You don't need to configure each block individually — the data attributes are added automatically by the renderer.
+
+## Stats tab
+
+When the Plausible API token is connected, the **Stats** tab shows:
+
+- **Visitors** — unique visitors
+- **Pageviews** — total page loads
+- **Bounce rate** — single-page visits
+- **Avg duration** — session length
+- **Top blocks** — `BlockClick` event breakdown by `block_id` (sorted by count)
+
+Period selector covers Today / 7d / 30d / 6mo / 12mo.
+
+## Schema field
+
+Inside `opentree.config.json`:
+
+```json
+{
+  "analytics": {
+    "provider": "plausible",
+    "domain": "links.example.com",
+    "selfHostUrl": null
+  }
+}
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `provider` | `"plausible"` | Only Plausible supported. Set to `null` to disable. |
+| `domain` | `string` | Your Plausible Site ID. |
+| `selfHostUrl` | `string \| null` | Override the script + API base URL for self-hosted instances. |
+
+## Disabling
+
+Set `analytics` to `null` in the config or toggle off in **Settings → Analytics**. The next publish will omit the script and the data attributes.
