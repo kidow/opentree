@@ -1,3 +1,4 @@
+mod ai;
 mod asset;
 mod publish;
 
@@ -100,6 +101,29 @@ async fn verify_connection(provider: String, data: String) -> Result<(), String>
             let conn: publish::PlausibleConnection =
                 serde_json::from_str(&data).map_err(|_| "잘못된 연결 데이터".to_string())?;
             publish::verify_plausible(&conn).await
+        }
+        "anthropic" => ai::verify_anthropic(&data).await,
+        "openai" => ai::verify_openai(&data).await,
+        _ => Err(format!("알 수 없는 provider: {provider}")),
+    }
+}
+
+#[command]
+async fn chat_send(
+    provider: String,
+    messages: Vec<ai::ChatMessage>,
+    config: serde_json::Value,
+) -> Result<ai::ChatResponse, String> {
+    match provider.as_str() {
+        "anthropic" => {
+            let token = publish::load_token("anthropic")?
+                .ok_or_else(|| "Anthropic API 키가 없습니다. Settings → 연결에서 추가하세요.".to_string())?;
+            ai::chat_anthropic(&token, &messages, &config).await
+        }
+        "openai" => {
+            let token = publish::load_token("openai")?
+                .ok_or_else(|| "OpenAI API 키가 없습니다. Settings → 연결에서 추가하세요.".to_string())?;
+            ai::chat_openai(&token, &messages, &config).await
         }
         _ => Err(format!("알 수 없는 provider: {provider}")),
     }
@@ -244,6 +268,7 @@ pub fn run() {
             add_domain,
             check_domain,
             fetch_plausible_stats,
+            chat_send,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application")

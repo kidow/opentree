@@ -17,6 +17,20 @@ The format is intentionally simple:
 - Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Remove import-from-JSON feature — no clear use case without legacy CLI
 
+### Phase 11 — AI Chat 편집
+
+- Add right-side AI Chat panel (toggles in/out of phone preview slot)
+- Supports Claude (Anthropic) and OpenAI as backends; user pastes API
+  key in Settings → 연결 (OAuth PKCE deferred — providers don't expose
+  stable PKCE flows for end-user API access)
+- AI sees current config JSON and exposes 7 tools:
+  `add_block`, `edit_block`, `delete_block`, `reorder_blocks`,
+  `toggle_block`, `update_theme`, `update_profile`
+- Tool calls render as a pending preview applied to live phone preview;
+  user clicks **Apply** (commit to undo stack) or **Cancel** (revert)
+- Defaults: `claude-sonnet-4-5-20250929`, `gpt-4o-mini`
+- API keys stored in OS Keychain; usage billed against user's own account
+
 ### Phase 10 — Analytics (Plausible)
 
 - Add `analytics` field on Config (provider, domain, optional self-host URL)

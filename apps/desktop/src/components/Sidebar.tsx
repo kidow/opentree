@@ -10,9 +10,11 @@ interface Props {
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  chatOpen: boolean;
+  onToggleChat: () => void;
 }
 
-export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExport, canUndo, canRedo, onUndo, onRedo }: Props) {
+export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExport, canUndo, canRedo, onUndo, onRedo, chatOpen, onToggleChat }: Props) {
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
@@ -52,6 +54,13 @@ export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExpor
         </button>
       </nav>
       <div className="sidebar-actions">
+        <button
+          className={`sidebar-chat-btn${chatOpen ? " active" : ""}`}
+          onClick={onToggleChat}
+          title="AI Chat 토글"
+        >
+          {chatOpen ? "✕ Chat 닫기" : "✨ AI Chat"}
+        </button>
         <div className="undo-redo-row">
           <button className="undo-redo-btn" onClick={onUndo} disabled={!canUndo} title="실행 취소 (⌘Z)">↩</button>
           <button className="undo-redo-btn" onClick={onRedo} disabled={!canRedo} title="다시 실행 (⌘⇧Z)">↪</button>
@@ -147,6 +156,17 @@ export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExpor
         }
         .undo-redo-btn:hover:not(:disabled) { background: var(--bg); }
         .undo-redo-btn:disabled { opacity: 0.3; cursor: default; }
+        .sidebar-chat-btn {
+          padding: 8px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 600;
+          border: 1px solid var(--border);
+          color: var(--text);
+          background: linear-gradient(135deg, rgba(168,85,247,0.08), rgba(59,130,246,0.08));
+        }
+        .sidebar-chat-btn:hover { background: linear-gradient(135deg, rgba(168,85,247,0.16), rgba(59,130,246,0.16)); }
+        .sidebar-chat-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
       `}</style>
     </aside>
   );

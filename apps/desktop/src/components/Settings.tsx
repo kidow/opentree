@@ -7,7 +7,7 @@ interface Props {
   projectPath: string;
 }
 
-type Provider = "vercel" | "cloudflare" | "github" | "plausible";
+type Provider = "vercel" | "cloudflare" | "github" | "plausible" | "anthropic" | "openai";
 
 interface ConnState {
   connected: boolean;
@@ -113,6 +113,8 @@ export default function Settings({ store, projectPath }: Props) {
     cloudflare: { connected: false, masked: "" },
     github: { connected: false, masked: "" },
     plausible: { connected: false, masked: "" },
+    anthropic: { connected: false, masked: "" },
+    openai: { connected: false, masked: "" },
   });
 
   useEffect(() => {
@@ -120,14 +122,14 @@ export default function Settings({ store, projectPath }: Props) {
   }, []);
 
   const loadConnections = async () => {
-    const providers: Provider[] = ["vercel", "cloudflare", "github", "plausible"];
+    const providers: Provider[] = ["vercel", "cloudflare", "github", "plausible", "anthropic", "openai"];
     const next = { ...connections };
     for (const p of providers) {
       try {
         const val = await invoke<string | null>("get_token", { provider: p });
         if (val) {
           let masked = "";
-          if (p === "vercel") {
+          if (p === "vercel" || p === "anthropic" || p === "openai") {
             masked = `토큰: ${mask(val)}`;
           } else {
             try {
@@ -225,6 +227,22 @@ export default function Settings({ store, projectPath }: Props) {
             conn={connections.plausible}
             onConnect={handleConnect("plausible")}
             onDisconnect={handleDisconnect("plausible")}
+          />
+          <ProviderCard
+            label="Anthropic (Claude)"
+            hint="console.anthropic.com 에서 API 키 발급. AI Chat 편집 기능에 사용. 사용량은 사용자 본인 구독에서 차감됩니다."
+            fields={[{ key: "token", label: "API 키", placeholder: "sk-ant-...", sensitive: true }]}
+            conn={connections.anthropic}
+            onConnect={handleConnect("anthropic")}
+            onDisconnect={handleDisconnect("anthropic")}
+          />
+          <ProviderCard
+            label="OpenAI"
+            hint="platform.openai.com/api-keys 에서 발급. AI Chat 편집 기능에 사용. 사용량은 사용자 본인 구독에서 차감됩니다."
+            fields={[{ key: "token", label: "API 키", placeholder: "sk-...", sensitive: true }]}
+            conn={connections.openai}
+            onConnect={handleConnect("openai")}
+            onDisconnect={handleDisconnect("openai")}
           />
         </section>
 

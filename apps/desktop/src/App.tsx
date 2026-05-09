@@ -10,6 +10,7 @@ import Design from "./components/Design";
 import Settings from "./components/Settings";
 import Publish from "./components/Publish";
 import Stats from "./components/Stats";
+import ChatSidebar from "./components/ChatSidebar";
 import PhonePreview from "./components/PhonePreview";
 import Welcome from "./components/Welcome";
 import CloseConfirmDialog from "./components/CloseConfirmDialog";
@@ -21,6 +22,7 @@ export default function App() {
   const store = useAppStore(null);
   const [activeTab, setActiveTab] = useState<Tab>("links");
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const dirtyRef = useRef(store.dirty);
   useEffect(() => { dirtyRef.current = store.dirty; }, [store.dirty]);
 
@@ -120,6 +122,8 @@ export default function App() {
         canRedo={store.canRedo}
         onUndo={store.undo}
         onRedo={store.redo}
+        chatOpen={chatOpen}
+        onToggleChat={() => setChatOpen((v) => !v)}
       />
       {activeTab === "links" && <Editor store={store} />}
       {activeTab === "design" && <Design store={store} />}
@@ -128,7 +132,7 @@ export default function App() {
       {activeTab === "settings" && (
         <Settings store={store} projectPath={store.projectPath!} />
       )}
-      <PhonePreview config={store.config} />
+      {chatOpen ? <ChatSidebar store={store} /> : <PhonePreview config={store.config} />}
       {showCloseConfirm && (
         <CloseConfirmDialog
           onConfirm={handleForceClose}
