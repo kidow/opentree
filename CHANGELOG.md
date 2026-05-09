@@ -17,6 +17,30 @@ The format is intentionally simple:
 - Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Remove import-from-JSON feature — no clear use case without legacy CLI
 
+### Testing — E2E scaffold (WebdriverIO + tauri-driver)
+
+- Add `apps/desktop/e2e/` directory with WebdriverIO 9 + Mocha
+  framework wired through `tauri-driver`
+- `wdio.conf.ts`: builds the Tauri debug binary (skippable via
+  `SKIP_TAURI_BUILD=1`), spawns `tauri-driver` on `127.0.0.1:4444`,
+  hard-fails on macOS (tauri-driver has no macOS backend)
+- Specs:
+  - `smoke.spec.ts` — window opens, title is non-empty, root element
+    mounted with content
+  - `sidebar.spec.ts` — five primary tabs + AI Chat toggle button
+    visible (auto-skips if Welcome screen still showing — needs
+    fixture-project flow to fully exercise)
+- `e2e/README.md` documents Linux + Windows prereqs (`tauri-driver`
+  via `cargo install`, `webkit2gtk-driver` on Linux, Edge Driver on
+  Windows) and the explicit macOS skip
+- `package.json` scripts: `e2e` (run suite) + `e2e:typecheck`
+  (validate config without launching)
+- CI: new `e2e` job on Ubuntu — installs webkit2gtk + tauri-driver,
+  runs the suite under `xvfb-run`. `continue-on-error: true` so
+  flakes don't block PRs while we stabilise the fixture flow
+- Cannot exercise the suite end-to-end on macOS dev machines; rely
+  on CI for verification
+
 ### Testing — UI unit tests (Vitest + Testing Library)
 
 - Add Vitest with jsdom environment + Testing Library + jest-dom
