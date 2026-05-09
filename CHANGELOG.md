@@ -361,6 +361,9 @@ video, complex animations.
 - Expand `/docs` to 11 pages: Block types (20 catalog), Design (theme + button styles + layouts + backgrounds + fonts + custom CSS), AI editing (Claude/OpenAI + 8 tools), Analytics (Plausible), Scheduling (publishAt/unpublishAt), Multi-locale (localeVariants + languageSwitcher), SEO (meta + sitemap + robots)
 - Regroup DocsSidebar into Overview / Editing / Publishing / Reference
 - Landing sections updated for v1 scope: Editor section now shows AI panel exchange, new "Every kind of block" 19-tile grid, new "Everything else, built in" capability cards (scheduling / multi-language / privacy-first analytics / SEO); abstract phrasing keeps OSS minimal tone (no provider names in landing copy)
+- Remove all Korean strings from `/docs` (Phase 14 desktop is bilingual; quoting one localization is misleading)
+- Tighten SEO meta: og:image absolute URL, og:site_name, og:locale, og:image:width/height/alt, conditional JSON-LD (SoftwareApplication on `/` only), per-page `og:type` switches website/article
+- Add cmd+k search dialog: shadcn-pattern Command (cmdk) + Dialog (Radix) as React island, search trigger pill in header right of logo, indexes 14 internal pages + 2 external links
 
 ## v0.1.0 - 2026-03-08
 
