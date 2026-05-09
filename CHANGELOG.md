@@ -37,6 +37,7 @@ The format is intentionally simple:
 - Add Hero, Author, and Footer components with full copy and CTAs
 - Add full SEO meta: title, description, OG, JSON-LD, sitemap, robots
 - Add five content sections: Local-first, Editor, Preview, Deploy, Open
+- Add `/download` page with build-time GitHub API fetch, version/date/size/checksum, and fallback
 
 ## v0.1.0 - 2026-03-08
 

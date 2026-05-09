@@ -1,9 +1,126 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Footer from '../components/Footer.astro';
+
+const GITHUB_RELEASES_URL = 'https://github.com/kidow/opentree/releases/latest';
+const GITHUB_API_URL = 'https://api.github.com/repos/kidow/opentree/releases/latest';
+
+interface GithubAsset {
+  name: string;
+  browser_download_url: string;
+  size: number;
+}
+
+interface GithubRelease {
+  tag_name: string;
+  published_at: string;
+  assets: GithubAsset[];
+}
+
+let release: GithubRelease | null = null;
+
+try {
+  const res = await fetch(GITHUB_API_URL, {
+    headers: { Accept: 'application/vnd.github+json' },
+  });
+  if (res.ok) {
+    release = await res.json() as GithubRelease;
+  }
+} catch {
+  // fallback: release stays null, UI shows link to releases page
+}
+
+const dmg = release?.assets.find((a) => a.name.endsWith('.dmg')) ?? null;
+const sha256Asset = release?.assets.find((a) => a.name.endsWith('.sha256')) ?? null;
+
+const version = release?.tag_name ?? null;
+const publishedAt = release?.published_at
+  ? new Date(release.published_at).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  : null;
+
+const downloadUrl = dmg?.browser_download_url ?? GITHUB_RELEASES_URL;
+const fileSize = dmg ? `${(dmg.size / 1024 / 1024).toFixed(1)} MB` : null;
 ---
 
-<BaseLayout title="Download — Opentree">
-  <main class="max-w-3xl mx-auto px-6 py-24">
-    <h1 class="text-4xl font-bold">Download</h1>
+<BaseLayout title="Download — Opentree" description="Download Opentree for macOS. Free, open source, no account required.">
+  <main class="min-h-screen px-6 py-24 sm:py-32">
+    <div class="max-w-lg mx-auto">
+      <p class="text-xs font-semibold uppercase tracking-widest text-neutral-500 dark:text-neutral-400 mb-3">
+        Download
+      </p>
+      <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 mb-4">
+        Opentree for macOS
+      </h1>
+      <p class="text-base text-neutral-600 dark:text-neutral-400 mb-10">
+        Free forever. No account required.
+      </p>
+
+      <a
+        href={downloadUrl}
+        class="inline-flex items-center gap-3 px-7 py-4 rounded-xl bg-accent text-white font-semibold text-base hover:bg-green-700 transition-colors mb-8"
+        {...(dmg ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Download for macOS
+      </a>
+
+      {(version || publishedAt || fileSize || sha256Asset) && (
+        <dl class="space-y-3 text-sm border-t border-neutral-200 dark:border-neutral-800 pt-6">
+          {version && (
+            <div class="flex gap-4">
+              <dt class="w-24 shrink-0 text-neutral-500 dark:text-neutral-400">Version</dt>
+              <dd class="font-mono text-neutral-800 dark:text-neutral-200">{version}</dd>
+            </div>
+          )}
+          {publishedAt && (
+            <div class="flex gap-4">
+              <dt class="w-24 shrink-0 text-neutral-500 dark:text-neutral-400">Released</dt>
+              <dd class="text-neutral-800 dark:text-neutral-200">{publishedAt}</dd>
+            </div>
+          )}
+          {fileSize && (
+            <div class="flex gap-4">
+              <dt class="w-24 shrink-0 text-neutral-500 dark:text-neutral-400">Size</dt>
+              <dd class="font-mono text-neutral-800 dark:text-neutral-200">{fileSize}</dd>
+            </div>
+          )}
+          {sha256Asset && (
+            <div class="flex gap-4">
+              <dt class="w-24 shrink-0 text-neutral-500 dark:text-neutral-400">Checksum</dt>
+              <dd>
+                <a
+                  href={sha256Asset.browser_download_url}
+                  class="font-mono text-accent hover:underline text-xs"
+                >
+                  {sha256Asset.name}
+                </a>
+              </dd>
+            </div>
+          )}
+        </dl>
+      )}
+
+      {!release && (
+        <p class="text-xs text-neutral-400 dark:text-neutral-600 mt-4">
+          Release metadata unavailable at build time.{' '}
+          <a href={GITHUB_RELEASES_URL} target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">
+            View all releases on GitHub.
+          </a>
+        </p>
+      )}
+
+      <p class="mt-10 text-xs text-neutral-400 dark:text-neutral-600">
+        macOS only. Apple Silicon and Intel supported.
+      </p>
+    </div>
   </main>
+  <Footer />
 </BaseLayout>
