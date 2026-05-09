@@ -4,23 +4,6 @@ import Hero from '../components/Hero.astro';
 import Section from '../components/Section.astro';
 import Author from '../components/Author.astro';
 import Footer from '../components/Footer.astro';
-
-const configExample = JSON.stringify(
-  {
-    schemaVersion: 1,
-    profile: {
-      name: 'Your Name',
-      bio: 'Your bio here',
-    },
-    blocks: [
-      { type: 'link', title: 'My Website', url: 'https://example.com' },
-      { type: 'heading', text: 'Projects' },
-      { type: 'link', title: 'GitHub', url: 'https://github.com/you' },
-    ],
-  },
-  null,
-  2
-);
 ---
 
 <BaseLayout>
@@ -29,25 +12,50 @@ const configExample = JSON.stringify(
   <Section
     label="Local-first"
     title="Just a JSON file on your disk"
-    body="Opentree stores your entire link page in a single opentree.config.json file. No database, no cloud sync — just a file you own and can move, back up, or version-control however you like."
+    body="Opentree stores your entire link page in a single opentree.config.json file. No database, no cloud sync — a file you own, can version-control, and back up however you like."
   >
-    <div class="rounded-xl overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900">
-      <div class="px-4 py-2 border-b border-neutral-200 dark:border-neutral-800 flex items-center gap-2">
-        <span class="text-xs font-mono text-neutral-400">opentree.config.json</span>
+    <div class="rounded-2xl overflow-hidden border border-hairline dark:border-hairline-dark bg-surface-code shadow-xl shadow-ink/5">
+      <div class="px-4 py-2.5 border-b border-hairline-dark flex items-center gap-2">
+        <div class="flex gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-[#febc2e]"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-[#28c840]"></span>
+        </div>
+        <span class="ml-2 text-[11px] font-mono text-stone">opentree.config.json</span>
       </div>
-      <pre class="p-4 text-xs font-mono text-neutral-800 dark:text-neutral-200 overflow-x-auto leading-relaxed"><code>{configExample}</code></pre>
+      <pre class="p-5 text-[12.5px] font-mono leading-relaxed overflow-x-auto"><code><span class="text-stone">{</span>
+  <span class="text-[#7cd1f7]">"schemaVersion"</span><span class="text-stone">:</span> <span class="text-accent">2</span><span class="text-stone">,</span>
+  <span class="text-[#7cd1f7]">"profile"</span><span class="text-stone">: {</span>
+    <span class="text-[#7cd1f7]">"name"</span><span class="text-stone">:</span> <span class="text-[#fab387]">"Your Name"</span><span class="text-stone">,</span>
+    <span class="text-[#7cd1f7]">"bio"</span><span class="text-stone">:</span> <span class="text-[#fab387]">"Your bio here"</span>
+  <span class="text-stone">},</span>
+  <span class="text-[#7cd1f7]">"blocks"</span><span class="text-stone">: [</span>
+    <span class="text-stone">{</span> <span class="text-[#7cd1f7]">"type"</span><span class="text-stone">:</span> <span class="text-[#fab387]">"link"</span><span class="text-stone">,</span> <span class="text-[#7cd1f7]">"title"</span><span class="text-stone">:</span> <span class="text-[#fab387]">"My Site"</span> <span class="text-stone">},</span>
+    <span class="text-stone">{</span> <span class="text-[#7cd1f7]">"type"</span><span class="text-stone">:</span> <span class="text-[#fab387]">"heading"</span><span class="text-stone">,</span> <span class="text-[#7cd1f7]">"text"</span><span class="text-stone">:</span> <span class="text-[#fab387]">"Projects"</span> <span class="text-stone">},</span>
+    <span class="text-stone">{</span> <span class="text-[#7cd1f7]">"type"</span><span class="text-stone">:</span> <span class="text-[#fab387]">"link"</span><span class="text-stone">,</span> <span class="text-[#7cd1f7]">"title"</span><span class="text-stone">:</span> <span class="text-[#fab387]">"GitHub"</span> <span class="text-stone">}</span>
+  <span class="text-stone">]</span>
+<span class="text-stone">}</span></code></pre>
     </div>
   </Section>
 
   <Section
     label="Editor"
     title="Drag, drop, done"
-    body="Add links, headings, or text blocks with a click. Reorder them by dragging. Every change is undoable — no autosave surprises, no lost work."
+    body="Add links, headings, or text blocks with one click. Reorder by dragging. Every change is undoable — no autosave surprises, no lost work."
+    reverse
   >
-    <div class="grid grid-cols-3 gap-2">
-      {['Link', 'Heading', 'Text'].map((type) => (
-        <div class="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 px-4 py-3 text-center text-sm font-medium text-neutral-700 dark:text-neutral-300">
-          {type}
+    <div class="rounded-2xl border border-hairline dark:border-hairline-dark bg-surface-soft dark:bg-white/[0.03] p-5 space-y-2.5 shadow-xl shadow-ink/5">
+      {[
+        { type: 'Link', title: 'My Website', meta: 'example.com', icon: 'link' },
+        { type: 'Heading', title: 'Projects', meta: '', icon: 'heading' },
+        { type: 'Link', title: 'GitHub', meta: 'github.com/you', icon: 'link' },
+        { type: 'Text', title: 'Available for hire', meta: '', icon: 'text' },
+      ].map((b) => (
+        <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-canvas dark:bg-white/[0.05] border border-hairline dark:border-hairline-dark">
+          <span class="text-stone select-none cursor-grab" aria-hidden="true">⠿</span>
+          <span class="text-[10px] font-medium uppercase tracking-wider text-stone w-14">{b.type}</span>
+          <span class="flex-1 text-sm font-medium text-ink dark:text-white truncate">{b.title}</span>
+          {b.meta && <span class="text-xs font-mono text-stone hidden sm:inline">{b.meta}</span>}
         </div>
       ))}
     </div>
@@ -59,12 +67,21 @@ const configExample = JSON.stringify(
     body="A live phone-shaped preview updates as you edit. What you see is exactly what your visitors will see — no surprises after deploy."
   >
     <div class="flex justify-center">
-      <div class="w-36 rounded-3xl border-4 border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 aspect-[9/19] flex flex-col items-center justify-center gap-2 p-3">
-        <div class="w-full h-2 rounded-full bg-neutral-300 dark:bg-neutral-700"></div>
-        <div class="w-3/4 h-2 rounded-full bg-neutral-200 dark:bg-neutral-800"></div>
-        <div class="w-full h-6 rounded-md bg-accent/20 mt-1"></div>
-        <div class="w-full h-6 rounded-md bg-neutral-200 dark:bg-neutral-800"></div>
-        <div class="w-full h-6 rounded-md bg-neutral-200 dark:bg-neutral-800"></div>
+      <div class="relative w-56 aspect-[9/19] rounded-[2.25rem] border-[6px] border-ink/90 dark:border-white/10 bg-canvas dark:bg-canvas-dark shadow-2xl shadow-ink/20 overflow-hidden">
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-5 bg-ink/90 dark:bg-white/10 rounded-b-2xl"></div>
+        <div class="pt-10 px-4 flex flex-col items-center gap-3">
+          <div class="w-14 h-14 rounded-full bg-gradient-to-br from-accent to-accent-deep"></div>
+          <div class="text-center">
+            <div class="text-[11px] font-semibold text-ink dark:text-white">Your Name</div>
+            <div class="text-[9px] text-stone">Your bio here</div>
+          </div>
+          <div class="w-full space-y-1.5 mt-2">
+            <div class="w-full h-7 rounded-md bg-accent text-white text-[9px] font-medium flex items-center justify-center">My Website</div>
+            <div class="w-full h-7 rounded-md bg-surface dark:bg-white/[0.07] text-[9px] font-medium text-ink dark:text-white flex items-center justify-center">GitHub</div>
+            <div class="w-full h-7 rounded-md bg-surface dark:bg-white/[0.07] text-[9px] font-medium text-ink dark:text-white flex items-center justify-center">Twitter</div>
+            <div class="w-full h-7 rounded-md bg-surface dark:bg-white/[0.07] text-[9px] font-medium text-ink dark:text-white flex items-center justify-center">Email</div>
+          </div>
+        </div>
       </div>
     </div>
   </Section>
@@ -73,33 +90,61 @@ const configExample = JSON.stringify(
     label="Deploy"
     title="One click to live"
     body="Publish your page directly from the app. Opentree sends your config to any host that accepts a REST deploy — no CLI, no terminal, no build step on your end."
+    reverse
   >
-    <div class="flex items-center gap-3">
-      <button
-        type="button"
-        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-white font-semibold text-sm cursor-default"
-        aria-hidden="true"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M5 12h14M12 5l7 7-7 7"/>
-        </svg>
-        Publish
-      </button>
-      <span class="text-sm text-neutral-400">→</span>
-      <span class="text-sm text-neutral-600 dark:text-neutral-400 font-mono">your-site.example.com</span>
+    <div class="rounded-2xl border border-hairline dark:border-hairline-dark bg-surface-soft dark:bg-white/[0.03] p-6 shadow-xl shadow-ink/5">
+      <div class="flex items-center gap-3 mb-4">
+        <span class="text-[10px] font-semibold uppercase tracking-wider text-stone">Status</span>
+        <span class="inline-flex items-center gap-1.5 text-xs font-medium text-accent">
+          <span class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
+          Live
+        </span>
+      </div>
+      <div class="flex items-center gap-3 mb-4">
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-ink text-white text-xs font-medium dark:bg-white dark:text-ink cursor-default"
+          aria-hidden="true"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          Publish
+        </button>
+        <span class="text-stone text-sm">→</span>
+        <span class="text-xs font-mono text-slate dark:text-stone truncate">your-site.example.com</span>
+      </div>
+      <div class="text-[11px] font-mono text-stone border-t border-hairline dark:border-hairline-dark pt-3 space-y-1">
+        <div>✓ Built config (24ms)</div>
+        <div>✓ Uploaded 1 file (217ms)</div>
+        <div class="text-accent">✓ Deployed</div>
+      </div>
     </div>
   </Section>
 
   <Section
     label="Open"
     title="Apache 2.0, no account, no tracking"
-    body="The source is public, the license is permissive, and there is nothing to sign up for. Your config file stays on your machine. We collect no analytics, no telemetry, nothing."
+    body="The source is public, the license is permissive, and there is nothing to sign up for. Your config file stays on your machine. No analytics, no telemetry, nothing."
   >
-    <div class="flex flex-wrap gap-2">
-      {['Apache 2.0', 'No account', 'No tracking', 'Your data'].map((tag) => (
-        <span class="inline-block px-3 py-1 rounded-full border border-neutral-200 dark:border-neutral-800 text-xs text-neutral-600 dark:text-neutral-400">
-          {tag}
-        </span>
+    <div class="grid grid-cols-2 gap-3">
+      {[
+        { title: 'Apache 2.0', body: 'Permissive license' },
+        { title: 'Local first', body: 'Your data, your disk' },
+        { title: 'Zero tracking', body: 'No analytics, ever' },
+        { title: 'No account', body: 'Just download and go' },
+      ].map((f) => (
+        <div class="p-4 rounded-xl border border-hairline dark:border-hairline-dark bg-surface-soft dark:bg-white/[0.03]">
+          <div class="flex items-center gap-2 mb-1.5">
+            <svg class="text-accent" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            <span class="text-sm font-semibold text-ink dark:text-white">{f.title}</span>
+          </div>
+          <p class="text-xs text-stone">{f.body}</p>
+        </div>
       ))}
     </div>
   </Section>

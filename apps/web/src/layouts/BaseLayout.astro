@@ -1,8 +1,6 @@
 ---
-import '@fontsource/inter/400.css';
-import '@fontsource/inter/500.css';
-import '@fontsource/inter/600.css';
-import '@fontsource/inter/700.css';
+import '@fontsource-variable/inter';
+import '@fontsource-variable/geist-mono';
 import '../styles/global.css';
 
 interface Props {
@@ -42,6 +40,8 @@ const jsonLd = {
     <meta name="description" content={description} />
     <link rel="canonical" href={canonicalURL} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content="/og.png" />
@@ -53,7 +53,7 @@ const jsonLd = {
     <meta name="twitter:image" content="/og.png" />
     <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   </head>
-  <body class="bg-white text-neutral-900 font-sans antialiased dark:bg-neutral-950 dark:text-neutral-100">
+  <body class="bg-canvas text-ink font-sans antialiased dark:bg-canvas-dark dark:text-white">
     <slot />
   </body>
 </html>

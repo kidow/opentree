@@ -2,24 +2,35 @@
 const GITHUB_URL = 'https://github.com/kidow/opentree';
 ---
 
-<section class="px-6 py-16 border-t border-neutral-200 dark:border-neutral-800">
+<section class="px-6 py-20 border-t border-hairline dark:border-hairline-dark">
   <div class="max-w-2xl mx-auto text-center">
-    <p class="text-sm text-neutral-500 dark:text-neutral-500">
-      Built by{' '}
-      <a
-        href="https://github.com/kidow"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="text-accent hover:underline font-medium"
-      >
+    <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone mb-4">
+      Built by
+    </p>
+    <a
+      href="https://github.com/kidow"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="inline-flex items-center gap-3 group"
+    >
+      <img
+        src="https://github.com/kidow.png?size=80"
+        alt="kidow"
+        width="40"
+        height="40"
+        class="w-10 h-10 rounded-full border border-hairline dark:border-hairline-dark"
+        loading="lazy"
+      />
+      <span class="text-lg font-medium text-ink dark:text-white group-hover:text-accent transition-colors">
         kidow
-      </a>
-      {' · '}
+      </span>
+    </a>
+    <p class="mt-6 text-sm text-stone">
       <a
         href={GITHUB_URL}
         target="_blank"
         rel="noopener noreferrer"
-        class="text-accent hover:underline"
+        class="font-mono hover:text-accent transition-colors"
       >
         github.com/kidow/opentree
       </a>

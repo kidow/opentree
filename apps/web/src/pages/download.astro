@@ -47,54 +47,57 @@ const fileSize = dmg ? `${(dmg.size / 1024 / 1024).toFixed(1)} MB` : null;
 ---
 
 <BaseLayout title="Download — Opentree" description="Download Opentree for macOS. Free, open source, no account required.">
-  <main class="min-h-screen px-6 py-24 sm:py-32">
-    <div class="max-w-lg mx-auto">
-      <p class="text-xs font-semibold uppercase tracking-widest text-neutral-500 dark:text-neutral-400 mb-3">
+  <main class="relative hero-backdrop overflow-hidden min-h-[80vh]">
+    <div class="absolute inset-0 grid-fade opacity-60 pointer-events-none"></div>
+
+    <div class="relative max-w-xl mx-auto px-6 pt-24 pb-20 sm:pt-32 sm:pb-28">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-accent mb-4">
         Download
       </p>
-      <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 mb-4">
+      <h1 class="text-display-lg text-ink dark:text-white mb-4">
         Opentree for macOS
       </h1>
-      <p class="text-base text-neutral-600 dark:text-neutral-400 mb-10">
+      <p class="text-lg text-slate dark:text-stone mb-10">
         Free forever. No account required.
       </p>
 
       <a
         href={downloadUrl}
-        class="inline-flex items-center gap-3 px-7 py-4 rounded-xl bg-accent text-white font-semibold text-base hover:bg-green-700 transition-colors mb-8"
+        class="group inline-flex items-center gap-2.5 px-7 py-4 rounded-full bg-ink text-white font-medium text-base hover:bg-charcoal transition-colors mb-10 dark:bg-white dark:text-ink dark:hover:bg-stone"
         {...(dmg ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" y1="15" x2="12" y2="3"/>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.12 0-.23-.02-.3-.03-.01-.06-.04-.22-.04-.39 0-1.15.572-2.27 1.206-2.98.804-.94 2.142-1.64 3.248-1.68.03.13.05.28.05.43zm4.565 15.71c-.03.07-.463 1.58-1.518 3.12-.945 1.34-1.94 2.71-3.43 2.71-1.517 0-1.9-.88-3.63-.88-1.698 0-2.302.91-3.67.91-1.377 0-2.332-1.26-3.428-2.8-1.287-1.82-2.323-4.63-2.323-7.28 0-4.28 2.797-6.55 5.552-6.55 1.448 0 2.675.95 3.6.95.865 0 2.222-1.01 3.902-1.01.613 0 2.886.06 4.374 2.19-.13.09-2.383 1.37-2.383 4.19 0 3.26 2.854 4.42 2.955 4.45z"/>
         </svg>
         Download for macOS
+        <svg class="opacity-60 group-hover:translate-x-0.5 transition-transform" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
       </a>
 
       {(version || publishedAt || fileSize || sha256Asset) && (
-        <dl class="space-y-3 text-sm border-t border-neutral-200 dark:border-neutral-800 pt-6">
+        <dl class="rounded-2xl border border-hairline dark:border-hairline-dark bg-surface-soft dark:bg-white/[0.03] divide-y divide-hairline dark:divide-hairline-dark text-sm">
           {version && (
-            <div class="flex gap-4">
-              <dt class="w-24 shrink-0 text-neutral-500 dark:text-neutral-400">Version</dt>
-              <dd class="font-mono text-neutral-800 dark:text-neutral-200">{version}</dd>
+            <div class="flex gap-4 px-5 py-3.5">
+              <dt class="w-28 shrink-0 text-stone">Version</dt>
+              <dd class="font-mono text-ink dark:text-white">{version}</dd>
             </div>
           )}
           {publishedAt && (
-            <div class="flex gap-4">
-              <dt class="w-24 shrink-0 text-neutral-500 dark:text-neutral-400">Released</dt>
-              <dd class="text-neutral-800 dark:text-neutral-200">{publishedAt}</dd>
+            <div class="flex gap-4 px-5 py-3.5">
+              <dt class="w-28 shrink-0 text-stone">Released</dt>
+              <dd class="text-ink dark:text-white">{publishedAt}</dd>
             </div>
           )}
           {fileSize && (
-            <div class="flex gap-4">
-              <dt class="w-24 shrink-0 text-neutral-500 dark:text-neutral-400">Size</dt>
-              <dd class="font-mono text-neutral-800 dark:text-neutral-200">{fileSize}</dd>
+            <div class="flex gap-4 px-5 py-3.5">
+              <dt class="w-28 shrink-0 text-stone">Size</dt>
+              <dd class="font-mono text-ink dark:text-white">{fileSize}</dd>
             </div>
           )}
           {sha256Asset && (
-            <div class="flex gap-4">
-              <dt class="w-24 shrink-0 text-neutral-500 dark:text-neutral-400">Checksum</dt>
+            <div class="flex gap-4 px-5 py-3.5">
+              <dt class="w-28 shrink-0 text-stone">Checksum</dt>
               <dd>
                 <a
                   href={sha256Asset.browser_download_url}
@@ -109,17 +112,24 @@ const fileSize = dmg ? `${(dmg.size / 1024 / 1024).toFixed(1)} MB` : null;
       )}
 
       {!release && (
-        <p class="text-xs text-neutral-400 dark:text-neutral-600 mt-4">
+        <p class="text-xs text-stone mt-4">
           Release metadata unavailable at build time.{' '}
           <a href={GITHUB_RELEASES_URL} target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">
-            View all releases on GitHub.
+            View all releases on GitHub →
           </a>
         </p>
       )}
 
-      <p class="mt-10 text-xs text-neutral-400 dark:text-neutral-600">
-        macOS only. Apple Silicon and Intel supported.
-      </p>
+      <div class="mt-10 pt-6 border-t border-hairline dark:border-hairline-dark text-xs text-stone space-y-1">
+        <p>macOS 12+ · Apple Silicon and Intel supported.</p>
+        <p>
+          Open source on{' '}
+          <a href="https://github.com/kidow/opentree" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">
+            GitHub
+          </a>
+          .
+        </p>
+      </div>
     </div>
   </main>
   <Footer />

@@ -3,22 +3,27 @@ interface Props {
   label: string;
   title: string;
   body: string;
+  reverse?: boolean;
 }
 
-const { label, title, body } = Astro.props;
+const { label, title, body, reverse = false } = Astro.props;
 ---
 
-<section class="px-6 py-20 border-t border-neutral-200 dark:border-neutral-800">
-  <div class="max-w-2xl mx-auto">
-    <p class="text-xs font-semibold uppercase tracking-widest text-neutral-500 dark:text-neutral-400 mb-3">
-      {label}
-    </p>
-    <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 mb-4">
-      {title}
-    </h2>
-    <p class="text-base text-neutral-600 dark:text-neutral-400 leading-relaxed mb-8 max-w-lg">
-      {body}
-    </p>
-    <slot />
+<section class="px-6 py-20 sm:py-24 border-t border-hairline dark:border-hairline-dark">
+  <div class="max-w-5xl mx-auto grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+    <div class={reverse ? 'lg:order-2' : ''}>
+      <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-accent mb-4">
+        {label}
+      </p>
+      <h2 class="text-heading-1 text-ink dark:text-white mb-5">
+        {title}
+      </h2>
+      <p class="text-base sm:text-lg text-slate dark:text-stone leading-relaxed max-w-md">
+        {body}
+      </p>
+    </div>
+    <div class={reverse ? 'lg:order-1' : ''}>
+      <slot />
+    </div>
   </div>
 </section>
