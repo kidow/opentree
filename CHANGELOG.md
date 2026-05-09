@@ -36,6 +36,7 @@ The format is intentionally simple:
 - Delete legacy `docs/` directory (CLI-era artifact)
 - Add Hero, Author, and Footer components with full copy and CTAs
 - Add full SEO meta: title, description, OG, JSON-LD, sitemap, robots
+- Add five content sections: Local-first, Editor, Preview, Deploy, Open
 
 ## v0.1.0 - 2026-03-08
 
