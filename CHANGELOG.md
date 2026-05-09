@@ -174,6 +174,9 @@ video, complex animations.
 - Add `/download` page with build-time GitHub API fetch, version/date/size/checksum, and fallback
 - Add `redeploy-web.yml` — triggers Vercel deploy on every published release
 - Redesign with Mintlify-inspired tokens: white canvas default, atmospheric hero gradient, pill CTAs, refined typography (Inter Variable + Geist Mono), and richer visual mocks per section
+- Add sticky Header with Docs/Download/GitHub nav across all pages
+- Add `/docs` section: hub page + 4 MDX guides (Deploy, Custom domains, Config schema, Troubleshooting) covering v1-stable surface (Phase 5 deploy/domain + Phase 1 blocks/theme); Phase 6+ block types deferred until v1 stabilizes
+- Add DocsLayout with sidebar nav and Tailwind typography prose styles
 
 ## v0.1.0 - 2026-03-08
 
