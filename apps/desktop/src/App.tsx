@@ -7,12 +7,13 @@ import type { Config } from "./types";
 import Sidebar from "./components/Sidebar";
 import Editor from "./components/Editor";
 import Design from "./components/Design";
+import Settings from "./components/Settings";
 import PhonePreview from "./components/PhonePreview";
 import Welcome from "./components/Welcome";
 import CloseConfirmDialog from "./components/CloseConfirmDialog";
 import "./App.css";
 
-type Tab = "links" | "design";
+type Tab = "links" | "design" | "settings";
 
 export default function App() {
   const store = useAppStore(null);
@@ -118,10 +119,10 @@ export default function App() {
         onUndo={store.undo}
         onRedo={store.redo}
       />
-      {activeTab === "links" ? (
-        <Editor store={store} />
-      ) : (
-        <Design store={store} />
+      {activeTab === "links" && <Editor store={store} />}
+      {activeTab === "design" && <Design store={store} />}
+      {activeTab === "settings" && (
+        <Settings store={store} projectPath={store.projectPath!} />
       )}
       <PhonePreview config={store.config} />
       {showCloseConfirm && (

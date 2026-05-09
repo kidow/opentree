@@ -1,4 +1,4 @@
-type Tab = "links" | "design";
+type Tab = "links" | "design" | "settings";
 
 interface Props {
   dirty: boolean;
@@ -31,6 +31,12 @@ export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExpor
           onClick={() => onTabChange("design")}
         >
           Design
+        </button>
+        <button
+          className={`sidebar-nav-item ${activeTab === "settings" ? "active" : ""}`}
+          onClick={() => onTabChange("settings")}
+        >
+          Settings
         </button>
       </nav>
       <div className="sidebar-actions">
