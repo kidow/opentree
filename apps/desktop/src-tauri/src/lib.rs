@@ -4,15 +4,8 @@ use opentree_core::{
     build::{build, write_output},
     config::Config,
 };
-use serde::{Deserialize, Serialize};
 use std::path::Path;
 use tauri::command;
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ImportedLink {
-    pub title: String,
-    pub url: String,
-}
 
 #[command]
 fn default_config() -> Result<Config, String> {
@@ -38,46 +31,6 @@ fn save_config(path: String, config: Config) -> Result<(), String> {
 fn export_site(config: Config, dest: String) -> Result<(), String> {
     let output = build(&config).map_err(|e| format!("빌드 오류: {e}"))?;
     write_output(&output, Path::new(&dest)).map_err(|e| format!("출력 오류: {e}"))
-}
-
-#[command]
-fn parse_import_file(file_path: String) -> Result<Vec<ImportedLink>, String> {
-    let json = std::fs::read_to_string(&file_path)
-        .map_err(|e| format!("파일 읽기 오류: {e}"))?;
-
-    let value: serde_json::Value =
-        serde_json::from_str(&json).map_err(|_| "유효한 JSON 파일이 아닙니다.".to_string())?;
-
-    let arr = match &value {
-        serde_json::Value::Array(a) => a.clone(),
-        serde_json::Value::Object(o) => match o.get("links") {
-            Some(serde_json::Value::Array(a)) => a.clone(),
-            _ => return Err("JSON은 배열이거나 links 배열을 포함한 객체여야 합니다.".to_string()),
-        },
-        _ => return Err("JSON은 배열이거나 links 배열을 포함한 객체여야 합니다.".to_string()),
-    };
-
-    let links = arr
-        .iter()
-        .enumerate()
-        .map(|(i, v)| {
-            let title = v.get("title")
-                .and_then(|t| t.as_str())
-                .unwrap_or("")
-                .to_string();
-            let url = v.get("url")
-                .and_then(|u| u.as_str())
-                .ok_or_else(|| format!("링크 #{}: url 필드가 없습니다.", i + 1))?
-                .to_string();
-            Ok(ImportedLink { title, url })
-        })
-        .collect::<Result<Vec<_>, String>>()?;
-
-    if links.is_empty() {
-        return Err("가져올 링크가 없습니다.".to_string());
-    }
-
-    Ok(links)
 }
 
 #[command]
@@ -131,7 +84,6 @@ pub fn run() {
             save_config,
             export_site,
             validate_config,
-            parse_import_file,
             get_token,
             set_token,
             deploy_vercel,

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -12,26 +12,17 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
-import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
 import type { useAppStore } from "../store";
 import type { Block } from "../types";
 import BlockCard from "./BlockCard";
 import AddBlockModal from "./AddBlockModal";
-import ImportModal from "./ImportModal";
-
-interface ImportedLink { title: string; url: string; }
 
 interface Props {
   store: ReturnType<typeof useAppStore>;
 }
 
-function newId() { return crypto.randomUUID(); }
-
 export default function Editor({ store }: Props) {
   const [adding, setAdding] = useState(false);
-  const [importLinks, setImportLinks] = useState<ImportedLink[] | null>(null);
-  const [importError, setImportError] = useState<string | null>(null);
   const { config } = store;
   if (!config) return null;
 
@@ -48,57 +39,14 @@ export default function Editor({ store }: Props) {
     store.reorderBlocks(arrayMove(config.blocks, oldIndex, newIndex));
   };
 
-  const handleImportClick = useCallback(async () => {
-    setImportError(null);
-    const file = await open({
-      multiple: false,
-      title: "JSON 파일 선택",
-      filters: [{ name: "JSON", extensions: ["json"] }],
-    });
-    if (!file || typeof file !== "string") return;
-    try {
-      const links: ImportedLink[] = await invoke("parse_import_file", { filePath: file });
-      setImportLinks(links);
-    } catch (e) {
-      setImportError(String(e));
-    }
-  }, []);
-
-  const handleImportAppend = useCallback(() => {
-    if (!importLinks) return;
-    const newBlocks: Block[] = importLinks.map((l) => ({
-      id: newId(), type: "link", enabled: true, title: l.title, url: l.url,
-    }));
-    newBlocks.forEach((b) => store.addBlock(b));
-    setImportLinks(null);
-  }, [importLinks, store]);
-
-  const handleImportReplace = useCallback(() => {
-    if (!importLinks) return;
-    const kept = config.blocks.filter((b) => b.type !== "link");
-    const newBlocks: Block[] = importLinks.map((l) => ({
-      id: newId(), type: "link", enabled: true, title: l.title, url: l.url,
-    }));
-    store.update({ ...config, blocks: [...kept, ...newBlocks] });
-    setImportLinks(null);
-  }, [importLinks, config, store]);
-
   return (
     <main className="editor">
       <div className="editor-header">
         <h2 className="editor-title">Links</h2>
-        <div className="editor-header-actions">
-          <button className="import-btn" onClick={handleImportClick}>
-            가져오기
-          </button>
-          <button className="add-btn" onClick={() => setAdding(true)}>
-            + 추가
-          </button>
-        </div>
+        <button className="add-btn" onClick={() => setAdding(true)}>
+          + 추가
+        </button>
       </div>
-      {importError && (
-        <div className="import-error">⚠ {importError}</div>
-      )}
       <div className="editor-blocks">
         <DndContext
           sensors={sensors}
@@ -134,14 +82,6 @@ export default function Editor({ store }: Props) {
           onClose={() => setAdding(false)}
         />
       )}
-      {importLinks && (
-        <ImportModal
-          links={importLinks}
-          onAppend={handleImportAppend}
-          onReplace={handleImportReplace}
-          onClose={() => setImportLinks(null)}
-        />
-      )}
       <style>{`
         .editor {
           display: flex;
@@ -162,16 +102,6 @@ export default function Editor({ store }: Props) {
           font-weight: 700;
           letter-spacing: -0.02em;
         }
-        .editor-header-actions { display: flex; gap: 8px; }
-        .import-btn {
-          padding: 8px 14px;
-          border: 1px solid var(--border);
-          border-radius: 6px;
-          font-weight: 500;
-          font-size: 13px;
-          color: var(--text);
-        }
-        .import-btn:hover { background: var(--bg); }
         .add-btn {
           padding: 8px 16px;
           background: var(--accent);
