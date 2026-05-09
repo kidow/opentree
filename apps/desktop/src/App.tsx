@@ -8,12 +8,13 @@ import Sidebar from "./components/Sidebar";
 import Editor from "./components/Editor";
 import Design from "./components/Design";
 import Settings from "./components/Settings";
+import Publish from "./components/Publish";
 import PhonePreview from "./components/PhonePreview";
 import Welcome from "./components/Welcome";
 import CloseConfirmDialog from "./components/CloseConfirmDialog";
 import "./App.css";
 
-type Tab = "links" | "design" | "settings";
+type Tab = "links" | "design" | "publish" | "settings";
 
 export default function App() {
   const store = useAppStore(null);
@@ -121,6 +122,7 @@ export default function App() {
       />
       {activeTab === "links" && <Editor store={store} />}
       {activeTab === "design" && <Design store={store} />}
+      {activeTab === "publish" && <Publish store={store} />}
       {activeTab === "settings" && (
         <Settings store={store} projectPath={store.projectPath!} />
       )}

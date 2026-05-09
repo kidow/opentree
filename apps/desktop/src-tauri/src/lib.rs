@@ -1,3 +1,5 @@
+mod publish;
+
 use opentree_core::{
     build::{build, write_output},
     config::Config,
@@ -79,6 +81,37 @@ fn parse_import_file(file_path: String) -> Result<Vec<ImportedLink>, String> {
 }
 
 #[command]
+fn get_token(app: tauri::AppHandle, provider: String) -> Result<Option<String>, String> {
+    publish::load_token(&app, &provider)
+}
+
+#[command]
+fn set_token(app: tauri::AppHandle, provider: String, token: String) -> Result<(), String> {
+    publish::save_token(&app, &provider, &token)
+}
+
+#[command]
+async fn deploy_vercel(
+    app: tauri::AppHandle,
+    config: Config,
+    project_name: String,
+) -> Result<publish::DeployResult, String> {
+    let token = publish::load_token(&app, "vercel")?
+        .ok_or_else(|| "Vercel 토큰이 없습니다. 먼저 토큰을 저장하세요.".to_string())?;
+    publish::deploy_vercel(&config, &token, &project_name).await
+}
+
+#[command]
+async fn check_deploy_state(
+    app: tauri::AppHandle,
+    deploy_id: String,
+) -> Result<String, String> {
+    let token = publish::load_token(&app, "vercel")?
+        .ok_or_else(|| "Vercel 토큰이 없습니다.".to_string())?;
+    publish::check_deploy_state(&token, &deploy_id).await
+}
+
+#[command]
 fn validate_config(config: Config) -> Vec<String> {
     opentree_core::validate::validate(&config)
         .into_iter()
@@ -99,6 +132,10 @@ pub fn run() {
             export_site,
             validate_config,
             parse_import_file,
+            get_token,
+            set_token,
+            deploy_vercel,
+            check_deploy_state,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
