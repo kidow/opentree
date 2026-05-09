@@ -304,6 +304,9 @@ video, complex animations.
 - Add sticky Header with Docs/Download/GitHub nav across all pages
 - Add `/docs` section: hub page + 4 MDX guides (Deploy, Custom domains, Config schema, Troubleshooting) covering v1-stable surface (Phase 5 deploy/domain + Phase 1 blocks/theme); Phase 6+ block types deferred until v1 stabilizes
 - Add DocsLayout with sidebar nav and Tailwind typography prose styles
+- Reflect full Phase 1–14 desktop scope: Hero badge / CTA / JSON-LD now mention macOS + Windows; `/download` shows platform-grouped Apple Silicon / Intel / MSI / EXE assets; `/docs/schema` rewritten to current schemaVersion 14
+- Expand `/docs` to 11 pages: Block types (20 catalog), Design (theme + button styles + layouts + backgrounds + fonts + custom CSS), AI editing (Claude/OpenAI + 8 tools), Analytics (Plausible), Scheduling (publishAt/unpublishAt), Multi-locale (localeVariants + languageSwitcher), SEO (meta + sitemap + robots)
+- Regroup DocsSidebar into Overview / Editing / Publishing / Reference
 
 ## v0.1.0 - 2026-03-08
 
