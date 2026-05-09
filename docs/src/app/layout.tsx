@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     default: "opentree",
     template: "%s | opentree",
   },
-  description: "CLI-first link-in-bio static site generator",
+  description: "Free, open-source desktop app for building your link-in-bio page",
 };
 
 export default function RootLayout({

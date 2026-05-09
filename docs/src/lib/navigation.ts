@@ -12,16 +12,14 @@ export const navigation: NavGroup[] = [
   {
     items: [
       { title: "Introduction", href: "/" },
-      { title: "Features", href: "/#features" },
-      { title: "Works with", href: "/#works-with" },
-      { title: "Example", href: "/#example" },
+      { title: "Download", href: "/download" },
+      { title: "Getting Started", href: "/getting-started" },
     ],
   },
   {
     title: "Reference",
     items: [
-      { title: "Architecture", href: "/#architecture" },
-      { title: "Platforms", href: "/#platforms" },
+      { title: "Changelog", href: "/changelog" },
     ],
   },
 ];

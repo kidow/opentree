@@ -38,12 +38,10 @@ export function Header() {
             <span className="hidden sm:inline">GitHub</span>
           </a>
           <a
-            href="https://www.npmjs.com/package/opentree-cli"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/download"
             className="docs-chrome-muted inline-flex h-9 items-center rounded-lg px-2.5 text-[12px] transition"
           >
-            npm
+            Download
           </a>
           <ThemeToggle />
         </div>
