@@ -17,6 +17,19 @@ The format is intentionally simple:
 - Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Remove import-from-JSON feature — no clear use case without legacy CLI
 
+### Phase 9 — Commerce (incl. 9.5 Gumroad/Lemon Squeezy/Polar)
+
+- Add `commerce` block — link to Stripe Payment Link, Gumroad, Lemon
+  Squeezy or Polar with label/description/price metadata
+- Add `support` block — Ko-fi, Buy Me a Coffee, Stripe, PayPal,
+  Patreon donation links with provider badge
+- Add `course` block — external course link with optional platform
+  and price
+- All commerce blocks render as plain `<a>` cards — payment processed
+  externally, no tokens stored
+- Add validation: URL + label/title required per block
+- Bump `schemaVersion` to 7
+
 ### Phase 8 — Forms + Email
 
 - Add `form` block type — submits to Formspree (`https://formspree.io/f/<id>`)

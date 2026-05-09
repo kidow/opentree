@@ -1,5 +1,5 @@
 use maud::{html, PreEscaped, DOCTYPE};
-use crate::config::{Block, CollectionLayout, Config, FormFieldType, OembedCache};
+use crate::config::{Block, CollectionLayout, CommerceProvider, Config, FormFieldType, OembedCache, SupportProvider};
 
 pub fn render_page(config: &Config) -> String {
     let markup = html! {
@@ -171,6 +171,49 @@ fn render_block(block: &Block, config: &Config) -> maud::Markup {
             }
         }
 
+        Block::Commerce { provider, url, label, description, price, .. } => {
+            let provider_label = commerce_provider_label(*provider);
+            html! {
+                a class="link-card commerce-card" href=(url) target="_blank" rel="noopener noreferrer" {
+                    div class="commerce-info" {
+                        span class="commerce-provider" { (provider_label) }
+                        span class="link-title" { (label) }
+                        @if let Some(d) = description { @if !d.is_empty() {
+                            span class="commerce-desc" { (d) }
+                        }}
+                    }
+                    @if let Some(p) = price { @if !p.is_empty() {
+                        span class="commerce-price" { (p) }
+                    }}
+                }
+            }
+        }
+
+        Block::Support { provider, url, label, .. } => {
+            let provider_label = support_provider_label(*provider);
+            let display = if label.is_empty() { provider_label.to_string() } else { label.clone() };
+            html! {
+                a class="link-card support-card" href=(url) target="_blank" rel="noopener noreferrer" {
+                    span class="support-icon" { (provider_label) }
+                    span class="link-title" { (display) }
+                }
+            }
+        }
+
+        Block::Course { url, title, platform, price, .. } => html! {
+            a class="link-card course-card" href=(url) target="_blank" rel="noopener noreferrer" {
+                div class="commerce-info" {
+                    @if let Some(pl) = platform { @if !pl.is_empty() {
+                        span class="commerce-provider" { (pl) }
+                    }}
+                    span class="link-title" { (title) }
+                }
+                @if let Some(p) = price { @if !p.is_empty() {
+                    span class="commerce-price" { (p) }
+                }}
+            }
+        },
+
         Block::Email { convertkit_form_id, title, submit_label, placeholder, .. } => {
             let action = format!("https://app.kit.com/forms/{convertkit_form_id}/subscriptions");
             let submit = if submit_label.is_empty() { "Subscribe" } else { submit_label.as_str() };
@@ -289,6 +332,25 @@ fn url_encode(s: &str) -> String {
         }
     }
     out
+}
+
+fn commerce_provider_label(p: CommerceProvider) -> &'static str {
+    match p {
+        CommerceProvider::Stripe => "Stripe",
+        CommerceProvider::Gumroad => "Gumroad",
+        CommerceProvider::Lemonsqueezy => "Lemon Squeezy",
+        CommerceProvider::Polar => "Polar",
+    }
+}
+
+fn support_provider_label(p: SupportProvider) -> &'static str {
+    match p {
+        SupportProvider::Stripe => "Stripe",
+        SupportProvider::Kofi => "Ko-fi",
+        SupportProvider::Bmc => "Buy Me a Coffee",
+        SupportProvider::Paypal => "PayPal",
+        SupportProvider::Patreon => "Patreon",
+    }
 }
 
 fn social_abbr(platform: &str) -> String {
@@ -520,6 +582,44 @@ body {{
 .email-block {{ flex-direction: row; flex-wrap: wrap; align-items: center; }}
 .email-block .form-title {{ width: 100%; }}
 .email-block input {{ flex: 1; min-width: 180px; }}
+
+.commerce-card, .support-card, .course-card {{
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
+}}
+.commerce-info {{
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}}
+.commerce-provider {{
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.55;
+    font-weight: 600;
+}}
+.commerce-desc {{ font-size: 0.75rem; opacity: 0.7; font-weight: 400; }}
+.commerce-price {{
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(0,0,0,0.06);
+    flex-shrink: 0;
+}}
+.link-card:hover .commerce-price {{ background: rgba(255,255,255,0.18); }}
+.support-icon {{
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: rgba(0,0,0,0.06);
+    margin-right: 8px;
+}}
 "#
     )
 }

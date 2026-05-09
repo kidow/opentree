@@ -229,6 +229,36 @@ function BlockLabel({ block, profile }: { block: Block; profile: Profile }) {
           {block.convertkitFormId && <span className="block-url">form: {block.convertkitFormId}</span>}
         </>
       );
+    case "commerce":
+      return (
+        <>
+          <span className="block-type-label">Commerce · {block.provider}</span>
+          <span className="block-value">
+            {block.label || "(제목 없음)"}
+            {block.price && ` · ${block.price}`}
+          </span>
+          {block.url && <span className="block-url">{block.url}</span>}
+        </>
+      );
+    case "support":
+      return (
+        <>
+          <span className="block-type-label">Support · {block.provider}</span>
+          <span className="block-value">{block.label || "(라벨 없음)"}</span>
+          {block.url && <span className="block-url">{block.url}</span>}
+        </>
+      );
+    case "course":
+      return (
+        <>
+          <span className="block-type-label">Course{block.platform ? ` · ${block.platform}` : ""}</span>
+          <span className="block-value">
+            {block.title || "(제목 없음)"}
+            {block.price && ` · ${block.price}`}
+          </span>
+          {block.url && <span className="block-url">{block.url}</span>}
+        </>
+      );
   }
 }
 
@@ -668,6 +698,126 @@ function BlockEditor({
               defaultValue={block.submitLabel}
               placeholder="Subscribe"
               onBlur={(e) => onUpdate({ submitLabel: e.target.value } as Partial<Block>)}
+            />
+          </div>
+        </div>
+      );
+    case "commerce":
+      return (
+        <div className="block-edit-form">
+          <div>
+            <div className="block-edit-label">Provider</div>
+            <select
+              defaultValue={block.provider}
+              onChange={(e) => onUpdate({ provider: e.target.value as "stripe" | "gumroad" | "lemonsqueezy" | "polar" } as Partial<Block>)}
+            >
+              <option value="stripe">Stripe Payment Link</option>
+              <option value="gumroad">Gumroad</option>
+              <option value="lemonsqueezy">Lemon Squeezy</option>
+              <option value="polar">Polar</option>
+            </select>
+          </div>
+          <div>
+            <div className="block-edit-label">결제 URL</div>
+            <input
+              defaultValue={block.url}
+              placeholder="https://buy.stripe.com/... 또는 gum.co/... 등"
+              onBlur={(e) => onUpdate({ url: e.target.value } as Partial<Block>)}
+            />
+          </div>
+          <div>
+            <div className="block-edit-label">제목</div>
+            <input
+              defaultValue={block.label}
+              placeholder="제품 이름"
+              onBlur={(e) => onUpdate({ label: e.target.value } as Partial<Block>)}
+            />
+          </div>
+          <div>
+            <div className="block-edit-label">가격 표시 (선택)</div>
+            <input
+              defaultValue={block.price ?? ""}
+              placeholder="$29 / ₩39,000"
+              onBlur={(e) => onUpdate({ price: e.target.value || undefined } as Partial<Block>)}
+            />
+          </div>
+          <div>
+            <div className="block-edit-label">설명 (선택)</div>
+            <input
+              defaultValue={block.description ?? ""}
+              placeholder="짧은 설명"
+              onBlur={(e) => onUpdate({ description: e.target.value || undefined } as Partial<Block>)}
+            />
+          </div>
+        </div>
+      );
+    case "support":
+      return (
+        <div className="block-edit-form">
+          <div>
+            <div className="block-edit-label">Provider</div>
+            <select
+              defaultValue={block.provider}
+              onChange={(e) => onUpdate({ provider: e.target.value as "stripe" | "kofi" | "bmc" | "paypal" | "patreon" } as Partial<Block>)}
+            >
+              <option value="kofi">Ko-fi</option>
+              <option value="bmc">Buy Me a Coffee</option>
+              <option value="stripe">Stripe</option>
+              <option value="paypal">PayPal</option>
+              <option value="patreon">Patreon</option>
+            </select>
+          </div>
+          <div>
+            <div className="block-edit-label">URL</div>
+            <input
+              defaultValue={block.url}
+              placeholder="https://ko-fi.com/... · buymeacoffee.com/... · paypal.me/..."
+              onBlur={(e) => onUpdate({ url: e.target.value } as Partial<Block>)}
+            />
+          </div>
+          <div>
+            <div className="block-edit-label">버튼 라벨</div>
+            <input
+              defaultValue={block.label}
+              placeholder="커피 한잔 사주기"
+              onBlur={(e) => onUpdate({ label: e.target.value } as Partial<Block>)}
+            />
+          </div>
+        </div>
+      );
+    case "course":
+      return (
+        <div className="block-edit-form">
+          <div>
+            <div className="block-edit-label">강의 URL</div>
+            <input
+              defaultValue={block.url}
+              placeholder="https://..."
+              onBlur={(e) => onUpdate({ url: e.target.value } as Partial<Block>)}
+            />
+          </div>
+          <div>
+            <div className="block-edit-label">강의 제목</div>
+            <input
+              defaultValue={block.title}
+              placeholder="강의명"
+              onBlur={(e) => onUpdate({ title: e.target.value } as Partial<Block>)}
+            />
+          </div>
+          <div>
+            <div className="block-edit-label">플랫폼 (선택)</div>
+            <input
+              defaultValue={block.platform ?? ""}
+              placeholder="Udemy / Inflearn / Teachable"
+              onBlur={(e) => onUpdate({ platform: e.target.value || undefined } as Partial<Block>)}
+            />
+          </div>
+          <div>
+            <div className="block-edit-label">가격 (선택)</div>
+            <input
+              defaultValue={block.price ?? ""}
+              placeholder="$49 / ₩59,000"
+              onBlur={(e) => onUpdate({ price: e.target.value || undefined } as Partial<Block>)}
             />
           </div>
         </div>

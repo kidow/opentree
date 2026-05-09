@@ -78,6 +78,33 @@ impl Default for FormFieldType {
     fn default() -> Self { FormFieldType::Text }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CommerceProvider {
+    Stripe,
+    Gumroad,
+    Lemonsqueezy,
+    Polar,
+}
+
+impl Default for CommerceProvider {
+    fn default() -> Self { CommerceProvider::Stripe }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SupportProvider {
+    Stripe,
+    Kofi,
+    Bmc,
+    Paypal,
+    Patreon,
+}
+
+impl Default for SupportProvider {
+    fn default() -> Self { SupportProvider::Stripe }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FormField {
@@ -218,6 +245,45 @@ pub enum Block {
         #[serde(default)]
         placeholder: String,
     },
+
+    #[serde(rename = "commerce")]
+    Commerce {
+        id: String,
+        enabled: bool,
+        #[serde(default)]
+        provider: CommerceProvider,
+        url: String,
+        #[serde(default)]
+        label: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        description: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        price: Option<String>,
+    },
+
+    #[serde(rename = "support")]
+    Support {
+        id: String,
+        enabled: bool,
+        #[serde(default)]
+        provider: SupportProvider,
+        url: String,
+        #[serde(default)]
+        label: String,
+    },
+
+    #[serde(rename = "course")]
+    Course {
+        id: String,
+        enabled: bool,
+        url: String,
+        #[serde(default)]
+        title: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        platform: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        price: Option<String>,
+    },
 }
 
 impl Block {
@@ -239,6 +305,9 @@ impl Block {
             Block::Collection { id, .. } => id,
             Block::Form { id, .. } => id,
             Block::Email { id, .. } => id,
+            Block::Commerce { id, .. } => id,
+            Block::Support { id, .. } => id,
+            Block::Course { id, .. } => id,
         }
     }
 
@@ -260,6 +329,9 @@ impl Block {
             Block::Collection { enabled, .. } => *enabled,
             Block::Form { enabled, .. } => *enabled,
             Block::Email { enabled, .. } => *enabled,
+            Block::Commerce { enabled, .. } => *enabled,
+            Block::Support { enabled, .. } => *enabled,
+            Block::Course { enabled, .. } => *enabled,
         }
     }
 }
@@ -275,7 +347,7 @@ pub struct Theme {
 impl Config {
     pub fn default_config() -> Self {
         Config {
-            schema_version: 6,
+            schema_version: 7,
             profile: Profile { name: String::new(), bio: None, avatar_url: None },
             blocks: vec![
                 Block::Profile { id: Uuid::new_v4().to_string(), enabled: true },

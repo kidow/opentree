@@ -25,6 +25,9 @@ export interface FormField {
   required: boolean;
 }
 
+export type CommerceProvider = "stripe" | "gumroad" | "lemonsqueezy" | "polar";
+export type SupportProvider = "stripe" | "kofi" | "bmc" | "paypal" | "patreon";
+
 export type Block =
   | { id: string; type: "profile"; enabled: boolean }
   | { id: string; type: "link"; enabled: boolean; title: string; url: string }
@@ -41,7 +44,10 @@ export type Block =
   | { id: string; type: "pinterest"; enabled: boolean; url: string; oembedCache?: OembedCache }
   | { id: string; type: "collection"; enabled: boolean; layout: "grid" | "carousel"; children: Block[] }
   | { id: string; type: "form"; enabled: boolean; formspreeId: string; title: string; submitLabel: string; fields: FormField[] }
-  | { id: string; type: "email"; enabled: boolean; convertkitFormId: string; title: string; submitLabel: string; placeholder: string };
+  | { id: string; type: "email"; enabled: boolean; convertkitFormId: string; title: string; submitLabel: string; placeholder: string }
+  | { id: string; type: "commerce"; enabled: boolean; provider: CommerceProvider; url: string; label: string; description?: string; price?: string }
+  | { id: string; type: "support"; enabled: boolean; provider: SupportProvider; url: string; label: string }
+  | { id: string; type: "course"; enabled: boolean; url: string; title: string; platform?: string; price?: string };
 
 export interface Config {
   schemaVersion: number;

@@ -14,7 +14,8 @@ type BlockType =
   | "link" | "heading" | "text" | "socials"
   | "image" | "footer" | "affiliate" | "sponsored" | "custom-html"
   | "music" | "video" | "pinterest" | "collection"
-  | "form" | "email";
+  | "form" | "email"
+  | "commerce" | "support" | "course";
 
 const BLOCK_TYPES: { type: BlockType; label: string; desc: string }[] = [
   { type: "link", label: "Link", desc: "URL 링크 추가" },
@@ -28,6 +29,9 @@ const BLOCK_TYPES: { type: BlockType; label: string; desc: string }[] = [
   { type: "collection", label: "Collection", desc: "여러 링크/이미지를 그리드/캐러셀로" },
   { type: "form", label: "Form", desc: "Formspree 컨택트 폼" },
   { type: "email", label: "Email Signup", desc: "ConvertKit/Kit 뉴스레터 가입 폼" },
+  { type: "commerce", label: "Commerce", desc: "Stripe / Gumroad / Lemon Squeezy / Polar 결제 링크" },
+  { type: "support", label: "Support Me", desc: "Ko-fi / Buy Me a Coffee / PayPal / Patreon 후원" },
+  { type: "course", label: "Course", desc: "강의 외부 링크 (플랫폼 + 가격 메타)" },
   { type: "footer", label: "Footer", desc: "페이지 하단 푸터" },
   { type: "affiliate", label: "Affiliate", desc: "제휴 링크 (UTM 지원)" },
   { type: "sponsored", label: "Sponsored", desc: "스폰서 링크" },
@@ -101,6 +105,15 @@ export default function AddBlockModal({ onAdd, onClose }: Props) {
           submitLabel: "Subscribe",
           placeholder: "you@example.com",
         });
+        break;
+      case "commerce":
+        onAdd({ ...base, type: "commerce", provider: "stripe", url: "", label: "" });
+        break;
+      case "support":
+        onAdd({ ...base, type: "support", provider: "kofi", url: "", label: "" });
+        break;
+      case "course":
+        onAdd({ ...base, type: "course", url: "", title: "" });
         break;
     }
   };

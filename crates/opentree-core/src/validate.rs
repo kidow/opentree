@@ -59,6 +59,22 @@ pub enum ValidationError {
     MissingFormFieldName { id: String },
     #[error("block {id}: convertkit form id is required")]
     MissingConvertkitFormId { id: String },
+    #[error("block {id}: commerce url is required")]
+    MissingCommerceUrl { id: String },
+    #[error("block {id}: commerce url is not a valid URL")]
+    InvalidCommerceUrl { id: String },
+    #[error("block {id}: commerce label is required")]
+    MissingCommerceLabel { id: String },
+    #[error("block {id}: support url is required")]
+    MissingSupportUrl { id: String },
+    #[error("block {id}: support url is not a valid URL")]
+    InvalidSupportUrl { id: String },
+    #[error("block {id}: course url is required")]
+    MissingCourseUrl { id: String },
+    #[error("block {id}: course url is not a valid URL")]
+    InvalidCourseUrl { id: String },
+    #[error("block {id}: course title is required")]
+    MissingCourseTitle { id: String },
 }
 
 pub fn validate(config: &Config) -> Vec<ValidationError> {
@@ -171,6 +187,33 @@ pub fn validate(config: &Config) -> Vec<ValidationError> {
                     errors.push(ValidationError::MissingConvertkitFormId { id: id.clone() });
                 }
             }
+            Block::Commerce { id, url, label, .. } => {
+                if url.trim().is_empty() {
+                    errors.push(ValidationError::MissingCommerceUrl { id: id.clone() });
+                } else if !is_valid_url(url) {
+                    errors.push(ValidationError::InvalidCommerceUrl { id: id.clone() });
+                }
+                if label.trim().is_empty() {
+                    errors.push(ValidationError::MissingCommerceLabel { id: id.clone() });
+                }
+            }
+            Block::Support { id, url, .. } => {
+                if url.trim().is_empty() {
+                    errors.push(ValidationError::MissingSupportUrl { id: id.clone() });
+                } else if !is_valid_url(url) {
+                    errors.push(ValidationError::InvalidSupportUrl { id: id.clone() });
+                }
+            }
+            Block::Course { id, url, title, .. } => {
+                if url.trim().is_empty() {
+                    errors.push(ValidationError::MissingCourseUrl { id: id.clone() });
+                } else if !is_valid_url(url) {
+                    errors.push(ValidationError::InvalidCourseUrl { id: id.clone() });
+                }
+                if title.trim().is_empty() {
+                    errors.push(ValidationError::MissingCourseTitle { id: id.clone() });
+                }
+            }
             Block::Collection { id, children, .. } => {
                 for child in children {
                     let allowed = matches!(
@@ -214,6 +257,9 @@ fn child_type_name(b: &Block) -> &'static str {
         Block::Collection { .. } => "collection",
         Block::Form { .. } => "form",
         Block::Email { .. } => "email",
+        Block::Commerce { .. } => "commerce",
+        Block::Support { .. } => "support",
+        Block::Course { .. } => "course",
     }
 }
 
