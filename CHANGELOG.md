@@ -17,6 +17,25 @@ The format is intentionally simple:
 - Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Remove import-from-JSON feature — no clear use case without legacy CLI
 
+### Testing — asset.rs (image import + resize)
+
+- 14 inline tests covering `import_asset` and `resize_if_needed`:
+  - 5MB cap rejected with size-aware error message
+  - Missing source path returns error
+  - Small images preserved without resize, output path format
+    `assets/{role}-{hash8}.{ext}` validated
+  - Same content produces same filename (SHA-256 dedup) — single
+    file on disk after duplicate import
+  - Different content → different filenames
+  - Role-based width caps: avatar ≤ 512×512 (height capped too),
+    image ≤ 1920w, background ≤ 2560w
+  - JPEG signature preserved through resize round-trip
+  - Uppercase extensions lowercased on output
+  - Assets folder auto-created when missing
+  - `resize_if_needed` returns original bytes unchanged when within
+    limits, applies height cap for avatar role
+- `tempfile` dev-dep added to `apps/desktop/src-tauri`
+
 ### Testing — desktop backend (publish.rs + ai.rs)
 
 - Add `mockito` dev-dep. 45 inline tests covering Tauri backend HTTP
