@@ -7,7 +7,7 @@ interface Props {
   projectPath: string;
 }
 
-type Provider = "vercel" | "cloudflare" | "github";
+type Provider = "vercel" | "cloudflare" | "github" | "plausible";
 
 interface ConnState {
   connected: boolean;
@@ -112,6 +112,7 @@ export default function Settings({ store, projectPath }: Props) {
     vercel: { connected: false, masked: "" },
     cloudflare: { connected: false, masked: "" },
     github: { connected: false, masked: "" },
+    plausible: { connected: false, masked: "" },
   });
 
   useEffect(() => {
@@ -119,7 +120,7 @@ export default function Settings({ store, projectPath }: Props) {
   }, []);
 
   const loadConnections = async () => {
-    const providers: Provider[] = ["vercel", "cloudflare", "github"];
+    const providers: Provider[] = ["vercel", "cloudflare", "github", "plausible"];
     const next = { ...connections };
     for (const p of providers) {
       try {
@@ -133,6 +134,7 @@ export default function Settings({ store, projectPath }: Props) {
               const obj = JSON.parse(val);
               if (p === "cloudflare") masked = `토큰: ${mask(obj.token ?? "")} / Account ID: ${mask(obj.accountId ?? "")}`;
               if (p === "github") masked = `토큰: ${mask(obj.token ?? "")} / Repo: ${obj.repo ?? ""}`;
+              if (p === "plausible") masked = `토큰: ${mask(obj.token ?? "")}${obj.baseUrl ? ` / Base: ${obj.baseUrl}` : ""}`;
             } catch {
               masked = mask(val);
             }
@@ -213,6 +215,69 @@ export default function Settings({ store, projectPath }: Props) {
             onConnect={handleConnect("github")}
             onDisconnect={handleDisconnect("github")}
           />
+          <ProviderCard
+            label="Plausible Analytics"
+            hint="plausible.io/settings/api-keys 에서 발급. self-host 사용 시 base URL 입력 (예: https://stats.example.com)."
+            fields={[
+              { key: "token", label: "API 토큰", placeholder: "Plausible API Key", sensitive: true },
+              { key: "baseUrl", label: "Base URL (self-host)", placeholder: "비워두면 plausible.io 사용" },
+            ]}
+            conn={connections.plausible}
+            onConnect={handleConnect("plausible")}
+            onDisconnect={handleDisconnect("plausible")}
+          />
+        </section>
+
+        <section className="settings-section">
+          <h3 className="settings-section-title">Analytics</h3>
+          <div className="settings-field">
+            <label className="settings-label">Plausible 사용</label>
+            <p className="settings-hint">활성화 시 배포된 페이지에 Plausible 스크립트 + BlockClick 이벤트 추적이 주입됩니다.</p>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4 }}>
+              <input
+                type="checkbox"
+                checked={config.analytics?.provider === "plausible"}
+                onChange={(e) => {
+                  const next = e.target.checked
+                    ? { provider: "plausible", domain: config.analytics?.domain ?? config.domain ?? "", selfHostUrl: config.analytics?.selfHostUrl }
+                    : undefined;
+                  store.update({ ...config, analytics: next });
+                }}
+              />
+              <span style={{ fontSize: 13 }}>Plausible 추적 활성화</span>
+            </div>
+          </div>
+          {config.analytics?.provider === "plausible" && (
+            <>
+              <div className="settings-field">
+                <label className="settings-label">Site ID (도메인)</label>
+                <p className="settings-hint">Plausible에 등록된 사이트 도메인 (예: yourname.com).</p>
+                <input
+                  type="text"
+                  defaultValue={config.analytics.domain}
+                  placeholder="yourname.com"
+                  onBlur={(e) => {
+                    const a = config.analytics!;
+                    store.update({ ...config, analytics: { ...a, domain: e.target.value.trim() } });
+                  }}
+                />
+              </div>
+              <div className="settings-field">
+                <label className="settings-label">Self-host Base URL (선택)</label>
+                <p className="settings-hint">Plausible self-host 인스턴스 URL. 공식 plausible.io 사용 시 비워두세요.</p>
+                <input
+                  type="url"
+                  defaultValue={config.analytics.selfHostUrl ?? ""}
+                  placeholder="https://stats.example.com"
+                  onBlur={(e) => {
+                    const a = config.analytics!;
+                    const v = e.target.value.trim();
+                    store.update({ ...config, analytics: { ...a, selfHostUrl: v || undefined } });
+                  }}
+                />
+              </div>
+            </>
+          )}
         </section>
 
         <section className="settings-section">

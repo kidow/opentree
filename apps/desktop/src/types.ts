@@ -49,6 +49,12 @@ export type Block =
   | { id: string; type: "support"; enabled: boolean; provider: SupportProvider; url: string; label: string }
   | { id: string; type: "course"; enabled: boolean; url: string; title: string; platform?: string; price?: string };
 
+export interface AnalyticsConfig {
+  provider: string;
+  domain: string;
+  selfHostUrl?: string;
+}
+
 export interface Config {
   schemaVersion: number;
   profile: Profile;
@@ -57,4 +63,5 @@ export interface Config {
   siteUrl?: string;
   domain?: string;
   connections: string[];
+  analytics?: AnalyticsConfig;
 }

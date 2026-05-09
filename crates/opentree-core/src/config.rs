@@ -14,6 +14,19 @@ pub struct Config {
     pub domain: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub connections: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub analytics: Option<AnalyticsConfig>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnalyticsConfig {
+    #[serde(default)]
+    pub provider: String,
+    #[serde(default)]
+    pub domain: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub self_host_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -347,7 +360,7 @@ pub struct Theme {
 impl Config {
     pub fn default_config() -> Self {
         Config {
-            schema_version: 7,
+            schema_version: 8,
             profile: Profile { name: String::new(), bio: None, avatar_url: None },
             blocks: vec![
                 Block::Profile { id: Uuid::new_v4().to_string(), enabled: true },
@@ -366,6 +379,7 @@ impl Config {
             site_url: None,
             domain: None,
             connections: Vec::new(),
+            analytics: None,
         }
     }
 

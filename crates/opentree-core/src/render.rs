@@ -2,6 +2,8 @@ use maud::{html, PreEscaped, DOCTYPE};
 use crate::config::{Block, CollectionLayout, CommerceProvider, Config, FormFieldType, OembedCache, SupportProvider};
 
 pub fn render_page(config: &Config) -> String {
+    let analytics_head = render_analytics_head(config);
+    let analytics_body = render_analytics_body(config);
     let markup = html! {
         (DOCTYPE)
         html lang="en" {
@@ -11,6 +13,9 @@ pub fn render_page(config: &Config) -> String {
                 title { (config.profile.name) }
                 link rel="icon" type="image/svg+xml" href="/favicon.svg";
                 style { (PreEscaped(render_css(config))) }
+                @if !analytics_head.is_empty() {
+                    (PreEscaped(analytics_head))
+                }
             }
             body {
                 main id="content" {
@@ -20,10 +25,38 @@ pub fn render_page(config: &Config) -> String {
                         }
                     }
                 }
+                @if !analytics_body.is_empty() {
+                    script { (PreEscaped(analytics_body)) }
+                }
             }
         }
     };
     markup.into_string()
+}
+
+fn render_analytics_head(config: &Config) -> String {
+    let analytics = match &config.analytics {
+        Some(a) if a.provider == "plausible" && !a.domain.is_empty() => a,
+        _ => return String::new(),
+    };
+    let base = analytics
+        .self_host_url
+        .as_deref()
+        .map(|s| s.trim_end_matches('/'))
+        .filter(|s| !s.is_empty())
+        .unwrap_or("https://plausible.io");
+    format!(
+        r#"<script defer data-domain="{}" src="{}/js/script.tagged-events.js"></script>
+<script>window.plausible=window.plausible||function(){{(window.plausible.q=window.plausible.q||[]).push(arguments)}}</script>"#,
+        analytics.domain, base
+    )
+}
+
+fn render_analytics_body(config: &Config) -> String {
+    if !matches!(&config.analytics, Some(a) if a.provider == "plausible" && !a.domain.is_empty()) {
+        return String::new();
+    }
+    r#"document.querySelectorAll('[data-track-id]').forEach(function(el){el.addEventListener('click',function(){if(typeof window.plausible!=='function')return;window.plausible('BlockClick',{props:{block_id:el.dataset.trackId,block_type:el.dataset.trackType||'',label:el.dataset.trackLabel||''}});});});"#.to_string()
 }
 
 fn render_block(block: &Block, config: &Config) -> maud::Markup {
@@ -40,8 +73,9 @@ fn render_block(block: &Block, config: &Config) -> maud::Markup {
             }
         },
 
-        Block::Link { title, url, .. } => html! {
-            a class="link-card" href=(url) target="_blank" rel="noopener noreferrer" {
+        Block::Link { id, title, url, .. } => html! {
+            a class="link-card" href=(url) target="_blank" rel="noopener noreferrer"
+              data-track-id=(id) data-track-type="link" data-track-label=(title) {
                 span class="link-title" { (title) }
             }
         },
@@ -65,9 +99,10 @@ fn render_block(block: &Block, config: &Config) -> maud::Markup {
             }
         },
 
-        Block::Image { asset_path, alt, url, .. } => html! {
+        Block::Image { id, asset_path, alt, url, .. } => html! {
             @if let Some(href) = url {
-                a href=(href) target="_blank" rel="noopener noreferrer" {
+                a href=(href) target="_blank" rel="noopener noreferrer"
+                  data-track-id=(id) data-track-type="image" data-track-label=(alt) {
                     img class="image-block" src=(asset_path) alt=(alt);
                 }
             } @else {
@@ -92,20 +127,22 @@ fn render_block(block: &Block, config: &Config) -> maud::Markup {
             }
         },
 
-        Block::Affiliate { title, url, utm_source, utm_medium, utm_campaign, .. } => {
+        Block::Affiliate { id, title, url, utm_source, utm_medium, utm_campaign, .. } => {
             let full_url = build_utm_url(url, utm_source, utm_medium, utm_campaign);
             html! {
                 a class="link-card affiliate-card" href=(full_url)
-                  target="_blank" rel="noopener noreferrer" {
+                  target="_blank" rel="noopener noreferrer"
+                  data-track-id=(id) data-track-type="affiliate" data-track-label=(title) {
                     span class="link-title" { (title) }
                     span class="link-badge affiliate-badge" { "제휴" }
                 }
             }
         },
 
-        Block::Sponsored { title, url, .. } => html! {
+        Block::Sponsored { id, title, url, .. } => html! {
             a class="link-card sponsored-card" href=(url)
-              target="_blank" rel="noopener noreferrer" {
+              target="_blank" rel="noopener noreferrer"
+              data-track-id=(id) data-track-type="sponsored" data-track-label=(title) {
                 span class="link-title" { (title) }
                 span class="link-badge sponsored-badge" { "Sponsored" }
             }
@@ -115,9 +152,9 @@ fn render_block(block: &Block, config: &Config) -> maud::Markup {
             (PreEscaped(html))
         },
 
-        Block::Music { url, oembed_cache, .. } => render_embed(url, oembed_cache.as_ref(), music_embed(url), "음악"),
-        Block::Video { url, oembed_cache, .. } => render_embed(url, oembed_cache.as_ref(), video_embed(url), "영상"),
-        Block::Pinterest { url, oembed_cache, .. } => render_embed(url, oembed_cache.as_ref(), pinterest_embed(url), "Pinterest"),
+        Block::Music { id, url, oembed_cache, .. } => render_embed(id, "music", url, oembed_cache.as_ref(), music_embed(url), "음악"),
+        Block::Video { id, url, oembed_cache, .. } => render_embed(id, "video", url, oembed_cache.as_ref(), video_embed(url), "영상"),
+        Block::Pinterest { id, url, oembed_cache, .. } => render_embed(id, "pinterest", url, oembed_cache.as_ref(), pinterest_embed(url), "Pinterest"),
 
         Block::Collection { layout, children, .. } => {
             let class = match layout {
@@ -171,10 +208,11 @@ fn render_block(block: &Block, config: &Config) -> maud::Markup {
             }
         }
 
-        Block::Commerce { provider, url, label, description, price, .. } => {
+        Block::Commerce { id, provider, url, label, description, price, .. } => {
             let provider_label = commerce_provider_label(*provider);
             html! {
-                a class="link-card commerce-card" href=(url) target="_blank" rel="noopener noreferrer" {
+                a class="link-card commerce-card" href=(url) target="_blank" rel="noopener noreferrer"
+                  data-track-id=(id) data-track-type="commerce" data-track-label=(label) {
                     div class="commerce-info" {
                         span class="commerce-provider" { (provider_label) }
                         span class="link-title" { (label) }
@@ -189,19 +227,21 @@ fn render_block(block: &Block, config: &Config) -> maud::Markup {
             }
         }
 
-        Block::Support { provider, url, label, .. } => {
+        Block::Support { id, provider, url, label, .. } => {
             let provider_label = support_provider_label(*provider);
             let display = if label.is_empty() { provider_label.to_string() } else { label.clone() };
             html! {
-                a class="link-card support-card" href=(url) target="_blank" rel="noopener noreferrer" {
+                a class="link-card support-card" href=(url) target="_blank" rel="noopener noreferrer"
+                  data-track-id=(id) data-track-type="support" data-track-label=(display) {
                     span class="support-icon" { (provider_label) }
                     span class="link-title" { (display) }
                 }
             }
         }
 
-        Block::Course { url, title, platform, price, .. } => html! {
-            a class="link-card course-card" href=(url) target="_blank" rel="noopener noreferrer" {
+        Block::Course { id, url, title, platform, price, .. } => html! {
+            a class="link-card course-card" href=(url) target="_blank" rel="noopener noreferrer"
+              data-track-id=(id) data-track-type="course" data-track-label=(title) {
                 div class="commerce-info" {
                     @if let Some(pl) = platform { @if !pl.is_empty() {
                         span class="commerce-provider" { (pl) }
@@ -230,6 +270,8 @@ fn render_block(block: &Block, config: &Config) -> maud::Markup {
 }
 
 fn render_embed(
+    id: &str,
+    block_type: &str,
     url: &str,
     cache: Option<&OembedCache>,
     auto: Option<String>,
@@ -237,14 +279,15 @@ fn render_embed(
 ) -> maud::Markup {
     if let Some(c) = cache {
         if let Some(html_str) = &c.html {
-            return html! { div class="embed-block" { (PreEscaped(html_str)) } };
+            return html! { div class="embed-block" data-track-id=(id) data-track-type=(block_type) { (PreEscaped(html_str)) } };
         }
     }
     if let Some(html_str) = auto {
-        return html! { div class="embed-block" { (PreEscaped(html_str)) } };
+        return html! { div class="embed-block" data-track-id=(id) data-track-type=(block_type) { (PreEscaped(html_str)) } };
     }
     html! {
-        a class="link-card embed-fallback" href=(url) target="_blank" rel="noopener noreferrer" {
+        a class="link-card embed-fallback" href=(url) target="_blank" rel="noopener noreferrer"
+          data-track-id=(id) data-track-type=(block_type) data-track-label=(fallback_label) {
             span class="link-title" { (fallback_label) }
             span class="link-url" { (url) }
         }

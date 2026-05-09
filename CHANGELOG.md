@@ -17,6 +17,23 @@ The format is intentionally simple:
 - Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Remove import-from-JSON feature — no clear use case without legacy CLI
 
+### Phase 10 — Analytics (Plausible)
+
+- Add `analytics` field on Config (provider, domain, optional self-host URL)
+- Render auto-injects Plausible script (`script.tagged-events.js`) into
+  `<head>` and a small click-tracking script that fires
+  `plausible('BlockClick', {props:{block_id, block_type, label}})` for
+  every clickable block
+- All clickable blocks now emit `data-track-id`/`data-track-type`/
+  `data-track-label` data attributes (inert when analytics disabled)
+- Add Plausible API connection in Settings → 연결 (Bearer token, optional
+  self-host base URL)
+- Add Settings → Analytics section to enable + configure Site ID / self-host
+- Add `Stats` tab — KPIs (visitors / pageviews / bounce / avg duration)
+  + Top Blocks breakdown via Plausible Stats API; periods Today / 7d /
+  30d / 6mo / 12mo
+- Bump `schemaVersion` to 8
+
 ### Phase 9 — Commerce (incl. 9.5 Gumroad/Lemon Squeezy/Polar)
 
 - Add `commerce` block — link to Stripe Payment Link, Gumroad, Lemon

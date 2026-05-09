@@ -1,4 +1,4 @@
-type Tab = "links" | "design" | "settings" | "publish";
+type Tab = "links" | "design" | "settings" | "publish" | "stats";
 
 interface Props {
   dirty: boolean;
@@ -37,6 +37,12 @@ export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExpor
           onClick={() => onTabChange("publish")}
         >
           Publish
+        </button>
+        <button
+          className={`sidebar-nav-item ${activeTab === "stats" ? "active" : ""}`}
+          onClick={() => onTabChange("stats")}
+        >
+          Stats
         </button>
         <button
           className={`sidebar-nav-item ${activeTab === "settings" ? "active" : ""}`}

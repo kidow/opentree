@@ -69,6 +69,114 @@ pub struct DnsRecord {
     pub value: String,
 }
 
+// ── Plausible Analytics ──────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PlausibleConnection {
+    pub token: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub base_url: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PlausibleStats {
+    pub visitors: u64,
+    pub pageviews: u64,
+    pub bounce_rate: f64,
+    pub visit_duration: f64,
+    pub top_blocks: Vec<PlausibleTopBlock>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PlausibleTopBlock {
+    pub block_id: String,
+    pub visitors: u64,
+}
+
+fn plausible_base(conn: &PlausibleConnection) -> String {
+    conn.base_url
+        .as_deref()
+        .map(|s| s.trim_end_matches('/'))
+        .filter(|s| !s.is_empty())
+        .unwrap_or("https://plausible.io")
+        .to_string()
+}
+
+pub async fn verify_plausible(conn: &PlausibleConnection) -> Result<(), String> {
+    let base = plausible_base(conn);
+    let resp = reqwest::Client::new()
+        .get(format!("{base}/api/v1/sites"))
+        .bearer_auth(&conn.token)
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    if !resp.status().is_success() {
+        return Err("유효하지 않은 Plausible 토큰입니다.".to_string());
+    }
+    Ok(())
+}
+
+pub async fn fetch_plausible_stats(
+    conn: &PlausibleConnection,
+    site_id: &str,
+    period: &str,
+) -> Result<PlausibleStats, String> {
+    let base = plausible_base(conn);
+    let client = reqwest::Client::new();
+
+    let agg_url = format!(
+        "{base}/api/v1/stats/aggregate?site_id={site_id}&period={period}&metrics=visitors,pageviews,bounce_rate,visit_duration"
+    );
+    let agg_resp = client
+        .get(&agg_url)
+        .bearer_auth(&conn.token)
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    let agg_status = agg_resp.status();
+    let agg_text = agg_resp.text().await.unwrap_or_default();
+    if !agg_status.is_success() {
+        return Err(format!("Plausible 오류 ({agg_status}): {agg_text}"));
+    }
+    let agg_val: serde_json::Value = serde_json::from_str(&agg_text).unwrap_or_default();
+    let r = &agg_val["results"];
+    let visitors = r["visitors"]["value"].as_u64().unwrap_or(0);
+    let pageviews = r["pageviews"]["value"].as_u64().unwrap_or(0);
+    let bounce_rate = r["bounce_rate"]["value"].as_f64().unwrap_or(0.0);
+    let visit_duration = r["visit_duration"]["value"].as_f64().unwrap_or(0.0);
+
+    let bd_url = format!(
+        "{base}/api/v1/stats/breakdown?site_id={site_id}&period={period}&property=event:props:block_id&metrics=visitors&filters=event:name%3D%3DBlockClick&limit=20"
+    );
+    let bd_resp = client
+        .get(&bd_url)
+        .bearer_auth(&conn.token)
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    let bd_text = bd_resp.text().await.unwrap_or_default();
+    let bd_val: serde_json::Value = serde_json::from_str(&bd_text).unwrap_or_default();
+    let top_blocks: Vec<PlausibleTopBlock> = bd_val["results"]
+        .as_array()
+        .map(|arr| {
+            arr.iter()
+                .map(|item| PlausibleTopBlock {
+                    block_id: item["block_id"].as_str().unwrap_or("").to_string(),
+                    visitors: item["visitors"].as_u64().unwrap_or(0),
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    Ok(PlausibleStats {
+        visitors,
+        pageviews,
+        bounce_rate,
+        visit_duration,
+        top_blocks,
+    })
+}
+
 // ── Vercel ───────────────────────────────────────────────────────────────────
 
 #[derive(Serialize)]

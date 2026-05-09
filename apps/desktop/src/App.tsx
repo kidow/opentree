@@ -9,12 +9,13 @@ import Editor from "./components/Editor";
 import Design from "./components/Design";
 import Settings from "./components/Settings";
 import Publish from "./components/Publish";
+import Stats from "./components/Stats";
 import PhonePreview from "./components/PhonePreview";
 import Welcome from "./components/Welcome";
 import CloseConfirmDialog from "./components/CloseConfirmDialog";
 import "./App.css";
 
-type Tab = "links" | "design" | "publish" | "settings";
+type Tab = "links" | "design" | "publish" | "settings" | "stats";
 
 export default function App() {
   const store = useAppStore(null);
@@ -123,6 +124,7 @@ export default function App() {
       {activeTab === "links" && <Editor store={store} />}
       {activeTab === "design" && <Design store={store} />}
       {activeTab === "publish" && <Publish store={store} projectPath={store.projectPath!} />}
+      {activeTab === "stats" && <Stats store={store} />}
       {activeTab === "settings" && (
         <Settings store={store} projectPath={store.projectPath!} />
       )}

@@ -96,8 +96,25 @@ async fn verify_connection(provider: String, data: String) -> Result<(), String>
                 serde_json::from_str(&data).map_err(|_| "잘못된 연결 데이터".to_string())?;
             publish::verify_github(&conn.token).await
         }
+        "plausible" => {
+            let conn: publish::PlausibleConnection =
+                serde_json::from_str(&data).map_err(|_| "잘못된 연결 데이터".to_string())?;
+            publish::verify_plausible(&conn).await
+        }
         _ => Err(format!("알 수 없는 provider: {provider}")),
     }
+}
+
+#[command]
+async fn fetch_plausible_stats(
+    site_id: String,
+    period: String,
+) -> Result<publish::PlausibleStats, String> {
+    let raw = publish::load_token("plausible")?
+        .ok_or_else(|| "Plausible 토큰이 없습니다. Settings → Connections에서 연결하세요.".to_string())?;
+    let conn: publish::PlausibleConnection =
+        serde_json::from_str(&raw).map_err(|_| "Plausible 연결 데이터 파싱 오류".to_string())?;
+    publish::fetch_plausible_stats(&conn, &site_id, &period).await
 }
 
 // ── Deploy ───────────────────────────────────────────────────────────────────
@@ -226,6 +243,7 @@ pub fn run() {
             deploy_github_pages,
             add_domain,
             check_domain,
+            fetch_plausible_stats,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application")
