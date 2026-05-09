@@ -1,6 +1,18 @@
 import { useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import type { useAppStore } from "../store";
 import type { Background, ButtonStyle, LayoutStyle, Theme } from "../types";
+
+interface UnsplashPhoto {
+  id: string;
+  thumb_url: string;
+  regular_url: string;
+  full_url: string;
+  photographer: string;
+  photographer_url: string;
+  photo_url: string;
+  alt: string;
+}
 
 interface Props {
   store: ReturnType<typeof useAppStore>;
@@ -28,7 +40,7 @@ const LAYOUTS: { id: LayoutStyle; label: string; desc: string }[] = [
   { id: "featured", label: "Featured", desc: "첫 카드 강조 + 그림자" },
 ];
 
-const BG_TYPES = ["solid", "gradient", "image"] as const;
+const BG_TYPES = ["solid", "gradient", "image", "video"] as const;
 
 function hexToRgb(hex: string): [number, number, number] | null {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex);
@@ -58,8 +70,45 @@ export default function Design({ store }: Props) {
   const { config } = store;
   const [bundleText, setBundleText] = useState("");
   const [bundleError, setBundleError] = useState<string | null>(null);
+  const [unsplashOpen, setUnsplashOpen] = useState(false);
+  const [unsplashQuery, setUnsplashQuery] = useState("");
+  const [unsplashResults, setUnsplashResults] = useState<UnsplashPhoto[]>([]);
+  const [unsplashLoading, setUnsplashLoading] = useState(false);
+  const [unsplashError, setUnsplashError] = useState<string | null>(null);
   if (!config) return null;
   const theme: Theme = config.theme;
+
+  const searchUnsplash = async () => {
+    if (!unsplashQuery.trim()) return;
+    setUnsplashLoading(true);
+    setUnsplashError(null);
+    try {
+      const results: UnsplashPhoto[] = await invoke("unsplash_search", { query: unsplashQuery.trim(), page: 1 });
+      setUnsplashResults(results);
+    } catch (e) {
+      setUnsplashError(String(e));
+    } finally {
+      setUnsplashLoading(false);
+    }
+  };
+
+  const pickUnsplash = (photo: UnsplashPhoto) => {
+    store.updateTheme({
+      background: {
+        type: "image",
+        assetPath: "",
+        url: photo.regular_url,
+        opacity: 1,
+        attribution: {
+          source: "Unsplash",
+          photographer: photo.photographer,
+          photographerUrl: photo.photographer_url,
+          sourceUrl: photo.photo_url,
+        },
+      },
+    });
+    setUnsplashOpen(false);
+  };
 
   const updateTheme = (patch: Partial<Theme>) => store.updateTheme(patch);
 
@@ -179,6 +228,7 @@ export default function Design({ store }: Props) {
                   if (t === "solid") setBg({ type: "solid", color: theme.backgroundColor });
                   if (t === "gradient") setBg({ type: "gradient", from: theme.backgroundColor, to: theme.accentColor, direction: "to bottom" });
                   if (t === "image") setBg({ type: "image", assetPath: "", opacity: 1 });
+                  if (t === "video") setBg({ type: "video", assetPath: "", opacity: 1 });
                 }}
               >{t}</button>
             ))}
@@ -231,14 +281,57 @@ export default function Design({ store }: Props) {
                     assetPath: v.startsWith("assets/") ? v : "",
                     url: v.startsWith("http") ? v : undefined,
                     opacity: theme.background?.type === "image" ? theme.background.opacity : 1,
+                    attribution: theme.background?.type === "image" ? theme.background.attribution : undefined,
                   });
                 }}
               />
+              <button className="preset-btn" style={{ marginTop: 6 }} onClick={() => setUnsplashOpen(true)}>
+                📷 Unsplash 검색
+              </button>
+              {theme.background.attribution && (
+                <p className="design-hint" style={{ marginTop: 4 }}>
+                  Photo by {theme.background.attribution.photographer} on {theme.background.attribution.source}
+                </p>
+              )}
               <label className="design-label" style={{ marginTop: 8 }}>Opacity ({((theme.background.opacity ?? 1) * 100).toFixed(0)}%)</label>
               <input
                 type="range" min="0" max="100" step="5"
                 value={(theme.background.opacity ?? 1) * 100}
                 onChange={(e) => setBg({ ...theme.background as Extract<Background, { type: "image" }>, opacity: Number(e.target.value) / 100 })}
+              />
+            </div>
+          )}
+          {theme.background?.type === "video" && (
+            <div className="design-field">
+              <label className="design-label">비디오 URL 또는 assets/...</label>
+              <p className="design-hint">.mp4 / .webm 권장. autoplay + muted 자동 적용. prefers-reduced-motion 사용자에겐 숨김.</p>
+              <input
+                type="text"
+                value={theme.background.url ?? theme.background.assetPath}
+                placeholder="https://... 또는 assets/bg.mp4"
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setBg({
+                    type: "video",
+                    assetPath: v.startsWith("assets/") ? v : "",
+                    url: v.startsWith("http") ? v : undefined,
+                    poster: theme.background?.type === "video" ? theme.background.poster : undefined,
+                    opacity: theme.background?.type === "video" ? theme.background.opacity : 1,
+                  });
+                }}
+              />
+              <label className="design-label" style={{ marginTop: 8 }}>Poster 이미지 URL (선택)</label>
+              <input
+                type="text"
+                value={theme.background.poster ?? ""}
+                placeholder="https://..."
+                onChange={(e) => setBg({ ...theme.background as Extract<Background, { type: "video" }>, poster: e.target.value || undefined })}
+              />
+              <label className="design-label" style={{ marginTop: 8 }}>Opacity ({((theme.background.opacity ?? 1) * 100).toFixed(0)}%)</label>
+              <input
+                type="range" min="0" max="100" step="5"
+                value={(theme.background.opacity ?? 1) * 100}
+                onChange={(e) => setBg({ ...theme.background as Extract<Background, { type: "video" }>, opacity: Number(e.target.value) / 100 })}
               />
             </div>
           )}
@@ -292,8 +385,55 @@ export default function Design({ store }: Props) {
         </section>
 
       </div>
+
+      {unsplashOpen && (
+        <div className="unsplash-overlay" onClick={(e) => { if (e.target === e.currentTarget) setUnsplashOpen(false); }}>
+          <div className="unsplash-modal">
+            <div className="unsplash-header">
+              <h3 style={{ fontSize: 14, fontWeight: 700 }}>Unsplash 검색</h3>
+              <button onClick={() => setUnsplashOpen(false)} style={{ fontSize: 16 }}>✕</button>
+            </div>
+            <div className="unsplash-search">
+              <input
+                type="text"
+                value={unsplashQuery}
+                onChange={(e) => setUnsplashQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") searchUnsplash(); }}
+                placeholder="검색어 (예: nature, abstract, gradient)"
+                autoFocus
+              />
+              <button className="preset-btn active" onClick={searchUnsplash} disabled={unsplashLoading}>
+                {unsplashLoading ? "..." : "검색"}
+              </button>
+            </div>
+            {unsplashError && <div className="design-warn">⚠ {unsplashError}</div>}
+            <div className="unsplash-grid">
+              {unsplashResults.map((p) => (
+                <button key={p.id} className="unsplash-thumb" onClick={() => pickUnsplash(p)}>
+                  <img src={p.thumb_url} alt={p.alt} />
+                  <span className="unsplash-credit">{p.photographer}</span>
+                </button>
+              ))}
+            </div>
+            {unsplashResults.length === 0 && !unsplashLoading && !unsplashError && (
+              <p className="design-hint" style={{ textAlign: "center", padding: 20 }}>검색어를 입력하세요. Unsplash Access Key 필요 (Settings → 연결).</p>
+            )}
+          </div>
+        </div>
+      )}
+
       <style>{`
         .design { display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+        .unsplash-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 200; }
+        .unsplash-modal { background: var(--surface); border-radius: 12px; width: 720px; max-width: 90vw; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; }
+        .unsplash-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .unsplash-search { padding: 12px 18px; display: flex; gap: 6px; }
+        .unsplash-search input { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+        .unsplash-grid { padding: 12px 18px; overflow-y: auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .unsplash-thumb { position: relative; aspect-ratio: 1; overflow: hidden; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); padding: 0; }
+        .unsplash-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .unsplash-thumb:hover { transform: scale(1.02); }
+        .unsplash-credit { position: absolute; bottom: 0; left: 0; right: 0; font-size: 10px; padding: 4px 6px; background: rgba(0,0,0,0.55); color: white; text-align: left; }
         .design-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
         .design-title { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
         .design-body { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 24px; }

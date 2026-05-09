@@ -74,6 +74,71 @@ pub struct DnsRecord {
     pub value: String,
 }
 
+// ── Unsplash ─────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize)]
+pub struct UnsplashPhoto {
+    pub id: String,
+    pub thumb_url: String,
+    pub regular_url: String,
+    pub full_url: String,
+    pub photographer: String,
+    pub photographer_url: String,
+    pub photo_url: String,
+    pub alt: String,
+}
+
+pub async fn verify_unsplash(token: &str) -> Result<(), String> {
+    let resp = reqwest::Client::new()
+        .get("https://api.unsplash.com/me")
+        .header("Authorization", format!("Client-ID {token}"))
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    // /me requires user auth — for client-only Access Key, /photos/random works
+    if resp.status().is_success() { return Ok(()); }
+    let resp2 = reqwest::Client::new()
+        .get("https://api.unsplash.com/photos/random")
+        .header("Authorization", format!("Client-ID {token}"))
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    if !resp2.status().is_success() {
+        return Err("유효하지 않은 Unsplash Access Key입니다.".to_string());
+    }
+    Ok(())
+}
+
+pub async fn unsplash_search(token: &str, query: &str, page: u32) -> Result<Vec<UnsplashPhoto>, String> {
+    let q = urlencoding::encode(query);
+    let url = format!("https://api.unsplash.com/search/photos?query={q}&page={page}&per_page=20&orientation=portrait");
+    let resp = reqwest::Client::new()
+        .get(&url)
+        .header("Authorization", format!("Client-ID {token}"))
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    let status = resp.status();
+    let text = resp.text().await.map_err(|e| format!("응답 읽기: {e}"))?;
+    if !status.is_success() {
+        return Err(format!("Unsplash 오류 ({status}): {text}"));
+    }
+    let val: serde_json::Value = serde_json::from_str(&text).unwrap_or_default();
+    let photos = val["results"].as_array().map(|arr| {
+        arr.iter().map(|p| UnsplashPhoto {
+            id: p["id"].as_str().unwrap_or("").to_string(),
+            thumb_url: p["urls"]["thumb"].as_str().unwrap_or("").to_string(),
+            regular_url: p["urls"]["regular"].as_str().unwrap_or("").to_string(),
+            full_url: p["urls"]["full"].as_str().unwrap_or("").to_string(),
+            photographer: p["user"]["name"].as_str().unwrap_or("").to_string(),
+            photographer_url: format!("{}?utm_source=opentree&utm_medium=referral", p["user"]["links"]["html"].as_str().unwrap_or("")),
+            photo_url: format!("{}?utm_source=opentree&utm_medium=referral", p["links"]["html"].as_str().unwrap_or("")),
+            alt: p["alt_description"].as_str().unwrap_or("").to_string(),
+        }).collect::<Vec<_>>()
+    }).unwrap_or_default();
+    Ok(photos)
+}
+
 // ── Plausible Analytics ──────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize, Deserialize)]

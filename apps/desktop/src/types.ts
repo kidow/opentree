@@ -7,10 +7,18 @@ export interface Profile {
 export type ButtonStyle = "pill" | "rounded" | "square" | "outline" | "soft";
 export type LayoutStyle = "classic" | "featured";
 
+export interface BackgroundAttribution {
+  source: string;
+  photographer: string;
+  photographerUrl?: string;
+  sourceUrl?: string;
+}
+
 export type Background =
   | { type: "solid"; color: string }
   | { type: "gradient"; from: string; to: string; direction: string }
-  | { type: "image"; assetPath: string; url?: string; opacity?: number };
+  | { type: "image"; assetPath: string; url?: string; opacity?: number; attribution?: BackgroundAttribution }
+  | { type: "video"; assetPath: string; url?: string; poster?: string; opacity?: number };
 
 export interface Theme {
   accentColor: string;

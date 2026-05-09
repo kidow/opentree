@@ -8,7 +8,7 @@ interface Props {
   projectPath: string;
 }
 
-type Provider = "vercel" | "cloudflare" | "github" | "plausible" | "anthropic" | "openai";
+type Provider = "vercel" | "cloudflare" | "github" | "plausible" | "anthropic" | "openai" | "unsplash";
 
 interface ConnState {
   connected: boolean;
@@ -118,6 +118,7 @@ export default function Settings({ store, projectPath }: Props) {
     plausible: { connected: false, masked: "" },
     anthropic: { connected: false, masked: "" },
     openai: { connected: false, masked: "" },
+    unsplash: { connected: false, masked: "" },
   });
 
   useEffect(() => {
@@ -125,14 +126,14 @@ export default function Settings({ store, projectPath }: Props) {
   }, []);
 
   const loadConnections = async () => {
-    const providers: Provider[] = ["vercel", "cloudflare", "github", "plausible", "anthropic", "openai"];
+    const providers: Provider[] = ["vercel", "cloudflare", "github", "plausible", "anthropic", "openai", "unsplash"];
     const next = { ...connections };
     for (const p of providers) {
       try {
         const val = await invoke<string | null>("get_token", { provider: p });
         if (val) {
           let masked = "";
-          if (p === "vercel" || p === "anthropic" || p === "openai") {
+          if (p === "vercel" || p === "anthropic" || p === "openai" || p === "unsplash") {
             masked = `토큰: ${mask(val)}`;
           } else {
             try {
@@ -246,6 +247,14 @@ export default function Settings({ store, projectPath }: Props) {
             conn={connections.openai}
             onConnect={handleConnect("openai")}
             onDisconnect={handleDisconnect("openai")}
+          />
+          <ProviderCard
+            label="Unsplash"
+            hint="unsplash.com/oauth/applications 에서 신규 앱 등록 후 Access Key 사용. Design → 배경 → 이미지에서 사진 검색 + 자동 어트리뷰션."
+            fields={[{ key: "token", label: "Access Key", placeholder: "Unsplash Access Key", sensitive: true }]}
+            conn={connections.unsplash}
+            onConnect={handleConnect("unsplash")}
+            onDisconnect={handleDisconnect("unsplash")}
           />
         </section>
 

@@ -110,8 +110,16 @@ async fn verify_connection(provider: String, data: String) -> Result<(), String>
         }
         "anthropic" => ai::verify_anthropic(&data).await,
         "openai" => ai::verify_openai(&data).await,
+        "unsplash" => publish::verify_unsplash(&data).await,
         _ => Err(format!("알 수 없는 provider: {provider}")),
     }
+}
+
+#[command]
+async fn unsplash_search(query: String, page: u32) -> Result<Vec<publish::UnsplashPhoto>, String> {
+    let token = publish::load_token("unsplash")?
+        .ok_or_else(|| "Unsplash Access Key가 없습니다. Settings → 연결에서 추가하세요.".to_string())?;
+    publish::unsplash_search(&token, &query, page).await
 }
 
 #[command]
@@ -275,6 +283,7 @@ pub fn run() {
             check_domain,
             fetch_plausible_stats,
             chat_send,
+            unsplash_search,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application")

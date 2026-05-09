@@ -17,6 +17,22 @@ The format is intentionally simple:
 - Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Remove import-from-JSON feature — no clear use case without legacy CLI
 
+### Phase 12.2 — Unsplash + Background Video
+
+- Add Unsplash picker: connect Access Key in Settings → 연결, then
+  Design → 배경 → 이미지 → "📷 Unsplash 검색" opens an inline modal
+  with search + thumbnail grid. Selecting a photo auto-fills the
+  background URL and stores attribution metadata
+- Background attribution is rendered as a small fixed-position
+  credit ("Photo by X on Unsplash") in the bottom-right of the
+  generated page, with linked photographer + source URLs (UTM
+  parameters per Unsplash terms)
+- Add `Background::Video` variant: `<video autoplay loop muted
+  playsinline>` element fixed to viewport with `object-fit: cover`,
+  optional poster image, optional opacity. Hidden under
+  `prefers-reduced-motion`
+- Bump `schemaVersion` to 13
+
 ### Phase 13.2 — Build-time Schedule Filtering
 
 - Add `build_with_time(config, now)` and `render_page_with_time(config, now)`

@@ -409,6 +409,19 @@ impl Default for LayoutStyle {
     fn default() -> Self { LayoutStyle::Classic }
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BackgroundAttribution {
+    #[serde(default)]
+    pub source: String,
+    #[serde(default)]
+    pub photographer: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub photographer_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_url: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum Background {
@@ -427,6 +440,19 @@ pub enum Background {
         asset_path: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         url: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        opacity: Option<f64>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        attribution: Option<BackgroundAttribution>,
+    },
+    #[serde(rename = "video")]
+    Video {
+        #[serde(default)]
+        asset_path: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        url: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        poster: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         opacity: Option<f64>,
     },
@@ -462,7 +488,7 @@ pub struct Theme {
 impl Config {
     pub fn default_config() -> Self {
         Config {
-            schema_version: 12,
+            schema_version: 13,
             profile: Profile { name: String::new(), bio: None, avatar_url: None },
             blocks: vec![
                 Block::Profile { id: Uuid::new_v4().to_string(), enabled: true },

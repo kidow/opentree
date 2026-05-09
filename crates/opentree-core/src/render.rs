@@ -28,6 +28,8 @@ pub fn render_page_with_time(config: &Config, now: Option<&str>) -> String {
         .iter()
         .filter(|b| b.enabled() && schedule_visible_at(b.id(), &config.schedules, now))
         .collect();
+    let bg_video = render_bg_video(config);
+    let bg_credit = render_bg_credit(config);
     let markup = html! {
         (DOCTYPE)
         html lang=(lang) {
@@ -51,10 +53,16 @@ pub fn render_page_with_time(config: &Config, now: Option<&str>) -> String {
                 }
             }
             body class=(layout_class) {
+                @if !bg_video.is_empty() {
+                    (PreEscaped(bg_video))
+                }
                 main id="content" {
                     @for block in &visible_blocks {
                         (render_scheduled_wrapper(block, config))
                     }
+                }
+                @if !bg_credit.is_empty() {
+                    (PreEscaped(bg_credit))
                 }
                 @if !analytics_body.is_empty() {
                     script { (PreEscaped(analytics_body)) }
@@ -634,6 +642,49 @@ fn email_field_name(provider: Option<&str>) -> &'static str {
     }
 }
 
+fn render_bg_video(config: &Config) -> String {
+    let (src, poster, opacity) = match &config.theme.background {
+        Some(Background::Video { asset_path, url, poster, opacity }) => {
+            let src = if !asset_path.is_empty() { asset_path.clone() } else { url.clone().unwrap_or_default() };
+            if src.is_empty() { return String::new(); }
+            let p = poster.as_deref().unwrap_or("").to_string();
+            (src, p, opacity.unwrap_or(1.0).clamp(0.0, 1.0))
+        }
+        _ => return String::new(),
+    };
+    let poster_attr = if poster.is_empty() { String::new() } else { format!(r#" poster="{}""#, html_escape(&poster)) };
+    let style = format!("opacity:{:.2}", opacity);
+    format!(
+        r#"<video class="bg-video" autoplay loop muted playsinline{} style="{}"><source src="{}"></video>"#,
+        poster_attr, style, html_escape(&src)
+    )
+}
+
+fn render_bg_credit(config: &Config) -> String {
+    let attr = match &config.theme.background {
+        Some(Background::Image { attribution: Some(a), .. }) if !a.photographer.is_empty() => a,
+        _ => return String::new(),
+    };
+    let mut credit = format!("Photo by {}", html_escape(&attr.photographer));
+    if let Some(p_url) = &attr.photographer_url {
+        if !p_url.is_empty() {
+            credit = format!(r#"Photo by <a href="{}" target="_blank" rel="noopener noreferrer">{}</a>"#, html_escape(p_url), html_escape(&attr.photographer));
+        }
+    }
+    if !attr.source.is_empty() {
+        if let Some(src_url) = &attr.source_url {
+            if !src_url.is_empty() {
+                credit.push_str(&format!(r#" on <a href="{}" target="_blank" rel="noopener noreferrer">{}</a>"#, html_escape(src_url), html_escape(&attr.source)));
+            } else {
+                credit.push_str(&format!(" on {}", html_escape(&attr.source)));
+            }
+        } else {
+            credit.push_str(&format!(" on {}", html_escape(&attr.source)));
+        }
+    }
+    format!(r#"<div class="bg-credit">{}</div>"#, credit)
+}
+
 fn render_body_background(config: &Config) -> String {
     match &config.theme.background {
         Some(Background::Solid { color }) => format!("background-color: {color};"),
@@ -641,7 +692,8 @@ fn render_body_background(config: &Config) -> String {
             let dir = if direction.trim().is_empty() { "to bottom" } else { direction.as_str() };
             format!("background: linear-gradient({dir}, {from}, {to}); background-attachment: fixed;")
         }
-        Some(Background::Image { asset_path, url, opacity }) => {
+        Some(Background::Video { .. }) => format!("background-color: {};", config.theme.background_color),
+        Some(Background::Image { asset_path, url, opacity, .. }) => {
             let src = if !asset_path.is_empty() { asset_path.clone() } else { url.clone().unwrap_or_default() };
             if src.is_empty() {
                 format!("background-color: {};", config.theme.background_color)
@@ -1006,6 +1058,28 @@ body.layout-featured #content .profile + * + .link-card {{
 .scheduled {{ display: contents; }}
 .scheduled.scheduled-hidden {{ display: none !important; }}
 
+.bg-video {{
+    position: fixed; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    z-index: -1;
+    pointer-events: none;
+}}
+
+.bg-credit {{
+    position: fixed;
+    bottom: 12px;
+    right: 12px;
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    background: rgba(0,0,0,0.45);
+    color: white;
+    border-radius: 4px;
+    z-index: 5;
+    backdrop-filter: blur(4px);
+}}
+.bg-credit a {{ color: white; text-decoration: underline; }}
+
 a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {{
     outline: 2px solid {accent};
     outline-offset: 2px;
@@ -1019,6 +1093,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
         transition-duration: 0.001ms !important;
         scroll-behavior: auto !important;
     }}
+    .bg-video {{ display: none !important; }}
 }}
 
 {custom}
