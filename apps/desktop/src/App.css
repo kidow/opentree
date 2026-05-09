@@ -1,0 +1,6 @@
+.app-layout {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr var(--preview-width);
+  height: 100vh;
+  overflow: hidden;
+}
