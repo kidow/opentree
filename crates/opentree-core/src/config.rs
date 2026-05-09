@@ -264,6 +264,10 @@ pub enum Block {
         enabled: bool,
         #[serde(default)]
         formspree_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        action_url: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        provider: Option<String>,
         #[serde(default)]
         title: String,
         #[serde(default)]
@@ -278,6 +282,10 @@ pub enum Block {
         enabled: bool,
         #[serde(default)]
         convertkit_form_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        action_url: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        provider: Option<String>,
         #[serde(default)]
         title: String,
         #[serde(default)]
@@ -454,7 +462,7 @@ pub struct Theme {
 impl Config {
     pub fn default_config() -> Self {
         Config {
-            schema_version: 11,
+            schema_version: 12,
             profile: Profile { name: String::new(), bio: None, avatar_url: None },
             blocks: vec![
                 Block::Profile { id: Uuid::new_v4().to_string(), enabled: true },

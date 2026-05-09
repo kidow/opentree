@@ -252,51 +252,71 @@ export default function Settings({ store, projectPath }: Props) {
         <section className="settings-section">
           <h3 className="settings-section-title">Analytics</h3>
           <div className="settings-field">
-            <label className="settings-label">Plausible 사용</label>
-            <p className="settings-hint">활성화 시 배포된 페이지에 Plausible 스크립트 + BlockClick 이벤트 추적이 주입됩니다.</p>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4 }}>
-              <input
-                type="checkbox"
-                checked={config.analytics?.provider === "plausible"}
-                onChange={(e) => {
-                  const next = e.target.checked
-                    ? { provider: "plausible", domain: config.analytics?.domain ?? config.domain ?? "", selfHostUrl: config.analytics?.selfHostUrl }
-                    : undefined;
-                  store.update({ ...config, analytics: next });
-                }}
-              />
-              <span style={{ fontSize: 13 }}>Plausible 추적 활성화</span>
-            </div>
+            <label className="settings-label">Provider</label>
+            <p className="settings-hint">선택 시 배포된 페이지 head에 해당 추적 스크립트가 주입됩니다. 클릭 추적은 Plausible과 GA4에서만 자동 발송 (BlockClick 이벤트).</p>
+            <select
+              value={config.analytics?.provider ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (!v) {
+                  store.update({ ...config, analytics: undefined });
+                  return;
+                }
+                const a = config.analytics ?? { provider: v, domain: "" };
+                store.update({ ...config, analytics: { ...a, provider: v } });
+              }}
+            >
+              <option value="">사용 안 함</option>
+              <option value="plausible">Plausible (Stats 탭에서 대시보드 제공)</option>
+              <option value="umami">Umami</option>
+              <option value="fathom">Fathom</option>
+              <option value="ga4">Google Analytics 4</option>
+              <option value="cf-analytics">Cloudflare Web Analytics</option>
+            </select>
           </div>
-          {config.analytics?.provider === "plausible" && (
+          {config.analytics?.provider && (
             <>
               <div className="settings-field">
-                <label className="settings-label">Site ID (도메인)</label>
-                <p className="settings-hint">Plausible에 등록된 사이트 도메인 (예: yourname.com).</p>
+                <label className="settings-label">{
+                  config.analytics.provider === "plausible" ? "Site ID (도메인)"
+                  : config.analytics.provider === "umami" ? "Website ID"
+                  : config.analytics.provider === "fathom" ? "Site ID"
+                  : config.analytics.provider === "ga4" ? "Measurement ID (G-XXXXXXX)"
+                  : config.analytics.provider === "cf-analytics" ? "Beacon Token"
+                  : "ID"
+                }</label>
+                <p className="settings-hint">{
+                  config.analytics.provider === "plausible" ? "Plausible 등록된 사이트 도메인 (예: yourname.com)"
+                  : config.analytics.provider === "umami" ? "Umami 대시보드 → Settings → Websites에서 확인"
+                  : config.analytics.provider === "fathom" ? "Fathom 대시보드 → Site → Site ID"
+                  : config.analytics.provider === "ga4" ? "G-로 시작하는 Measurement ID"
+                  : "Cloudflare Web Analytics 토큰"
+                }</p>
                 <input
                   type="text"
                   defaultValue={config.analytics.domain}
-                  placeholder="yourname.com"
                   onBlur={(e) => {
                     const a = config.analytics!;
                     store.update({ ...config, analytics: { ...a, domain: e.target.value.trim() } });
                   }}
                 />
               </div>
-              <div className="settings-field">
-                <label className="settings-label">Self-host Base URL (선택)</label>
-                <p className="settings-hint">Plausible self-host 인스턴스 URL. 공식 plausible.io 사용 시 비워두세요.</p>
-                <input
-                  type="url"
-                  defaultValue={config.analytics.selfHostUrl ?? ""}
-                  placeholder="https://stats.example.com"
-                  onBlur={(e) => {
-                    const a = config.analytics!;
-                    const v = e.target.value.trim();
-                    store.update({ ...config, analytics: { ...a, selfHostUrl: v || undefined } });
-                  }}
-                />
-              </div>
+              {(config.analytics.provider === "plausible" || config.analytics.provider === "umami") && (
+                <div className="settings-field">
+                  <label className="settings-label">Self-host Base URL (선택)</label>
+                  <p className="settings-hint">자체 호스팅 인스턴스 URL. 비우면 공식 클라우드 사용.</p>
+                  <input
+                    type="url"
+                    defaultValue={config.analytics.selfHostUrl ?? ""}
+                    placeholder={config.analytics.provider === "plausible" ? "https://plausible.io" : "https://cloud.umami.is"}
+                    onBlur={(e) => {
+                      const a = config.analytics!;
+                      const v = e.target.value.trim();
+                      store.update({ ...config, analytics: { ...a, selfHostUrl: v || undefined } });
+                    }}
+                  />
+                </div>
+              )}
             </>
           )}
         </section>

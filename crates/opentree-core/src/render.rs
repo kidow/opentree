@@ -220,27 +220,58 @@ fn render_google_font_link(config: &Config) -> String {
 
 fn render_analytics_head(config: &Config) -> String {
     let analytics = match &config.analytics {
-        Some(a) if a.provider == "plausible" && !a.domain.is_empty() => a,
+        Some(a) if !a.domain.is_empty() => a,
         _ => return String::new(),
     };
-    let base = analytics
-        .self_host_url
-        .as_deref()
-        .map(|s| s.trim_end_matches('/'))
-        .filter(|s| !s.is_empty())
-        .unwrap_or("https://plausible.io");
-    format!(
-        r#"<script defer data-domain="{}" src="{}/js/script.tagged-events.js"></script>
+    match analytics.provider.as_str() {
+        "plausible" => {
+            let base = analytics.self_host_url.as_deref()
+                .map(|s| s.trim_end_matches('/'))
+                .filter(|s| !s.is_empty())
+                .unwrap_or("https://plausible.io");
+            format!(
+                r#"<script defer data-domain="{}" src="{}/js/script.tagged-events.js"></script>
 <script>window.plausible=window.plausible||function(){{(window.plausible.q=window.plausible.q||[]).push(arguments)}}</script>"#,
-        analytics.domain, base
-    )
+                analytics.domain, base
+            )
+        }
+        "umami" => {
+            let base = analytics.self_host_url.as_deref()
+                .map(|s| s.trim_end_matches('/'))
+                .filter(|s| !s.is_empty())
+                .unwrap_or("https://cloud.umami.is");
+            format!(
+                r#"<script defer src="{}/script.js" data-website-id="{}"></script>"#,
+                base, analytics.domain
+            )
+        }
+        "fathom" => format!(
+            r#"<script src="https://cdn.usefathom.com/script.js" data-site="{}" defer></script>"#,
+            analytics.domain
+        ),
+        "ga4" => format!(
+            r#"<script async src="https://www.googletagmanager.com/gtag/js?id={mid}"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}};gtag('js',new Date());gtag('config','{mid}');</script>"#,
+            mid = analytics.domain
+        ),
+        "cf-analytics" => format!(
+            r#"<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{{"token": "{}"}}'></script>"#,
+            analytics.domain
+        ),
+        _ => String::new(),
+    }
 }
 
 fn render_analytics_body(config: &Config) -> String {
-    if !matches!(&config.analytics, Some(a) if a.provider == "plausible" && !a.domain.is_empty()) {
-        return String::new();
+    let provider = match &config.analytics {
+        Some(a) if !a.domain.is_empty() => a.provider.as_str(),
+        _ => return String::new(),
+    };
+    match provider {
+        "plausible" => r#"document.querySelectorAll('[data-track-id]').forEach(function(el){el.addEventListener('click',function(){if(typeof window.plausible!=='function')return;window.plausible('BlockClick',{props:{block_id:el.dataset.trackId,block_type:el.dataset.trackType||'',label:el.dataset.trackLabel||''}});});});"#.to_string(),
+        "ga4" => r#"document.querySelectorAll('[data-track-id]').forEach(function(el){el.addEventListener('click',function(){if(typeof window.gtag!=='function')return;window.gtag('event','BlockClick',{block_id:el.dataset.trackId,block_type:el.dataset.trackType||'',label:el.dataset.trackLabel||''});});});"#.to_string(),
+        _ => String::new(),
     }
-    r#"document.querySelectorAll('[data-track-id]').forEach(function(el){el.addEventListener('click',function(){if(typeof window.plausible!=='function')return;window.plausible('BlockClick',{props:{block_id:el.dataset.trackId,block_type:el.dataset.trackType||'',label:el.dataset.trackLabel||''}});});});"#.to_string()
 }
 
 fn render_block(block: &Block, config: &Config) -> maud::Markup {
@@ -356,8 +387,11 @@ fn render_block(block: &Block, config: &Config) -> maud::Markup {
             }
         }
 
-        Block::Form { formspree_id, title, submit_label, fields, .. } => {
-            let action = format!("https://formspree.io/f/{formspree_id}");
+        Block::Form { formspree_id, action_url, title, submit_label, fields, .. } => {
+            let action = match action_url {
+                Some(u) if !u.trim().is_empty() => u.clone(),
+                _ => format!("https://formspree.io/f/{formspree_id}"),
+            };
             let submit = if submit_label.is_empty() { "Send" } else { submit_label.as_str() };
             html! {
                 form class="form-block" action=(action) method="POST" {
@@ -438,14 +472,18 @@ fn render_block(block: &Block, config: &Config) -> maud::Markup {
             }
         },
 
-        Block::Email { convertkit_form_id, title, submit_label, placeholder, .. } => {
-            let action = format!("https://app.kit.com/forms/{convertkit_form_id}/subscriptions");
+        Block::Email { convertkit_form_id, action_url, provider, title, submit_label, placeholder, .. } => {
+            let action = match action_url {
+                Some(u) if !u.trim().is_empty() => u.clone(),
+                _ => format!("https://app.kit.com/forms/{convertkit_form_id}/subscriptions"),
+            };
+            let field_name = email_field_name(provider.as_deref());
             let submit = if submit_label.is_empty() { "Subscribe" } else { submit_label.as_str() };
             let ph = if placeholder.is_empty() { "you@example.com" } else { placeholder.as_str() };
             html! {
                 form class="form-block email-block" action=(action) method="POST" target="_blank" {
                     @if !title.is_empty() { h3 class="form-title" { (title) } }
-                    input type="email" name="email_address" placeholder=(ph) required;
+                    input type="email" name=(field_name) placeholder=(ph) required;
                     button type="submit" class="form-submit" { (submit) }
                 }
             }
@@ -559,6 +597,15 @@ fn url_encode(s: &str) -> String {
         }
     }
     out
+}
+
+fn email_field_name(provider: Option<&str>) -> &'static str {
+    match provider.unwrap_or("kit") {
+        "mailchimp" => "EMAIL",
+        "klaviyo" => "email",
+        "buttondown" => "email",
+        _ => "email_address",
+    }
 }
 
 fn render_body_background(config: &Config) -> String {

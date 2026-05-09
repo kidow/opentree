@@ -17,6 +17,27 @@ The format is intentionally simple:
 - Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Remove import-from-JSON feature — no clear use case without legacy CLI
 
+### Phase 15 — Provider Expansion (long tail)
+
+- Analytics: extend AnalyticsConfig.provider to support 5 providers
+  (Plausible, Umami, Fathom, Google Analytics 4, Cloudflare Web
+  Analytics) with provider-specific script injection. Self-host base
+  URL still applies to Plausible/Umami. Click tracking (BlockClick
+  event) auto-fires for Plausible and GA4
+- Form block: add `actionUrl` + `provider` fields. Falls back to
+  Formspree URL built from `formspreeId` when `actionUrl` empty.
+  Web3Forms / Basin / Getform / custom action URLs supported
+- Email block: add `actionUrl` + `provider` fields with
+  provider-aware email field name (Mailchimp `EMAIL`, Klaviyo/
+  Buttondown `email`, Kit `email_address`). Mailchimp / Klaviyo /
+  Buttondown action URLs supported
+- Settings → Analytics: provider dropdown + per-provider ID hints +
+  self-host URL when applicable
+- Bump `schemaVersion` to 12
+
+This closes the post-MVP roadmap (Phases 4–15). Phase 5.5 (Windows
+support) and Phase 13.2 (cron auto-setup) remain explicitly deferred.
+
 ### Phase 14 — i18n + SEO + a11y polish
 
 - Add `seo: {title, description, ogImage}` and `locale` fields to Config

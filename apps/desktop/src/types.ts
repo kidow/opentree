@@ -59,8 +59,8 @@ export type Block =
   | { id: string; type: "video"; enabled: boolean; url: string; oembedCache?: OembedCache }
   | { id: string; type: "pinterest"; enabled: boolean; url: string; oembedCache?: OembedCache }
   | { id: string; type: "collection"; enabled: boolean; layout: "grid" | "carousel"; children: Block[] }
-  | { id: string; type: "form"; enabled: boolean; formspreeId: string; title: string; submitLabel: string; fields: FormField[] }
-  | { id: string; type: "email"; enabled: boolean; convertkitFormId: string; title: string; submitLabel: string; placeholder: string }
+  | { id: string; type: "form"; enabled: boolean; formspreeId: string; actionUrl?: string; provider?: string; title: string; submitLabel: string; fields: FormField[] }
+  | { id: string; type: "email"; enabled: boolean; convertkitFormId: string; actionUrl?: string; provider?: string; title: string; submitLabel: string; placeholder: string }
   | { id: string; type: "commerce"; enabled: boolean; provider: CommerceProvider; url: string; label: string; description?: string; price?: string }
   | { id: string; type: "support"; enabled: boolean; provider: SupportProvider; url: string; label: string }
   | { id: string; type: "course"; enabled: boolean; url: string; title: string; platform?: string; price?: string };

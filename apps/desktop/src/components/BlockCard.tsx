@@ -640,11 +640,32 @@ function BlockEditor({
       return (
         <div className="block-edit-form">
           <div>
-            <div className="block-edit-label">Formspree Form ID</div>
+            <div className="block-edit-label">Provider</div>
+            <select
+              defaultValue={block.provider ?? "formspree"}
+              onChange={(e) => onUpdate({ provider: e.target.value } as Partial<Block>)}
+            >
+              <option value="formspree">Formspree</option>
+              <option value="web3forms">Web3Forms</option>
+              <option value="basin">Basin</option>
+              <option value="getform">Getform</option>
+              <option value="custom">Custom (actionUrl)</option>
+            </select>
+          </div>
+          <div>
+            <div className="block-edit-label">Formspree Form ID (Formspree 사용 시)</div>
             <input
               defaultValue={block.formspreeId}
-              placeholder="xpzgkqyz (formspree.io 대시보드에서 복사)"
+              placeholder="xpzgkqyz"
               onBlur={(e) => onUpdate({ formspreeId: e.target.value.trim() } as Partial<Block>)}
+            />
+          </div>
+          <div>
+            <div className="block-edit-label">Action URL 직접 지정 (선택, 다른 provider용)</div>
+            <input
+              defaultValue={block.actionUrl ?? ""}
+              placeholder="https://api.web3forms.com/submit · https://usebasin.com/f/... · https://getform.io/f/..."
+              onBlur={(e) => onUpdate({ actionUrl: e.target.value.trim() || undefined } as Partial<Block>)}
             />
           </div>
           <div>
@@ -726,11 +747,31 @@ function BlockEditor({
       return (
         <div className="block-edit-form">
           <div>
-            <div className="block-edit-label">ConvertKit/Kit Form ID</div>
+            <div className="block-edit-label">Provider</div>
+            <select
+              defaultValue={block.provider ?? "kit"}
+              onChange={(e) => onUpdate({ provider: e.target.value } as Partial<Block>)}
+            >
+              <option value="kit">ConvertKit / Kit</option>
+              <option value="mailchimp">Mailchimp</option>
+              <option value="klaviyo">Klaviyo</option>
+              <option value="buttondown">Buttondown</option>
+            </select>
+          </div>
+          <div>
+            <div className="block-edit-label">ConvertKit Form ID (Kit 사용 시)</div>
             <input
               defaultValue={block.convertkitFormId}
-              placeholder="1234567 (Kit 대시보드 → Form → Embed에서 확인)"
+              placeholder="1234567"
               onBlur={(e) => onUpdate({ convertkitFormId: e.target.value.trim() } as Partial<Block>)}
+            />
+          </div>
+          <div>
+            <div className="block-edit-label">Action URL 직접 지정 (다른 provider용)</div>
+            <input
+              defaultValue={block.actionUrl ?? ""}
+              placeholder="Mailchimp: ...list-manage.com/subscribe/post · Klaviyo: kmail-lists.com/... · Buttondown: buttondown.com/api/emails/embed-subscribe/USERNAME"
+              onBlur={(e) => onUpdate({ actionUrl: e.target.value.trim() || undefined } as Partial<Block>)}
             />
           </div>
           <div>
