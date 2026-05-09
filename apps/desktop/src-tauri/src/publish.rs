@@ -1,6 +1,36 @@
+use base64::Engine;
+use keyring::Entry;
 use opentree_core::{build::build, config::Config};
 use serde::{Deserialize, Serialize};
-use tauri::Manager;
+use sha2::{Digest, Sha256};
+
+// ── Keychain ─────────────────────────────────────────────────────────────────
+
+const SERVICE: &str = "dev.kidow.opentree";
+
+pub fn load_token(provider: &str) -> Result<Option<String>, String> {
+    let entry = Entry::new(SERVICE, provider).map_err(|e| e.to_string())?;
+    match entry.get_password() {
+        Ok(t) => Ok(Some(t)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+pub fn save_token(provider: &str, token: &str) -> Result<(), String> {
+    let entry = Entry::new(SERVICE, provider).map_err(|e| e.to_string())?;
+    entry.set_password(token).map_err(|e| e.to_string())
+}
+
+pub fn delete_token(provider: &str) -> Result<(), String> {
+    let entry = Entry::new(SERVICE, provider).map_err(|e| e.to_string())?;
+    match entry.delete_credential() {
+        Ok(_) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+// ── Shared types ─────────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeployResult {
@@ -8,6 +38,21 @@ pub struct DeployResult {
     pub id: String,
     pub state: String,
 }
+
+#[derive(Debug, Serialize)]
+pub struct DomainStatus {
+    pub verified: bool,
+    pub dns_records: Vec<DnsRecord>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DnsRecord {
+    pub record_type: String,
+    pub name: String,
+    pub value: String,
+}
+
+// ── Vercel ───────────────────────────────────────────────────────────────────
 
 #[derive(Serialize)]
 struct VercelFile {
@@ -37,25 +82,35 @@ struct VercelDeployResponse {
     ready_state: Option<String>,
 }
 
+pub async fn verify_vercel(token: &str) -> Result<(), String> {
+    let resp = reqwest::Client::new()
+        .get("https://api.vercel.com/v2/user")
+        .bearer_auth(token)
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    if !resp.status().is_success() {
+        return Err("유효하지 않은 Vercel 토큰입니다.".to_string());
+    }
+    Ok(())
+}
+
 pub async fn deploy_vercel(
     config: &Config,
     token: &str,
     project_name: &str,
 ) -> Result<DeployResult, String> {
     let output = build(config).map_err(|e| format!("빌드 오류: {e}"))?;
-
     let files = vec![
         VercelFile { file: "index.html".to_string(), data: output.index_html },
         VercelFile { file: "favicon.svg".to_string(), data: output.favicon_svg },
     ];
-
     let body = VercelDeployBody {
         name: project_name.to_string(),
         files,
         project_settings: VercelProjectSettings { framework: None },
         target: "production".to_string(),
     };
-
     let client = reqwest::Client::new();
     let resp = client
         .post("https://api.vercel.com/v13/deployments")
@@ -64,22 +119,15 @@ pub async fn deploy_vercel(
         .send()
         .await
         .map_err(|e| format!("네트워크 오류: {e}"))?;
-
     let status = resp.status();
     let text = resp.text().await.map_err(|e| format!("응답 읽기 오류: {e}"))?;
-
     if !status.is_success() {
         let err: serde_json::Value = serde_json::from_str(&text).unwrap_or_default();
-        let msg = err["error"]["message"]
-            .as_str()
-            .unwrap_or(&text)
-            .to_string();
+        let msg = err["error"]["message"].as_str().unwrap_or(&text).to_string();
         return Err(format!("Vercel 오류 ({status}): {msg}"));
     }
-
     let deploy: VercelDeployResponse =
         serde_json::from_str(&text).map_err(|e| format!("응답 파싱 오류: {e}"))?;
-
     Ok(DeployResult {
         url: format!("https://{}", deploy.url),
         id: deploy.id,
@@ -87,48 +135,484 @@ pub async fn deploy_vercel(
     })
 }
 
-pub async fn check_deploy_state(token: &str, deploy_id: &str) -> Result<String, String> {
-    let client = reqwest::Client::new();
-    let resp = client
+pub async fn check_vercel_deploy(token: &str, deploy_id: &str) -> Result<String, String> {
+    let resp = reqwest::Client::new()
         .get(format!("https://api.vercel.com/v13/deployments/{deploy_id}"))
         .bearer_auth(token)
         .send()
         .await
         .map_err(|e| format!("네트워크 오류: {e}"))?;
-
     let text = resp.text().await.map_err(|e| format!("응답 읽기 오류: {e}"))?;
     let val: serde_json::Value = serde_json::from_str(&text).unwrap_or_default();
     Ok(val["readyState"].as_str().unwrap_or("UNKNOWN").to_string())
 }
 
-pub fn token_file_path(app_handle: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
-    let data_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("앱 데이터 디렉토리 오류: {e}"))?;
-    Ok(data_dir.join("tokens.json"))
-}
-
-pub fn load_token(app_handle: &tauri::AppHandle, provider: &str) -> Result<Option<String>, String> {
-    let path = token_file_path(app_handle)?;
-    if !path.exists() { return Ok(None); }
-    let json = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    let val: serde_json::Value = serde_json::from_str(&json).unwrap_or_default();
-    Ok(val[provider].as_str().map(|s| s.to_string()))
-}
-
-pub fn save_token(app_handle: &tauri::AppHandle, provider: &str, token: &str) -> Result<(), String> {
-    let path = token_file_path(app_handle)?;
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+pub async fn add_vercel_domain(
+    token: &str,
+    project_name: &str,
+    domain: &str,
+) -> Result<(), String> {
+    let resp = reqwest::Client::new()
+        .post(format!("https://api.vercel.com/v9/projects/{project_name}/domains"))
+        .bearer_auth(token)
+        .json(&serde_json::json!({ "name": domain }))
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    if !resp.status().is_success() {
+        let text = resp.text().await.unwrap_or_default();
+        let err: serde_json::Value = serde_json::from_str(&text).unwrap_or_default();
+        let msg = err["error"]["message"].as_str().unwrap_or(&text).to_string();
+        return Err(format!("도메인 추가 오류: {msg}"));
     }
-    let mut val: serde_json::Value = if path.exists() {
-        let json = std::fs::read_to_string(&path).unwrap_or_default();
-        serde_json::from_str(&json).unwrap_or_default()
+    Ok(())
+}
+
+pub async fn check_vercel_domain(
+    token: &str,
+    project_name: &str,
+    domain: &str,
+) -> Result<DomainStatus, String> {
+    let resp = reqwest::Client::new()
+        .get(format!(
+            "https://api.vercel.com/v9/projects/{project_name}/domains/{domain}"
+        ))
+        .bearer_auth(token)
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    let text = resp.text().await.unwrap_or_default();
+    let val: serde_json::Value = serde_json::from_str(&text).unwrap_or_default();
+    let verified = val["verified"].as_bool().unwrap_or(false);
+    let is_apex = !domain.contains('.') || domain.split('.').count() == 2;
+    let dns_records = if is_apex {
+        vec![
+            DnsRecord {
+                record_type: "A".to_string(),
+                name: "@".to_string(),
+                value: "76.76.21.21".to_string(),
+            },
+            DnsRecord {
+                record_type: "CNAME".to_string(),
+                name: "www".to_string(),
+                value: "cname.vercel-dns.com".to_string(),
+            },
+        ]
     } else {
-        serde_json::json!({})
+        vec![DnsRecord {
+            record_type: "CNAME".to_string(),
+            name: domain.split('.').next().unwrap_or("www").to_string(),
+            value: "cname.vercel-dns.com".to_string(),
+        }]
     };
-    val[provider] = serde_json::Value::String(token.to_string());
-    std::fs::write(&path, serde_json::to_string_pretty(&val).unwrap())
-        .map_err(|e| e.to_string())
+    Ok(DomainStatus { verified, dns_records })
+}
+
+// ── Cloudflare Pages ─────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CfConnection {
+    pub token: String,
+    #[serde(rename = "accountId")]
+    pub account_id: String,
+}
+
+fn sha256_hex(data: &[u8]) -> String {
+    let mut h = Sha256::new();
+    h.update(data);
+    format!("{:x}", h.finalize())
+}
+
+pub async fn verify_cloudflare(token: &str, account_id: &str) -> Result<(), String> {
+    let resp = reqwest::Client::new()
+        .get(format!(
+            "https://api.cloudflare.com/client/v4/accounts/{account_id}/pages/projects"
+        ))
+        .bearer_auth(token)
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    if !resp.status().is_success() {
+        return Err("유효하지 않은 Cloudflare 토큰 또는 Account ID입니다.".to_string());
+    }
+    Ok(())
+}
+
+pub async fn deploy_cloudflare(
+    config: &Config,
+    conn: &CfConnection,
+    project_name: &str,
+) -> Result<DeployResult, String> {
+    let output = build(config).map_err(|e| format!("빌드 오류: {e}"))?;
+    let client = reqwest::Client::new();
+    let token = &conn.token;
+    let account_id = &conn.account_id;
+
+    ensure_cf_project(&client, token, account_id, project_name).await?;
+
+    let html_bytes = output.index_html.into_bytes();
+    let svg_bytes = output.favicon_svg.into_bytes();
+    let html_hash = sha256_hex(&html_bytes);
+    let svg_hash = sha256_hex(&svg_bytes);
+
+    let manifest = serde_json::json!({
+        "index.html": html_hash,
+        "favicon.svg": svg_hash,
+    });
+
+    let form = reqwest::multipart::Form::new()
+        .text("manifest", serde_json::to_string(&manifest).unwrap())
+        .part(
+            html_hash,
+            reqwest::multipart::Part::bytes(html_bytes)
+                .mime_str("text/html")
+                .unwrap(),
+        )
+        .part(
+            svg_hash,
+            reqwest::multipart::Part::bytes(svg_bytes)
+                .mime_str("image/svg+xml")
+                .unwrap(),
+        );
+
+    let resp = client
+        .post(format!(
+            "https://api.cloudflare.com/client/v4/accounts/{account_id}/pages/projects/{project_name}/deployments"
+        ))
+        .bearer_auth(token)
+        .multipart(form)
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+
+    let status = resp.status();
+    let text = resp.text().await.map_err(|e| format!("응답 읽기 오류: {e}"))?;
+    if !status.is_success() {
+        let val: serde_json::Value = serde_json::from_str(&text).unwrap_or_default();
+        let msg = val["errors"]
+            .as_array()
+            .and_then(|a| a.first())
+            .and_then(|e| e["message"].as_str())
+            .unwrap_or(&text)
+            .to_string();
+        return Err(format!("Cloudflare 오류 ({status}): {msg}"));
+    }
+
+    let val: serde_json::Value = serde_json::from_str(&text).unwrap_or_default();
+    let result = &val["result"];
+    let id = result["id"].as_str().unwrap_or("").to_string();
+    let url = result["url"]
+        .as_str()
+        .map(|u| if u.starts_with("http") { u.to_string() } else { format!("https://{u}") })
+        .unwrap_or_else(|| format!("https://{project_name}.pages.dev"));
+    let state = result["latest_stage"]["name"]
+        .as_str()
+        .unwrap_or("queued")
+        .to_uppercase();
+
+    Ok(DeployResult { url, id, state })
+}
+
+async fn ensure_cf_project(
+    client: &reqwest::Client,
+    token: &str,
+    account_id: &str,
+    project_name: &str,
+) -> Result<(), String> {
+    let check = client
+        .get(format!(
+            "https://api.cloudflare.com/client/v4/accounts/{account_id}/pages/projects/{project_name}"
+        ))
+        .bearer_auth(token)
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    if check.status().is_success() {
+        return Ok(());
+    }
+    let resp = client
+        .post(format!(
+            "https://api.cloudflare.com/client/v4/accounts/{account_id}/pages/projects"
+        ))
+        .bearer_auth(token)
+        .json(&serde_json::json!({ "name": project_name, "production_branch": "main" }))
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    if !resp.status().is_success() {
+        let text = resp.text().await.unwrap_or_default();
+        return Err(format!("CF 프로젝트 생성 오류: {text}"));
+    }
+    Ok(())
+}
+
+pub async fn add_cloudflare_domain(
+    token: &str,
+    account_id: &str,
+    project_name: &str,
+    domain: &str,
+) -> Result<(), String> {
+    let resp = reqwest::Client::new()
+        .post(format!(
+            "https://api.cloudflare.com/client/v4/accounts/{account_id}/pages/projects/{project_name}/domains"
+        ))
+        .bearer_auth(token)
+        .json(&serde_json::json!({ "name": domain }))
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    if !resp.status().is_success() {
+        let text = resp.text().await.unwrap_or_default();
+        return Err(format!("도메인 추가 오류: {text}"));
+    }
+    Ok(())
+}
+
+pub async fn check_cloudflare_domain(
+    token: &str,
+    account_id: &str,
+    project_name: &str,
+    domain: &str,
+) -> Result<DomainStatus, String> {
+    let resp = reqwest::Client::new()
+        .get(format!(
+            "https://api.cloudflare.com/client/v4/accounts/{account_id}/pages/projects/{project_name}/domains/{domain}"
+        ))
+        .bearer_auth(token)
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    let text = resp.text().await.unwrap_or_default();
+    let val: serde_json::Value = serde_json::from_str(&text).unwrap_or_default();
+    let verified = val["result"]["status"].as_str() == Some("active");
+    let dns_records = vec![DnsRecord {
+        record_type: "CNAME".to_string(),
+        name: "@".to_string(),
+        value: format!("{project_name}.pages.dev"),
+    }];
+    Ok(DomainStatus { verified, dns_records })
+}
+
+// ── GitHub Pages ─────────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GhConnection {
+    pub token: String,
+    pub repo: String,
+}
+
+pub async fn verify_github(token: &str) -> Result<(), String> {
+    let resp = reqwest::Client::new()
+        .get("https://api.github.com/user")
+        .bearer_auth(token)
+        .header("User-Agent", "opentree/0.1")
+        .header("Accept", "application/vnd.github+json")
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    if !resp.status().is_success() {
+        return Err("유효하지 않은 GitHub 토큰입니다.".to_string());
+    }
+    Ok(())
+}
+
+pub async fn deploy_github_pages(
+    config: &Config,
+    conn: &GhConnection,
+) -> Result<DeployResult, String> {
+    let output = build(config).map_err(|e| format!("빌드 오류: {e}"))?;
+    let client = reqwest::Client::new();
+    let token = &conn.token;
+    let repo = &conn.repo;
+
+    ensure_gh_repo(&client, token, repo).await?;
+    put_gh_file(&client, token, repo, "index.html", output.index_html.as_bytes()).await?;
+    put_gh_file(&client, token, repo, "favicon.svg", output.favicon_svg.as_bytes()).await?;
+    enable_gh_pages(&client, token, repo).await?;
+
+    let owner = repo.split('/').next().unwrap_or("");
+    let repo_name = repo.split('/').nth(1).unwrap_or("");
+    Ok(DeployResult {
+        url: format!("https://{owner}.github.io/{repo_name}"),
+        id: "gh-pages".to_string(),
+        state: "READY".to_string(),
+    })
+}
+
+async fn ensure_gh_repo(
+    client: &reqwest::Client,
+    token: &str,
+    repo: &str,
+) -> Result<(), String> {
+    let check = client
+        .get(format!("https://api.github.com/repos/{repo}"))
+        .bearer_auth(token)
+        .header("User-Agent", "opentree/0.1")
+        .header("Accept", "application/vnd.github+json")
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    if check.status().is_success() {
+        return Ok(());
+    }
+    let name = repo.split('/').nth(1).unwrap_or(repo);
+    let resp = client
+        .post("https://api.github.com/user/repos")
+        .bearer_auth(token)
+        .header("User-Agent", "opentree/0.1")
+        .header("Accept", "application/vnd.github+json")
+        .json(&serde_json::json!({
+            "name": name,
+            "private": false,
+            "auto_init": true,
+            "description": "opentree site"
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    if !resp.status().is_success() {
+        let text = resp.text().await.unwrap_or_default();
+        return Err(format!("GitHub 저장소 생성 오류: {text}"));
+    }
+    Ok(())
+}
+
+async fn put_gh_file(
+    client: &reqwest::Client,
+    token: &str,
+    repo: &str,
+    path: &str,
+    content: &[u8],
+) -> Result<(), String> {
+    let encoded = base64::engine::general_purpose::STANDARD.encode(content);
+    let get_url = format!("https://api.github.com/repos/{repo}/contents/{path}");
+    let get_resp = client
+        .get(&get_url)
+        .bearer_auth(token)
+        .header("User-Agent", "opentree/0.1")
+        .header("Accept", "application/vnd.github+json")
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+
+    let mut body = serde_json::json!({
+        "message": "deploy: update site",
+        "content": encoded,
+    });
+    if get_resp.status().is_success() {
+        let text = get_resp.text().await.unwrap_or_default();
+        let val: serde_json::Value = serde_json::from_str(&text).unwrap_or_default();
+        if let Some(sha) = val["sha"].as_str() {
+            body["sha"] = serde_json::Value::String(sha.to_string());
+        }
+    }
+
+    let put_resp = client
+        .put(&get_url)
+        .bearer_auth(token)
+        .header("User-Agent", "opentree/0.1")
+        .header("Accept", "application/vnd.github+json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    if !put_resp.status().is_success() {
+        let text = put_resp.text().await.unwrap_or_default();
+        return Err(format!("파일 업로드 오류 ({path}): {text}"));
+    }
+    Ok(())
+}
+
+async fn enable_gh_pages(
+    client: &reqwest::Client,
+    token: &str,
+    repo: &str,
+) -> Result<(), String> {
+    let url = format!("https://api.github.com/repos/{repo}/pages");
+    let check = client
+        .get(&url)
+        .bearer_auth(token)
+        .header("User-Agent", "opentree/0.1")
+        .header("Accept", "application/vnd.github+json")
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    if check.status().is_success() {
+        return Ok(());
+    }
+    let resp = client
+        .post(&url)
+        .bearer_auth(token)
+        .header("User-Agent", "opentree/0.1")
+        .header("Accept", "application/vnd.github+json")
+        .json(&serde_json::json!({ "source": { "branch": "main", "path": "/" } }))
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    let status = resp.status();
+    if !status.is_success() && status.as_u16() != 409 {
+        let text = resp.text().await.unwrap_or_default();
+        return Err(format!("GitHub Pages 활성화 오류: {text}"));
+    }
+    Ok(())
+}
+
+pub async fn add_github_domain(
+    token: &str,
+    repo: &str,
+    domain: &str,
+) -> Result<(), String> {
+    let resp = reqwest::Client::new()
+        .put(format!("https://api.github.com/repos/{repo}/pages"))
+        .bearer_auth(token)
+        .header("User-Agent", "opentree/0.1")
+        .header("Accept", "application/vnd.github+json")
+        .json(&serde_json::json!({ "cname": domain, "source": { "branch": "main", "path": "/" } }))
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    if !resp.status().is_success() {
+        let text = resp.text().await.unwrap_or_default();
+        return Err(format!("도메인 추가 오류: {text}"));
+    }
+    Ok(())
+}
+
+pub async fn check_github_domain(
+    token: &str,
+    repo: &str,
+    domain: &str,
+) -> Result<DomainStatus, String> {
+    let resp = reqwest::Client::new()
+        .get(format!("https://api.github.com/repos/{repo}/pages"))
+        .bearer_auth(token)
+        .header("User-Agent", "opentree/0.1")
+        .header("Accept", "application/vnd.github+json")
+        .send()
+        .await
+        .map_err(|e| format!("네트워크 오류: {e}"))?;
+    let verified = if resp.status().is_success() {
+        let text = resp.text().await.unwrap_or_default();
+        let val: serde_json::Value = serde_json::from_str(&text).unwrap_or_default();
+        val["cname"].as_str() == Some(domain) && val["status"].as_str() == Some("built")
+    } else {
+        false
+    };
+    let owner = repo.split('/').next().unwrap_or("");
+    let is_apex = domain.split('.').count() <= 2;
+    let dns_records = if is_apex {
+        vec![
+            DnsRecord { record_type: "A".to_string(), name: "@".to_string(), value: "185.199.108.153".to_string() },
+            DnsRecord { record_type: "A".to_string(), name: "@".to_string(), value: "185.199.109.153".to_string() },
+            DnsRecord { record_type: "A".to_string(), name: "@".to_string(), value: "185.199.110.153".to_string() },
+            DnsRecord { record_type: "A".to_string(), name: "@".to_string(), value: "185.199.111.153".to_string() },
+        ]
+    } else {
+        vec![DnsRecord {
+            record_type: "CNAME".to_string(),
+            name: "www".to_string(),
+            value: format!("{owner}.github.io"),
+        }]
+    };
+    Ok(DomainStatus { verified, dns_records })
 }

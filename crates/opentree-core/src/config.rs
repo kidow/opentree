@@ -10,6 +10,10 @@ pub struct Config {
     pub theme: Theme,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub site_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub domain: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub connections: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -103,6 +107,8 @@ impl Config {
                 text_color: "#000000".to_string(),
             },
             site_url: None,
+            domain: None,
+            connections: Vec::new(),
         }
     }
 

@@ -16,6 +16,16 @@ The format is intentionally simple:
 - Move Node.js CLI to `apps/legacy-cli` to make room for Rust core
 - Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Remove import-from-JSON feature — no clear use case without legacy CLI
+
+### Phase 5 — Hosting + Domain + Connections
+
+- Replace plaintext token storage with OS Keychain via `keyring` crate
+- Add Cloudflare Pages deployment (direct upload API with SHA-256 manifest)
+- Add GitHub Pages deployment (GitHub Contents API + Pages activation)
+- Add domain management: connect custom domain, display DNS records, poll verification status per provider
+- Add Settings → Connections UI: connect/disconnect Vercel, Cloudflare Pages, GitHub Pages with credential validation
+- Restructure Publish tab: provider tabs, project name per provider, custom domain section
+- Add `domain` and `connections` fields to Config schema (schemaVersion → 3 ready)
 - Add Tauri desktop app shell with tree editor
 - Add Design tab with color picker
 - Add Settings tab with site URL and project info

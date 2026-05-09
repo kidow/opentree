@@ -17,9 +17,11 @@ export type Block =
   | { id: string; type: "text"; enabled: boolean; content: string };
 
 export interface Config {
-  schemaVersion: 2;
+  schemaVersion: number;
   profile: Profile;
   blocks: Block[];
   theme: Theme;
   siteUrl?: string;
+  domain?: string;
+  connections: string[];
 }
