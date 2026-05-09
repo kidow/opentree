@@ -51,6 +51,7 @@ The format is intentionally simple:
 - Add five content sections: Local-first, Editor, Preview, Deploy, Open
 - Add `/download` page with build-time GitHub API fetch, version/date/size/checksum, and fallback
 - Add `redeploy-web.yml` — triggers Vercel deploy on every published release
+- Redesign with Mintlify-inspired tokens: white canvas default, atmospheric hero gradient, pill CTAs, refined typography (Inter Variable + Geist Mono), and richer visual mocks per section
 
 ## v0.1.0 - 2026-03-08
 
