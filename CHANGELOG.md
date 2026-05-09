@@ -17,6 +17,28 @@ The format is intentionally simple:
 - Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Remove import-from-JSON feature — no clear use case without legacy CLI
 
+### Phase 14.2 — Multi-locale per Project
+
+- Add `localeVariants: LocaleVariant[]` field on Config — each variant
+  defines a `code`, URL `path`, optional `label` (button text), optional
+  `profile` overrides (name/bio/avatarUrl), and optional per-block JSON
+  overrides
+- Build emits the primary HTML at root + `/{path}/index.html` for each
+  variant. Variant rendering applies a deep JSON merge over the base
+  config so each locale can override any field on any block
+- All deploy providers (Vercel, CF Pages, GH Pages) now upload locale
+  pages alongside the primary
+- Local export writes locale subdirectories
+- Add `language-switcher` block: renders a row of links (Default + each
+  variant's label) so visitors can switch between locale paths
+- Settings → Locale Variants editor: add/remove variants, edit
+  code/path/label + profile overrides. Per-block translation requires
+  manual `opentree.config.json` edit (advanced)
+- Bump `schemaVersion` to 14
+
+This closes the post-MVP roadmap. All Phase 4–15 items (incl. 5.5,
+12.2, 13.2, 14.2) shipped.
+
 ### Phase 12.2 — Unsplash + Background Video
 
 - Add Unsplash picker: connect Access Key in Settings → 연결, then

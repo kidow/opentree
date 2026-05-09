@@ -15,7 +15,8 @@ type BlockType =
   | "image" | "footer" | "affiliate" | "sponsored" | "custom-html"
   | "music" | "video" | "pinterest" | "collection"
   | "form" | "email"
-  | "commerce" | "support" | "course";
+  | "commerce" | "support" | "course"
+  | "language-switcher";
 
 const BLOCK_TYPES: { type: BlockType; label: string; desc: string }[] = [
   { type: "link", label: "Link", desc: "URL 링크 추가" },
@@ -32,6 +33,7 @@ const BLOCK_TYPES: { type: BlockType; label: string; desc: string }[] = [
   { type: "commerce", label: "Commerce", desc: "Stripe / Gumroad / Lemon Squeezy / Polar 결제 링크" },
   { type: "support", label: "Support Me", desc: "Ko-fi / Buy Me a Coffee / PayPal / Patreon 후원" },
   { type: "course", label: "Course", desc: "강의 외부 링크 (플랫폼 + 가격 메타)" },
+  { type: "language-switcher", label: "Language Switcher", desc: "다국어 페이지 간 전환 링크 (Settings → Locale Variants 필요)" },
   { type: "footer", label: "Footer", desc: "페이지 하단 푸터" },
   { type: "affiliate", label: "Affiliate", desc: "제휴 링크 (UTM 지원)" },
   { type: "sponsored", label: "Sponsored", desc: "스폰서 링크" },
@@ -114,6 +116,9 @@ export default function AddBlockModal({ onAdd, onClose }: Props) {
         break;
       case "course":
         onAdd({ ...base, type: "course", url: "", title: "" });
+        break;
+      case "language-switcher":
+        onAdd({ ...base, type: "language-switcher" });
         break;
     }
   };

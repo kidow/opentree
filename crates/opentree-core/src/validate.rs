@@ -260,6 +260,7 @@ fn child_type_name(b: &Block) -> &'static str {
         Block::Commerce { .. } => "commerce",
         Block::Support { .. } => "support",
         Block::Course { .. } => "course",
+        Block::LanguageSwitcher { .. } => "language-switcher",
     }
 }
 

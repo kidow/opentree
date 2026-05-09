@@ -310,6 +310,13 @@ pub async fn deploy_vercel(
             encoding: "utf-8".to_string(),
         });
     }
+    for (locale_path, html) in output.locale_pages {
+        files.push(VercelFile {
+            file: format!("{locale_path}/index.html"),
+            data: html,
+            encoding: "utf-8".to_string(),
+        });
+    }
     for (rel_path, bytes) in load_project_assets(project_path) {
         files.push(VercelFile {
             file: rel_path,
@@ -499,6 +506,13 @@ pub async fn deploy_cloudflare(
         manifest["sitemap.xml"] = serde_json::Value::String(sitemap_hash.clone());
         parts.push((sitemap_hash, sitemap_bytes, "application/xml"));
     }
+    for (locale_path, html) in output.locale_pages {
+        let bytes = html.into_bytes();
+        let hash = sha256_hex(&bytes);
+        let path = format!("{locale_path}/index.html");
+        manifest[path.as_str()] = serde_json::Value::String(hash.clone());
+        parts.push((hash, bytes, "text/html"));
+    }
     for (rel_path, bytes) in &assets {
         let hash = sha256_hex(bytes);
         manifest[rel_path.as_str()] = serde_json::Value::String(hash.clone());
@@ -667,6 +681,9 @@ pub async fn deploy_github_pages(
     put_gh_file(&client, token, repo, "robots.txt", output.robots_txt.as_bytes()).await?;
     if !output.sitemap_xml.is_empty() {
         put_gh_file(&client, token, repo, "sitemap.xml", output.sitemap_xml.as_bytes()).await?;
+    }
+    for (locale_path, html) in &output.locale_pages {
+        put_gh_file(&client, token, repo, &format!("{locale_path}/index.html"), html.as_bytes()).await?;
     }
     for (rel_path, bytes) in load_project_assets(project_path) {
         put_gh_file(&client, token, repo, &rel_path, &bytes).await?;

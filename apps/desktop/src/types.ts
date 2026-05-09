@@ -71,7 +71,8 @@ export type Block =
   | { id: string; type: "email"; enabled: boolean; convertkitFormId: string; actionUrl?: string; provider?: string; title: string; submitLabel: string; placeholder: string }
   | { id: string; type: "commerce"; enabled: boolean; provider: CommerceProvider; url: string; label: string; description?: string; price?: string }
   | { id: string; type: "support"; enabled: boolean; provider: SupportProvider; url: string; label: string }
-  | { id: string; type: "course"; enabled: boolean; url: string; title: string; platform?: string; price?: string };
+  | { id: string; type: "course"; enabled: boolean; url: string; title: string; platform?: string; price?: string }
+  | { id: string; type: "language-switcher"; enabled: boolean };
 
 export interface AnalyticsConfig {
   provider: string;
@@ -90,6 +91,20 @@ export interface SeoConfig {
   ogImage?: string;
 }
 
+export interface ProfileOverride {
+  name?: string;
+  bio?: string;
+  avatarUrl?: string;
+}
+
+export interface LocaleVariant {
+  code: string;
+  path: string;
+  label?: string;
+  profile?: ProfileOverride;
+  blocks?: Record<string, Record<string, unknown>>;
+}
+
 export interface Config {
   schemaVersion: number;
   profile: Profile;
@@ -102,4 +117,5 @@ export interface Config {
   schedules?: Record<string, Schedule>;
   seo?: SeoConfig;
   locale?: string;
+  localeVariants?: LocaleVariant[];
 }

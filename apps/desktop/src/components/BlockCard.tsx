@@ -316,6 +316,13 @@ function BlockLabel({ block, profile }: { block: Block; profile: Profile }) {
           {block.url && <span className="block-url">{block.url}</span>}
         </>
       );
+    case "language-switcher":
+      return (
+        <>
+          <span className="block-type-label">Language Switcher</span>
+          <span className="block-value">Settings → Locale Variants 에 정의된 모든 locale 표시</span>
+        </>
+      );
   }
 }
 
@@ -594,6 +601,12 @@ function BlockEditor({
               onBlur={(e) => onUpdate({ html: e.target.value } as Partial<Block>)}
             />
           </div>
+        </div>
+      );
+    case "language-switcher":
+      return (
+        <div className="block-edit-form">
+          <p className="block-edit-label">필드 없음. Settings → Locale Variants 편집.</p>
         </div>
       );
     case "music":

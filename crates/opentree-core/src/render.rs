@@ -1,6 +1,45 @@
 use std::collections::HashMap;
 use maud::{html, PreEscaped, DOCTYPE};
-use crate::config::{Background, Block, ButtonStyle, CollectionLayout, CommerceProvider, Config, FormFieldType, LayoutStyle, OembedCache, Schedule, SupportProvider};
+use crate::config::{Background, Block, ButtonStyle, CollectionLayout, CommerceProvider, Config, FormFieldType, LayoutStyle, LocaleVariant, OembedCache, Schedule, SupportProvider};
+
+pub fn apply_locale_variant(config: &Config, variant: &LocaleVariant) -> Config {
+    let mut c = config.clone();
+    c.locale = Some(variant.code.clone());
+    if let Some(p) = &variant.profile {
+        if let Some(n) = &p.name { c.profile.name = n.clone(); }
+        if p.bio.is_some() { c.profile.bio = p.bio.clone(); }
+        if p.avatar_url.is_some() { c.profile.avatar_url = p.avatar_url.clone(); }
+    }
+    for block in c.blocks.iter_mut() {
+        let id = block.id().to_string();
+        if let Some(over) = variant.blocks.get(&id) {
+            if let Ok(mut json) = serde_json::to_value(&*block) {
+                merge_json(&mut json, over);
+                if let Ok(merged) = serde_json::from_value::<Block>(json) {
+                    *block = merged;
+                }
+            }
+        }
+    }
+    c
+}
+
+fn merge_json(target: &mut serde_json::Value, source: &serde_json::Value) {
+    match (target, source) {
+        (serde_json::Value::Object(t), serde_json::Value::Object(s)) => {
+            for (k, v) in s {
+                if let Some(existing) = t.get_mut(k) {
+                    merge_json(existing, v);
+                } else {
+                    t.insert(k.clone(), v.clone());
+                }
+            }
+        }
+        (target, source) => {
+            *target = source.clone();
+        }
+    }
+}
 
 pub fn render_page(config: &Config) -> String {
     render_page_with_time(config, None)
@@ -490,6 +529,17 @@ fn render_block(block: &Block, config: &Config) -> maud::Markup {
                 }
             }
         }
+
+        Block::LanguageSwitcher { .. } => html! {
+            nav class="language-switcher" aria-label="Language" {
+                a class="lang-btn" href="/" { "Default" }
+                @for variant in &config.locale_variants {
+                    a class="lang-btn" href=(format!("/{}/", variant.path.trim_matches('/'))) {
+                        (variant.label.clone().unwrap_or_else(|| variant.code.clone()))
+                    }
+                }
+            }
+        },
 
         Block::Course { id, url, title, platform, price, .. } => html! {
             a class="link-card course-card" href=(url) target="_blank" rel="noopener noreferrer"
@@ -1079,6 +1129,24 @@ body.layout-featured #content .profile + * + .link-card {{
     backdrop-filter: blur(4px);
 }}
 .bg-credit a {{ color: white; text-decoration: underline; }}
+
+.language-switcher {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    width: 100%;
+}}
+.language-switcher .lang-btn {{
+    padding: 4px 10px;
+    border: 1px solid {border};
+    border-radius: 4px;
+    color: {text};
+    text-decoration: none;
+    font-size: 0.7rem;
+    font-weight: 600;
+}}
+.language-switcher .lang-btn:hover {{ background-color: {hover}; color: {bg}; }}
 
 a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {{
     outline: 2px solid {accent};

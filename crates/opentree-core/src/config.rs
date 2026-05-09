@@ -23,6 +23,32 @@ pub struct Config {
     pub seo: Option<SeoConfig>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub locale: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub locale_variants: Vec<LocaleVariant>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocaleVariant {
+    pub code: String,
+    pub path: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub profile: Option<ProfileOverride>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub blocks: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProfileOverride {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bio: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub avatar_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -332,6 +358,12 @@ pub enum Block {
         #[serde(skip_serializing_if = "Option::is_none")]
         price: Option<String>,
     },
+
+    #[serde(rename = "language-switcher")]
+    LanguageSwitcher {
+        id: String,
+        enabled: bool,
+    },
 }
 
 impl Block {
@@ -356,6 +388,7 @@ impl Block {
             Block::Commerce { id, .. } => id,
             Block::Support { id, .. } => id,
             Block::Course { id, .. } => id,
+            Block::LanguageSwitcher { id, .. } => id,
         }
     }
 
@@ -380,6 +413,7 @@ impl Block {
             Block::Commerce { enabled, .. } => *enabled,
             Block::Support { enabled, .. } => *enabled,
             Block::Course { enabled, .. } => *enabled,
+            Block::LanguageSwitcher { enabled, .. } => *enabled,
         }
     }
 }
@@ -488,7 +522,7 @@ pub struct Theme {
 impl Config {
     pub fn default_config() -> Self {
         Config {
-            schema_version: 13,
+            schema_version: 14,
             profile: Profile { name: String::new(), bio: None, avatar_url: None },
             blocks: vec![
                 Block::Profile { id: Uuid::new_v4().to_string(), enabled: true },
@@ -519,6 +553,7 @@ impl Config {
             schedules: HashMap::new(),
             seo: None,
             locale: None,
+            locale_variants: Vec::new(),
         }
     }
 

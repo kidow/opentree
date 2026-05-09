@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { useAppStore } from "../store";
+import type { LocaleVariant } from "../types";
 import { useT, useLang, type Lang } from "../i18n";
 
 interface Props {
@@ -384,6 +385,103 @@ export default function Settings({ store, projectPath }: Props) {
                 store.update({ ...config, locale: v });
               }}
             />
+          </div>
+        </section>
+
+        <section className="settings-section">
+          <h3 className="settings-section-title">Locale Variants (다국어 페이지)</h3>
+          <div className="settings-field">
+            <p className="settings-hint">
+              각 variant는 추가 locale의 페이지를 <code>/{`{path}`}/index.html</code>에 생성합니다.
+              Profile 오버라이드만 UI에서 편집 가능. Block-level 번역은 advanced — opentree.config.json 직접 편집.
+              LanguageSwitcher 블록 추가 시 페이지 간 링크 노출.
+            </p>
+            {(config.localeVariants ?? []).map((v, i) => (
+              <div key={i} style={{ borderTop: i > 0 ? "1px solid var(--border)" : "none", paddingTop: i > 0 ? 12 : 0, marginTop: i > 0 ? 12 : 0 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 6, marginBottom: 6 }}>
+                  <input
+                    type="text"
+                    defaultValue={v.code}
+                    placeholder="code (ko)"
+                    onBlur={(e) => {
+                      const next = [...(config.localeVariants ?? [])];
+                      next[i] = { ...next[i], code: e.target.value.trim() };
+                      store.update({ ...config, localeVariants: next });
+                    }}
+                  />
+                  <input
+                    type="text"
+                    defaultValue={v.path}
+                    placeholder="path (ko)"
+                    onBlur={(e) => {
+                      const next = [...(config.localeVariants ?? [])];
+                      next[i] = { ...next[i], path: e.target.value.trim().replace(/^\/+|\/+$/g, "") };
+                      store.update({ ...config, localeVariants: next });
+                    }}
+                  />
+                  <input
+                    type="text"
+                    defaultValue={v.label ?? ""}
+                    placeholder="label (한국어)"
+                    onBlur={(e) => {
+                      const next = [...(config.localeVariants ?? [])];
+                      next[i] = { ...next[i], label: e.target.value.trim() || undefined };
+                      store.update({ ...config, localeVariants: next });
+                    }}
+                  />
+                  <button
+                    style={{ color: "#dc2626", fontSize: 12, padding: "0 8px" }}
+                    onClick={() => {
+                      const next = (config.localeVariants ?? []).filter((_, j) => j !== i);
+                      store.update({ ...config, localeVariants: next });
+                    }}
+                  >✕</button>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+                  <input
+                    type="text"
+                    defaultValue={v.profile?.name ?? ""}
+                    placeholder="profile name override"
+                    onBlur={(e) => {
+                      const next = [...(config.localeVariants ?? [])];
+                      const p = { ...(next[i].profile ?? {}), name: e.target.value || undefined };
+                      next[i] = { ...next[i], profile: p };
+                      store.update({ ...config, localeVariants: next });
+                    }}
+                  />
+                  <input
+                    type="text"
+                    defaultValue={v.profile?.bio ?? ""}
+                    placeholder="profile bio override"
+                    onBlur={(e) => {
+                      const next = [...(config.localeVariants ?? [])];
+                      const p = { ...(next[i].profile ?? {}), bio: e.target.value || undefined };
+                      next[i] = { ...next[i], profile: p };
+                      store.update({ ...config, localeVariants: next });
+                    }}
+                  />
+                  <input
+                    type="text"
+                    defaultValue={v.profile?.avatarUrl ?? ""}
+                    placeholder="avatar URL override"
+                    onBlur={(e) => {
+                      const next = [...(config.localeVariants ?? [])];
+                      const p = { ...(next[i].profile ?? {}), avatarUrl: e.target.value || undefined };
+                      next[i] = { ...next[i], profile: p };
+                      store.update({ ...config, localeVariants: next });
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+            <button
+              className="provider-connect-btn"
+              style={{ marginTop: 8, alignSelf: "flex-start", padding: "6px 14px" }}
+              onClick={() => {
+                const variants: LocaleVariant[] = [...(config.localeVariants ?? []), { code: "", path: "", label: "" }];
+                store.update({ ...config, localeVariants: variants });
+              }}
+            >+ Locale 추가</button>
           </div>
         </section>
 
