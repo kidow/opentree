@@ -1,24 +1,28 @@
 ---
 import { SearchCommand } from './SearchCommand';
+import LanguageSwitcher from './LanguageSwitcher.astro';
+import { getLangFromUrl, useTranslations, localizedHref, stripLocale } from '../i18n/utils';
 
 const GITHUB_URL = 'https://github.com/kidow/opentree';
-const pathname = Astro.url.pathname;
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+const path = stripLocale(Astro.url.pathname.replace(/\/$/, ''));
 
 const navItems = [
-  { label: 'Docs', href: '/docs' },
-  { label: 'Download', href: '/download' },
+  { label: t('nav.docs'), href: localizedHref('/docs', lang), basePath: '/docs' },
+  { label: t('nav.download'), href: localizedHref('/download', lang), basePath: '/download' },
 ];
 
-function isActive(href: string) {
-  if (href === '/') return pathname === '/';
-  return pathname === href || pathname.startsWith(href + '/');
+function isActive(basePath: string) {
+  if (basePath === '/') return path === '';
+  return path === basePath || path.startsWith(basePath + '/');
 }
 ---
 
 <header class="sticky top-0 z-40 backdrop-blur-md bg-canvas/75 dark:bg-canvas-dark/75 border-b border-hairline dark:border-hairline-dark">
   <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
     <div class="flex items-center gap-3 min-w-0">
-      <a href="/" class="flex items-center gap-2 group shrink-0" aria-label="Opentree home">
+      <a href={localizedHref('/', lang)} class="flex items-center gap-2 group shrink-0" aria-label="Opentree home">
         <span class="inline-flex items-center justify-center w-6 h-6 rounded-md bg-accent">
           <svg width="14" height="14" viewBox="0 0 32 32" aria-hidden="true">
             <polygon points="16,3 23,13 19,13 22,20 10,20 13,13 9,13" fill="white"/>
@@ -28,7 +32,7 @@ function isActive(href: string) {
         <span class="text-sm font-semibold tracking-tight text-ink dark:text-white">Opentree</span>
       </a>
       <div class="hidden sm:block">
-        <SearchCommand client:idle />
+        <SearchCommand client:idle lang={lang} />
       </div>
     </div>
 
@@ -38,7 +42,7 @@ function isActive(href: string) {
           href={item.href}
           class:list={[
             'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
-            isActive(item.href)
+            isActive(item.basePath)
               ? 'text-ink dark:text-white bg-surface dark:bg-white/[0.06]'
               : 'text-slate dark:text-stone hover:text-ink dark:hover:text-white',
           ]}
@@ -46,6 +50,9 @@ function isActive(href: string) {
           {item.label}
         </a>
       ))}
+      <div class="ml-2 hidden sm:block">
+        <LanguageSwitcher />
+      </div>
       <a
         href={GITHUB_URL}
         target="_blank"

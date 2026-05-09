@@ -1,0 +1,73 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+
+const groups = [
+  {
+    title: '편집',
+    cards: [
+      { title: '블록 타입', body: '20가지 블록 — 링크, 이미지, 음악, 비디오, 폼, 커머스 등.', href: '/ko/docs/blocks' },
+      { title: '디자인', body: '색상, 버튼 스타일, 레이아웃, 배경, 폰트, 커스텀 CSS.', href: '/ko/docs/design' },
+      { title: 'AI 편집', body: 'Claude 또는 GPT로 페이지 편집. 도구 기반, 적용 전 미리보기.', href: '/ko/docs/ai-chat' },
+      { title: '스케줄링', body: '특정 시각에 블록 게시 또는 내림. UTC, 빌드 + 클라이언트 사이드.', href: '/ko/docs/scheduling' },
+    ],
+  },
+  {
+    title: '게시',
+    cards: [
+      { title: '배포', body: 'Vercel, Cloudflare Pages, GitHub Pages — 토큰 설정 및 첫 배포.', href: '/ko/docs/deploy' },
+      { title: '커스텀 도메인', body: '본인 도메인 연결. 제공자별 DNS 레코드 및 검증.', href: '/ko/docs/domains' },
+      { title: 'SEO', body: '제목, 설명, OG 이미지, 사이트맵, robots — 자동 생성과 오버라이드.', href: '/ko/docs/seo' },
+      { title: '다국어', body: '하나의 config로 여러 언어로 페이지 게시.', href: '/ko/docs/i18n' },
+      { title: '애널리틱스', body: 'Plausible 통합 — 방문자, 페이지뷰, 블록별 클릭.', href: '/ko/docs/analytics' },
+    ],
+  },
+  {
+    title: '레퍼런스',
+    cards: [
+      { title: '설정 스키마', body: 'opentree.config.json의 최상위 구조.', href: '/ko/docs/schema' },
+      { title: '문제 해결', body: '흔한 배포 오류, 토큰 실패와 해결 방법.', href: '/ko/docs/troubleshooting' },
+    ],
+  },
+];
+---
+
+<DocsLayout
+  title="문서"
+  description="앱 외부와 맞닿는 모든 영역 — 배포, 도메인, JSON 스키마, AI 편집, 애널리틱스, 스케줄링 등."
+>
+  <p>
+    Opentree는 macOS와 Windows용 데스크톱 앱으로, 디스크에 있는 단일
+    <code>opentree.config.json</code> 파일을 게시된 링크인바이오 사이트로 변환합니다.
+    이 문서는 외부와 닿는 부분 — 배포, 도메인, 스키마, 그리고 선택적 통합 — 만 다룹니다.
+    앱 UI는 그 외의 일을 조용히 처리합니다.
+  </p>
+
+  <p>
+    앱을 막 설치했다면, 먼저 열어서 블록 몇 개를 추가해보세요. 호스팅 제공자를 연결하거나
+    도메인을 붙이거나 config 파일을 직접 읽고 싶을 때만 이 가이드들이 필요합니다.
+  </p>
+
+  <p class="text-sm text-stone">
+    <strong>참고:</strong> 일부 가이드 본문은 아직 영어로만 제공됩니다 (chrome은 한국어).
+    번역 작업이 진행 중입니다.
+  </p>
+
+  <div class="not-prose space-y-10 mt-12">
+    {groups.map((group) => (
+      <section>
+        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone mb-4">{group.title}</p>
+        <div class="grid sm:grid-cols-2 gap-3">
+          {group.cards.map((card) => (
+            <a
+              href={card.href}
+              class="group block p-5 rounded-xl border border-hairline dark:border-hairline-dark bg-canvas dark:bg-white/[0.02] hover:border-stone dark:hover:border-stone hover:bg-surface-soft dark:hover:bg-white/[0.05] transition-colors"
+            >
+              <h3 class="text-base font-semibold text-ink dark:text-white mb-1.5 group-hover:text-accent transition-colors">{card.title}</h3>
+              <p class="text-sm text-stone leading-relaxed">{card.body}</p>
+            </a>
+          ))}
+        </div>
+      </section>
+    ))}
+  </div>
+</DocsLayout>

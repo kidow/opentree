@@ -1,6 +1,10 @@
 ---
+import { getLangFromUrl, useTranslations, localizedHref } from '../i18n/utils';
+
 const year = new Date().getFullYear();
 const GITHUB_URL = 'https://github.com/kidow/opentree';
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
 ---
 
 <footer class="px-6 py-10 border-t border-hairline dark:border-hairline-dark">
@@ -8,10 +12,10 @@ const GITHUB_URL = 'https://github.com/kidow/opentree';
     <span>© {year} Opentree · Apache 2.0</span>
     <div class="flex items-center gap-5">
       <a
-        href="/download"
+        href={localizedHref('/download', lang)}
         class="hover:text-ink dark:hover:text-white transition-colors"
       >
-        Download
+        {t('footer.download')}
       </a>
       <a
         href={GITHUB_URL}
@@ -19,7 +23,7 @@ const GITHUB_URL = 'https://github.com/kidow/opentree';
         rel="noopener noreferrer"
         class="hover:text-ink dark:hover:text-white transition-colors"
       >
-        GitHub
+        {t('footer.github')}
       </a>
     </div>
   </div>

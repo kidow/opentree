@@ -1,0 +1,174 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Footer from '../../components/Footer.astro';
+
+const GITHUB_RELEASES_URL = 'https://github.com/kidow/opentree/releases/latest';
+const GITHUB_API_URL = 'https://api.github.com/repos/kidow/opentree/releases/latest';
+
+interface GithubAsset {
+  name: string;
+  browser_download_url: string;
+  size: number;
+}
+
+interface GithubRelease {
+  tag_name: string;
+  published_at: string;
+  assets: GithubAsset[];
+}
+
+let release: GithubRelease | null = null;
+
+try {
+  const res = await fetch(GITHUB_API_URL, {
+    headers: { Accept: 'application/vnd.github+json' },
+  });
+  if (res.ok) {
+    release = (await res.json()) as GithubRelease;
+  }
+} catch {}
+
+function fmtSize(bytes: number) {
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+const assets = release?.assets ?? [];
+const macSilicon = assets.find((a) => a.name.endsWith('.dmg') && /aarch64|arm64|silicon/i.test(a.name));
+const macIntel = assets.find((a) => a.name.endsWith('.dmg') && /x64|x86_64|intel/i.test(a.name));
+const macAny = assets.find((a) => a.name.endsWith('.dmg'));
+const winMsi = assets.find((a) => a.name.endsWith('.msi'));
+const winExe = assets.find((a) => a.name.endsWith('.exe'));
+
+const macPrimary = macSilicon ?? macAny ?? null;
+const macSecondary = macSilicon && macIntel ? macIntel : null;
+const winPrimary = winMsi ?? winExe ?? null;
+const winSecondary = winMsi && winExe ? winExe : null;
+
+const version = release?.tag_name ?? null;
+const publishedAt = release?.published_at
+  ? new Date(release.published_at).toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  : null;
+
+const platforms = [
+  {
+    label: 'macOS',
+    note: 'macOS 12 이상. Apple Silicon 및 Intel 지원.',
+    primary: macPrimary,
+    primaryLabel: macPrimary?.name.includes('aarch64') || macPrimary?.name.includes('arm64')
+      ? 'Apple Silicon용 다운로드'
+      : macPrimary?.name.includes('x64') || macPrimary?.name.includes('x86_64')
+        ? 'Intel용 다운로드'
+        : 'macOS용 다운로드',
+    secondary: macSecondary,
+    secondaryLabel: 'Intel 빌드',
+  },
+  {
+    label: 'Windows',
+    note: 'Windows 10 이상. x64.',
+    primary: winPrimary,
+    primaryLabel: winPrimary?.name.endsWith('.msi') ? 'MSI 인스톨러 다운로드' : 'EXE 인스톨러 다운로드',
+    secondary: winSecondary,
+    secondaryLabel: 'EXE 인스톨러',
+  },
+];
+---
+
+<BaseLayout title="다운로드 — Opentree" description="Opentree를 macOS 또는 Windows에서 무료로 받으세요. 오픈소스, 계정 불필요.">
+  <main class="relative hero-backdrop overflow-hidden min-h-[80vh]">
+    <div class="absolute inset-0 grid-fade opacity-60 pointer-events-none"></div>
+
+    <div class="relative max-w-2xl mx-auto px-6 pt-16 pb-20 sm:pt-24 sm:pb-28">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-accent mb-4">다운로드</p>
+      <h1 class="text-display-lg text-ink dark:text-white mb-4">Opentree 받기</h1>
+      <p class="text-lg text-slate dark:text-stone mb-12">
+        평생 무료. 계정 불필요. 플랫폼을 선택하세요.
+      </p>
+
+      <div class="space-y-6">
+        {platforms.map((p) => (
+          <section class="rounded-2xl border border-hairline dark:border-hairline-dark bg-canvas dark:bg-white/[0.03] p-6">
+            <div class="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <h2 class="text-xl font-semibold text-ink dark:text-white mb-1">{p.label}</h2>
+                <p class="text-sm text-stone">{p.note}</p>
+              </div>
+            </div>
+
+            {p.primary ? (
+              <div class="flex flex-wrap items-center gap-3">
+                <a
+                  href={p.primary.browser_download_url}
+                  class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-ink text-white text-sm font-medium hover:bg-charcoal transition-colors dark:bg-white dark:text-ink dark:hover:bg-stone"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  {p.primaryLabel}
+                </a>
+                <span class="text-xs font-mono text-stone">{fmtSize(p.primary.size)}</span>
+                {p.secondary && (
+                  <a
+                    href={p.secondary.browser_download_url}
+                    class="text-xs text-stone hover:text-accent transition-colors underline-offset-4 hover:underline"
+                  >
+                    {p.secondaryLabel} ({fmtSize(p.secondary.size)})
+                  </a>
+                )}
+              </div>
+            ) : (
+              <a
+                href={GITHUB_RELEASES_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-2 text-sm text-accent hover:underline"
+              >
+                GitHub에서 {p.label} 다운로드 보기 →
+              </a>
+            )}
+          </section>
+        ))}
+      </div>
+
+      {(version || publishedAt) && (
+        <dl class="mt-10 pt-6 border-t border-hairline dark:border-hairline-dark flex flex-wrap gap-x-8 gap-y-2 text-xs text-stone">
+          {version && (
+            <div class="flex items-center gap-2">
+              <dt>버전</dt>
+              <dd class="font-mono text-slate dark:text-muted">{version}</dd>
+            </div>
+          )}
+          {publishedAt && (
+            <div class="flex items-center gap-2">
+              <dt>릴리스</dt>
+              <dd class="text-slate dark:text-muted">{publishedAt}</dd>
+            </div>
+          )}
+          <a
+            href={GITHUB_RELEASES_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-accent hover:underline ml-auto"
+          >
+            모든 릴리스 →
+          </a>
+        </dl>
+      )}
+
+      {!release && (
+        <p class="text-xs text-stone mt-8">
+          빌드 시 릴리스 메타데이터를 가져오지 못했습니다.{' '}
+          <a href={GITHUB_RELEASES_URL} target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">
+            GitHub에서 모든 릴리스 보기 →
+          </a>
+        </p>
+      )}
+    </div>
+  </main>
+  <Footer />
+</BaseLayout>

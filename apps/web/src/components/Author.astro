@@ -1,10 +1,14 @@
 ---
+import { getLangFromUrl, useTranslations } from '../i18n/utils';
+
 const GITHUB_URL = 'https://github.com/kidow/opentree';
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
 ---
 
 <section class="px-6 py-10 border-t border-hairline dark:border-hairline-dark">
   <div class="max-w-2xl mx-auto text-center text-xs text-stone">
-    Built by{' '}
+    {t('footer.builtBy')}{' '}
     <a
       href="https://github.com/kidow"
       target="_blank"

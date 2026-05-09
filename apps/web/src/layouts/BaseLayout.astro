@@ -3,20 +3,40 @@ import '@fontsource-variable/inter';
 import '@fontsource-variable/geist-mono';
 import '../styles/global.css';
 import Header from '../components/Header.astro';
+import { getLangFromUrl, stripLocale } from '../i18n/utils';
 
 interface Props {
   title?: string;
   description?: string;
 }
 
+const lang = getLangFromUrl(Astro.url);
+
+const defaults = {
+  en: {
+    title: 'Opentree — link-in-bio on your computer',
+    description: 'Visual editor, live preview, one-click deploy. Your data stays on disk as a single JSON file.',
+  },
+  ko: {
+    title: 'Opentree — 내 컴퓨터에서 만드는 링크인바이오',
+    description: '비주얼 에디터, 실시간 미리보기, 원클릭 배포. 데이터는 단일 JSON 파일로 디스크에 저장됩니다.',
+  },
+}[lang];
+
 const {
-  title = 'Opentree — link-in-bio on your computer',
-  description = 'Visual editor, live preview, one-click deploy. Your data stays on disk as a single JSON file.',
+  title = defaults.title,
+  description = defaults.description,
 } = Astro.props;
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 const ogImageURL = new URL('/og.png', Astro.site).href;
-const isHome = Astro.url.pathname === '/';
+const isHome = Astro.url.pathname === '/' || Astro.url.pathname === '/ko/' || Astro.url.pathname === '/ko';
+
+const basePath = stripLocale(Astro.url.pathname);
+const enUrl = new URL(basePath, Astro.site).href;
+const koUrl = new URL(basePath === '/' ? '/ko/' : `/ko${basePath}`, Astro.site).href;
+
+const ogLocale = lang === 'ko' ? 'ko_KR' : 'en_US';
 
 const softwareJsonLd = {
   '@context': 'https://schema.org',
@@ -40,7 +60,7 @@ const softwareJsonLd = {
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={lang === 'ko' ? 'ko' : 'en'}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -53,8 +73,12 @@ const softwareJsonLd = {
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
 
+    <link rel="alternate" hreflang="en" href={enUrl} />
+    <link rel="alternate" hreflang="ko" href={koUrl} />
+    <link rel="alternate" hreflang="x-default" href={enUrl} />
+
     <meta property="og:site_name" content="Opentree" />
-    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale" content={ogLocale} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content={isHome ? 'website' : 'article'} />

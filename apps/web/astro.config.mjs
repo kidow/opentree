@@ -7,4 +7,15 @@ import react from '@astrojs/react';
 export default defineConfig({
   site: 'https://opentree.page',
   integrations: [tailwind(), sitemap(), mdx(), react()],
+  i18n: {
+    defaultLocale: 'en',
+    locales: ['en', 'ko'],
+    routing: {
+      prefixDefaultLocale: false,
+      fallbackType: 'rewrite',
+    },
+    fallback: {
+      ko: 'en',
+    },
+  },
 });

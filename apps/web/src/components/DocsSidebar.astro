@@ -1,10 +1,14 @@
 ---
-const pathname = Astro.url.pathname.replace(/\/$/, '');
+import { getLangFromUrl, useTranslations, localizedHref, stripLocale } from '../i18n/utils';
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+const path = stripLocale(Astro.url.pathname.replace(/\/$/, ''));
 
 interface Item {
   label: string;
-  href: string;
-  children?: { label: string; href: string }[];
+  base: string;
+  children?: { label: string; base: string }[];
 }
 
 interface Group {
@@ -14,47 +18,47 @@ interface Group {
 
 const groups: Group[] = [
   {
-    title: 'Overview',
-    items: [{ label: 'Introduction', href: '/docs' }],
+    title: t('sidebar.overview'),
+    items: [{ label: t('sidebar.introduction'), base: '/docs' }],
   },
   {
-    title: 'Editing',
+    title: t('sidebar.editing'),
     items: [
       {
-        label: 'Block types',
-        href: '/docs/blocks',
+        label: t('sidebar.blocks'),
+        base: '/docs/blocks',
         children: [
-          { label: 'Basic', href: '/docs/blocks/basic' },
-          { label: 'Media', href: '/docs/blocks/media' },
-          { label: 'Forms & email', href: '/docs/blocks/forms' },
-          { label: 'Commerce', href: '/docs/blocks/commerce' },
+          { label: t('sidebar.blocks.basic'), base: '/docs/blocks/basic' },
+          { label: t('sidebar.blocks.media'), base: '/docs/blocks/media' },
+          { label: t('sidebar.blocks.forms'), base: '/docs/blocks/forms' },
+          { label: t('sidebar.blocks.commerce'), base: '/docs/blocks/commerce' },
         ],
       },
-      { label: 'Design', href: '/docs/design' },
-      { label: 'AI editing', href: '/docs/ai-chat' },
-      { label: 'Scheduling', href: '/docs/scheduling' },
+      { label: t('sidebar.design'), base: '/docs/design' },
+      { label: t('sidebar.aichat'), base: '/docs/ai-chat' },
+      { label: t('sidebar.scheduling'), base: '/docs/scheduling' },
     ],
   },
   {
-    title: 'Publishing',
+    title: t('sidebar.publishing'),
     items: [
-      { label: 'Deploy', href: '/docs/deploy' },
-      { label: 'Custom domains', href: '/docs/domains' },
-      { label: 'SEO', href: '/docs/seo' },
-      { label: 'Multi-locale', href: '/docs/i18n' },
-      { label: 'Analytics', href: '/docs/analytics' },
+      { label: t('sidebar.deploy'), base: '/docs/deploy' },
+      { label: t('sidebar.domains'), base: '/docs/domains' },
+      { label: t('sidebar.seo'), base: '/docs/seo' },
+      { label: t('sidebar.i18n'), base: '/docs/i18n' },
+      { label: t('sidebar.analytics'), base: '/docs/analytics' },
     ],
   },
   {
-    title: 'Reference',
+    title: t('sidebar.reference'),
     items: [
-      { label: 'Config schema', href: '/docs/schema' },
-      { label: 'Troubleshooting', href: '/docs/troubleshooting' },
+      { label: t('sidebar.schema'), base: '/docs/schema' },
+      { label: t('sidebar.troubleshooting'), base: '/docs/troubleshooting' },
     ],
   },
 ];
 
-const isActive = (href: string) => pathname === href;
+const isActive = (base: string) => path === base;
 ---
 
 <nav class="space-y-7 text-sm">
@@ -67,10 +71,10 @@ const isActive = (href: string) => pathname === href;
         {group.items.map((item) => (
           <li>
             <a
-              href={item.href}
+              href={localizedHref(item.base, lang)}
               class:list={[
                 'block px-3 py-1.5 rounded-md transition-colors',
-                isActive(item.href)
+                isActive(item.base)
                   ? 'text-accent font-medium bg-accent/10'
                   : 'text-slate dark:text-stone hover:text-ink dark:hover:text-white hover:bg-surface dark:hover:bg-white/[0.04]',
               ]}
@@ -82,10 +86,10 @@ const isActive = (href: string) => pathname === href;
                 {item.children.map((child) => (
                   <li>
                     <a
-                      href={child.href}
+                      href={localizedHref(child.base, lang)}
                       class:list={[
                         'block px-3 py-1.5 rounded-md transition-colors text-[13px]',
-                        isActive(child.href)
+                        isActive(child.base)
                           ? 'text-accent font-medium bg-accent/10'
                           : 'text-stone hover:text-ink dark:hover:text-white hover:bg-surface dark:hover:bg-white/[0.04]',
                       ]}
