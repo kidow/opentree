@@ -4,6 +4,38 @@ import Hero from '../components/Hero.astro';
 import Section from '../components/Section.astro';
 import Author from '../components/Author.astro';
 import Footer from '../components/Footer.astro';
+
+const blockNames = [
+  'Link', 'Heading', 'Text', 'Footer note', 'Social icons',
+  'Image', 'Music embed', 'Video embed', 'Pinterest pin',
+  'Affiliate (UTM)', 'Sponsored', 'Custom HTML', 'Block group',
+  'Contact form', 'Email signup',
+  'Product', 'Tip jar', 'Course link',
+  'Language switcher',
+];
+
+const capabilities = [
+  {
+    title: 'Schedule blocks',
+    body: 'Set a publish or unpublish time on any block. Outside the window it does not ship in the rendered HTML — invisible to scrapers and search engines.',
+    icon: 'clock',
+  },
+  {
+    title: 'Multi-language',
+    body: 'Define locale variants in one config. Each translation builds to its own subdirectory with a drop-in language switcher block.',
+    icon: 'globe',
+  },
+  {
+    title: 'Privacy-first analytics',
+    body: 'Optional integration with a no-cookie analytics provider — pageviews and per-block click events out of the box, no setup per block.',
+    icon: 'chart',
+  },
+  {
+    title: 'SEO ready',
+    body: 'Title, description, Open Graph, JSON-LD, sitemap, and robots are auto-generated from your profile. Override any field when you need to.',
+    icon: 'search',
+  },
+];
 ---
 
 <BaseLayout>
@@ -24,7 +56,7 @@ import Footer from '../components/Footer.astro';
         <span class="ml-2 text-[11px] font-mono text-stone">opentree.config.json</span>
       </div>
       <pre class="p-5 text-[12.5px] font-mono leading-relaxed overflow-x-auto"><code><span class="text-stone">{</span>
-  <span class="text-[#7cd1f7]">"schemaVersion"</span><span class="text-stone">:</span> <span class="text-accent">2</span><span class="text-stone">,</span>
+  <span class="text-[#7cd1f7]">"schemaVersion"</span><span class="text-stone">:</span> <span class="text-accent">14</span><span class="text-stone">,</span>
   <span class="text-[#7cd1f7]">"profile"</span><span class="text-stone">: {</span>
     <span class="text-[#7cd1f7]">"name"</span><span class="text-stone">:</span> <span class="text-[#fab387]">"Your Name"</span><span class="text-stone">,</span>
     <span class="text-[#7cd1f7]">"bio"</span><span class="text-stone">:</span> <span class="text-[#fab387]">"Your bio here"</span>
@@ -40,22 +72,47 @@ import Footer from '../components/Footer.astro';
 
   <Section
     label="Editor"
-    title="Drag, drop, done"
-    body="Add links, headings, or text blocks with one click. Reorder by dragging. Every change is undoable — no autosave surprises, no lost work."
+    title="Drag, drop, or just ask"
+    body="Add and reorder blocks the usual way — or describe the change in the AI panel. The assistant proposes edits via tool calls; you preview each one on the live phone before applying. Every change, manual or AI, joins the same undo stack."
     reverse
   >
     <div class="rounded-2xl border border-hairline dark:border-hairline-dark bg-surface-soft dark:bg-white/[0.03] p-5 space-y-2.5 shadow-xl shadow-ink/5">
       {[
-        { type: 'Link', title: 'My Website', meta: 'example.com', icon: 'link' },
-        { type: 'Heading', title: 'Projects', meta: '', icon: 'heading' },
-        { type: 'Link', title: 'GitHub', meta: 'github.com/you', icon: 'link' },
-        { type: 'Text', title: 'Available for hire', meta: '', icon: 'text' },
+        { type: 'Link', title: 'My Website', meta: 'example.com' },
+        { type: 'Heading', title: 'Projects', meta: '' },
+        { type: 'Link', title: 'GitHub', meta: 'github.com/you' },
       ].map((b) => (
         <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-canvas dark:bg-white/[0.05] border border-hairline dark:border-hairline-dark">
           <span class="text-stone select-none cursor-grab" aria-hidden="true">⠿</span>
           <span class="text-[10px] font-medium uppercase tracking-wider text-stone w-14">{b.type}</span>
           <span class="flex-1 text-sm font-medium text-ink dark:text-white truncate">{b.title}</span>
           {b.meta && <span class="text-xs font-mono text-stone hidden sm:inline">{b.meta}</span>}
+        </div>
+      ))}
+      <div class="mt-3 pt-3 border-t border-hairline dark:border-hairline-dark space-y-2">
+        <div class="flex items-start gap-2">
+          <span class="px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-accent/15 text-accent shrink-0 mt-0.5">AI</span>
+          <p class="text-xs text-slate dark:text-stone leading-relaxed">"Add a Twitter link under GitHub."</p>
+        </div>
+        <div class="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-accent/40 bg-accent/5 text-xs">
+          <span class="text-accent font-medium">+ Link</span>
+          <span class="text-ink dark:text-white font-medium flex-1 truncate">Twitter</span>
+          <button class="text-[10px] font-semibold text-accent" type="button" aria-hidden="true">Apply</button>
+        </div>
+      </div>
+    </div>
+  </Section>
+
+  <Section
+    label="Blocks"
+    title="Every kind of block, built in"
+    body="Nineteen ready-made block types — links and headings to start, then media, embeds, forms, commerce, scheduled announcements, and a custom-HTML escape hatch for anything else."
+  >
+    <div class="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+      {blockNames.map((b) => (
+        <div class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-surface-soft dark:bg-white/[0.03] border border-hairline dark:border-hairline-dark">
+          <span class="w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+          <span class="text-ink dark:text-white truncate">{b}</span>
         </div>
       ))}
     </div>
@@ -65,6 +122,7 @@ import Footer from '../components/Footer.astro';
     label="Preview"
     title="See it before you ship"
     body="A live phone-shaped preview updates as you edit. What you see is exactly what your visitors will see — no surprises after deploy."
+    reverse
   >
     <div class="flex justify-center">
       <div class="relative w-56 aspect-[9/19] rounded-[2.25rem] border-[6px] border-ink/90 dark:border-white/10 bg-canvas dark:bg-canvas-dark shadow-2xl shadow-ink/20 overflow-hidden">
@@ -89,8 +147,7 @@ import Footer from '../components/Footer.astro';
   <Section
     label="Deploy"
     title="One click to live"
-    body="Publish your page directly from the app. Opentree sends your config to any host that accepts a REST deploy — no CLI, no terminal, no build step on your end."
-    reverse
+    body="Publish your page directly from the app to any of three hosting providers. REST-based deploys with no CLI, no terminal, no build step on your end. Custom domains supported with DNS guidance per provider."
   >
     <div class="rounded-2xl border border-hairline dark:border-hairline-dark bg-surface-soft dark:bg-white/[0.03] p-6 shadow-xl shadow-ink/5">
       <div class="flex items-center gap-3 mb-4">
@@ -124,16 +181,66 @@ import Footer from '../components/Footer.astro';
     </div>
   </Section>
 
+  <section class="px-6 py-20 sm:py-24 border-t border-hairline dark:border-hairline-dark">
+    <div class="max-w-5xl mx-auto">
+      <div class="max-w-2xl mb-10">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-accent mb-4">More in the box</p>
+        <h2 class="text-heading-1 text-ink dark:text-white mb-5">Everything else, built in</h2>
+        <p class="text-base sm:text-lg text-slate dark:text-stone leading-relaxed">
+          No plugins to install. No services to host. The boring infrastructure ships with the app.
+        </p>
+      </div>
+
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {capabilities.map((cap) => (
+          <div class="p-5 rounded-xl border border-hairline dark:border-hairline-dark bg-surface-soft dark:bg-white/[0.03]">
+            <div class="w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center mb-3">
+              {cap.icon === 'clock' && (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+              )}
+              {cap.icon === 'globe' && (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="2" y1="12" x2="22" y2="12"/>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
+              )}
+              {cap.icon === 'chart' && (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <line x1="18" y1="20" x2="18" y2="10"/>
+                  <line x1="12" y1="20" x2="12" y2="4"/>
+                  <line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
+              )}
+              {cap.icon === 'search' && (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="11" cy="11" r="8"/>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+              )}
+            </div>
+            <h3 class="text-sm font-semibold text-ink dark:text-white mb-1.5">{cap.title}</h3>
+            <p class="text-xs text-stone leading-relaxed">{cap.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
   <Section
     label="Open"
     title="Apache 2.0, no account, no tracking"
     body="The source is public, the license is permissive, and there is nothing to sign up for. Your config file stays on your machine. No analytics, no telemetry, nothing."
+    reverse
   >
     <div class="grid grid-cols-2 gap-3">
       {[
         { title: 'Apache 2.0', body: 'Permissive license' },
         { title: 'Local first', body: 'Your data, your disk' },
-        { title: 'Zero tracking', body: 'No analytics, ever' },
+        { title: 'Zero tracking', body: 'No telemetry, ever' },
         { title: 'No account', body: 'Just download and go' },
       ].map((f) => (
         <div class="p-4 rounded-xl border border-hairline dark:border-hairline-dark bg-surface-soft dark:bg-white/[0.03]">

@@ -307,6 +307,7 @@ video, complex animations.
 - Reflect full Phase 1–14 desktop scope: Hero badge / CTA / JSON-LD now mention macOS + Windows; `/download` shows platform-grouped Apple Silicon / Intel / MSI / EXE assets; `/docs/schema` rewritten to current schemaVersion 14
 - Expand `/docs` to 11 pages: Block types (20 catalog), Design (theme + button styles + layouts + backgrounds + fonts + custom CSS), AI editing (Claude/OpenAI + 8 tools), Analytics (Plausible), Scheduling (publishAt/unpublishAt), Multi-locale (localeVariants + languageSwitcher), SEO (meta + sitemap + robots)
 - Regroup DocsSidebar into Overview / Editing / Publishing / Reference
+- Landing sections updated for v1 scope: Editor section now shows AI panel exchange, new "Every kind of block" 19-tile grid, new "Everything else, built in" capability cards (scheduling / multi-language / privacy-first analytics / SEO); abstract phrasing keeps OSS minimal tone (no provider names in landing copy)
 
 ## v0.1.0 - 2026-03-08
 
