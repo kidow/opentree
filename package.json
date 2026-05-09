@@ -2,11 +2,6 @@
   "name": "opentree",
   "private": true,
   "workspaces": [
-    "apps/legacy-cli",
     "apps/web"
-  ],
-  "scripts": {
-    "test:legacy": "npm test --workspace=apps/legacy-cli",
-    "test:smoke": "npm run test:smoke --workspace=apps/legacy-cli"
-  }
+  ]
 }

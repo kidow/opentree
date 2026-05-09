@@ -14,6 +14,7 @@ The format is intentionally simple:
 
 - Add Rust workspace and `opentree-core` crate — foundation for native binary
 - Move Node.js CLI to `apps/legacy-cli` to make room for Rust core
+- Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Add Tauri desktop app shell with tree editor
 - Add Design tab with color picker
 - Add Settings tab with site URL and project info
