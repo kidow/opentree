@@ -5,6 +5,7 @@ dist
 .omc
 plan
 .claude/settings.local.json
+CLAUDE.local.md
 
 # Rust
 target/

@@ -10,7 +10,24 @@ The format is intentionally simple:
 
 ## Unreleased
 
-- No unreleased changes yet.
+### Desktop App (Tauri)
+
+- Add Rust workspace and `opentree-core` crate — foundation for native binary
+- Move Node.js CLI to `apps/legacy-cli` to make room for Rust core
+- Add Tauri desktop app shell with tree editor
+- Add Design tab with color picker
+- Add Settings tab with site URL and project info
+- Add Publish tab with Vercel deployment integration
+- Add import flow for JSON link files
+- Add undo/redo with history stack
+- Fix profile editing, close-warning dialog, and export dialog
+
+### Docs Site
+
+- Add docs project (`apps/docs`)
+- Add cmd+k search dialog
+- Fix light mode header theming
+- Remove Ask AI floating action from layout
 
 ## v0.1.0 - 2026-03-08
 
