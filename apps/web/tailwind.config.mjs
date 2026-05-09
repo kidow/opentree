@@ -76,37 +76,15 @@ export default {
             'h1': { fontWeight: '600', letterSpacing: '-0.025em' },
             'h2': { fontWeight: '600', letterSpacing: '-0.02em', marginTop: '2.5em' },
             'h3': { fontWeight: '600', letterSpacing: '-0.015em' },
-            'code': {
-              fontWeight: '500',
-              fontSize: '0.875em',
-              backgroundColor: theme('colors.surface'),
-              padding: '0.15em 0.4em',
-              borderRadius: '4px',
-              border: `1px solid ${theme('colors.hairline')}`,
-            },
             'code::before': { content: '""' },
             'code::after': { content: '""' },
-            'pre': {
-              borderRadius: '12px',
-              border: `1px solid ${theme('colors.hairline-dark')}`,
-            },
-            'pre code': {
-              backgroundColor: 'transparent',
-              border: 'none',
-              padding: '0',
-            },
             'a': { textDecoration: 'none', fontWeight: '500' },
             'a:hover': { textDecoration: 'underline' },
             'table': { fontSize: '14px' },
           },
         },
         invert: {
-          css: {
-            'code': {
-              backgroundColor: 'rgba(255,255,255,0.06)',
-              border: `1px solid ${theme('colors.hairline-dark')}`,
-            },
-          },
+          css: {},
         },
       }),
     },

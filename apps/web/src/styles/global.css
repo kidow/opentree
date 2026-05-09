@@ -19,6 +19,40 @@
   }
 }
 
+@layer components {
+  .prose :not(pre) > code {
+    font-family: '"Geist Mono Variable"', '"Geist Mono"', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-weight: 500;
+    font-size: 0.875em;
+    background-color: #f7f7f7;
+    color: #0a0a0a;
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    border: 1px solid #e5e5e5;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .prose :not(pre) > code {
+      background-color: rgba(255, 255, 255, 0.06);
+      color: #ffffff;
+      border-color: #1f1f1f;
+    }
+  }
+
+  .prose pre {
+    border-radius: 12px;
+    border: 1px solid #1f1f1f;
+    padding: 1rem 1.25rem;
+  }
+
+  .prose pre code {
+    background-color: transparent !important;
+    border: none;
+    padding: 0;
+    font-family: '"Geist Mono Variable"', '"Geist Mono"', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+}
+
 @layer utilities {
   .hero-backdrop {
     background:
