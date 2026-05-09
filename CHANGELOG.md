@@ -17,6 +17,33 @@ The format is intentionally simple:
 - Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Remove import-from-JSON feature — no clear use case without legacy CLI
 
+### Testing — desktop backend (publish.rs + ai.rs)
+
+- Add `mockito` dev-dep. 45 inline tests covering Tauri backend HTTP
+  + parsing logic
+- ai.rs (17): pure response parsers (`parse_anthropic_response`,
+  `parse_openai_response`) covering text-only, tool_use, multi-block
+  text, unknown blocks, invalid arguments fallback, and invalid JSON
+  paths; tool definition shape (`tool_defs` covers all 8 actions,
+  Claude vs OpenAI envelope formats); `system_prompt` config injection;
+  HTTP `verify_anthropic_at` / `verify_openai_at` (200 ok / 401 err)
+  via mockito
+- publish.rs (28): pure helpers (`sha256_hex`, `ext_to_mime`,
+  `plausible_base` with self-host override + trailing slash strip);
+  parsers for Plausible aggregate + breakdown, Unsplash search
+  (UTM attribution attached); HTTP `verify_vercel_at`,
+  `verify_github_at`, `verify_cloudflare_at`,
+  `verify_unsplash_at` (with `/me` → `/photos/random` fallback),
+  `unsplash_search_at`, `fetch_plausible_stats`, `verify_plausible`
+  via mockito (success + error paths)
+- Refactored testable surface: each public verify/search function
+  delegates to a private `*_at(base)` variant that takes the API base
+  URL. Plausible already supported base override via `PlausibleConnection`.
+  Production callers unchanged
+- CI `rust` job now installs Linux WebKit deps and runs
+  `cargo test --lib` against `apps/desktop/src-tauri` in addition
+  to `opentree-core` tests
+
 ### Testing — E2E scaffold (WebdriverIO + tauri-driver)
 
 - Add `apps/desktop/e2e/` directory with WebdriverIO 9 + Mocha

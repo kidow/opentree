@@ -26,3 +26,6 @@ base64 = "0.22"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif"] }
 time = { version = "0.3", features = ["formatting"] }
 urlencoding = "2"
+
+[dev-dependencies]
+mockito = "1"

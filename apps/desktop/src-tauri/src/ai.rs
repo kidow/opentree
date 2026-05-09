@@ -23,8 +23,12 @@ const ANTHROPIC_MODEL: &str = "claude-sonnet-4-5-20250929";
 const OPENAI_MODEL: &str = "gpt-4o-mini";
 
 pub async fn verify_anthropic(token: &str) -> Result<(), String> {
+    verify_anthropic_at(token, "https://api.anthropic.com").await
+}
+
+async fn verify_anthropic_at(token: &str, base: &str) -> Result<(), String> {
     let resp = reqwest::Client::new()
-        .get("https://api.anthropic.com/v1/models")
+        .get(format!("{base}/v1/models"))
         .header("x-api-key", token)
         .header("anthropic-version", "2023-06-01")
         .send()
@@ -37,8 +41,12 @@ pub async fn verify_anthropic(token: &str) -> Result<(), String> {
 }
 
 pub async fn verify_openai(token: &str) -> Result<(), String> {
+    verify_openai_at(token, "https://api.openai.com").await
+}
+
+async fn verify_openai_at(token: &str, base: &str) -> Result<(), String> {
     let resp = reqwest::Client::new()
-        .get("https://api.openai.com/v1/models")
+        .get(format!("{base}/v1/models"))
         .bearer_auth(token)
         .send()
         .await
@@ -193,7 +201,11 @@ pub async fn chat_anthropic(
         return Err(format!("Anthropic 오류 ({status}): {msg}"));
     }
 
-    let val: serde_json::Value = serde_json::from_str(&text).map_err(|e| format!("응답 파싱: {e}"))?;
+    parse_anthropic_response(&text).map_err(|e| format!("응답 파싱: {e}"))
+}
+
+pub(crate) fn parse_anthropic_response(text: &str) -> Result<ChatResponse, String> {
+    let val: serde_json::Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
     let mut out_text = String::new();
     let mut tool_calls = Vec::new();
     if let Some(content) = val["content"].as_array() {
@@ -216,7 +228,6 @@ pub async fn chat_anthropic(
             }
         }
     }
-
     Ok(ChatResponse { text: out_text, tool_calls })
 }
 
@@ -259,7 +270,11 @@ pub async fn chat_openai(
         return Err(format!("OpenAI 오류 ({status}): {msg}"));
     }
 
-    let val: serde_json::Value = serde_json::from_str(&text).map_err(|e| format!("응답 파싱: {e}"))?;
+    parse_openai_response(&text).map_err(|e| format!("응답 파싱: {e}"))
+}
+
+pub(crate) fn parse_openai_response(text: &str) -> Result<ChatResponse, String> {
+    let val: serde_json::Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
     let msg = &val["choices"][0]["message"];
     let out_text = msg["content"].as_str().unwrap_or("").to_string();
     let mut tool_calls = Vec::new();
@@ -275,6 +290,210 @@ pub async fn chat_openai(
             });
         }
     }
-
     Ok(ChatResponse { text: out_text, tool_calls })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_anthropic_text_only() {
+        let raw = r#"{"content": [{"type": "text", "text": "Hello there"}]}"#;
+        let r = parse_anthropic_response(raw).expect("parse");
+        assert_eq!(r.text, "Hello there");
+        assert!(r.tool_calls.is_empty());
+    }
+
+    #[test]
+    fn parse_anthropic_text_plus_tool_use() {
+        let raw = r#"{"content": [
+            {"type": "text", "text": "I'll add that link."},
+            {"type": "tool_use", "id": "toolu_01", "name": "add_block",
+             "input": {"block": {"type": "link", "title": "GitHub", "url": "https://gh.com"}}}
+        ]}"#;
+        let r = parse_anthropic_response(raw).expect("parse");
+        assert_eq!(r.text, "I'll add that link.");
+        assert_eq!(r.tool_calls.len(), 1);
+        assert_eq!(r.tool_calls[0].name, "add_block");
+        assert_eq!(r.tool_calls[0].id, "toolu_01");
+        assert_eq!(r.tool_calls[0].args["block"]["title"], "GitHub");
+    }
+
+    #[test]
+    fn parse_anthropic_concatenates_multiple_text_blocks() {
+        let raw = r#"{"content": [
+            {"type": "text", "text": "First."},
+            {"type": "text", "text": "Second."}
+        ]}"#;
+        let r = parse_anthropic_response(raw).expect("parse");
+        assert_eq!(r.text, "First.\nSecond.");
+    }
+
+    #[test]
+    fn parse_anthropic_ignores_unknown_block_types() {
+        let raw = r#"{"content": [
+            {"type": "image", "source": {"data": "..."}},
+            {"type": "text", "text": "Visible"}
+        ]}"#;
+        let r = parse_anthropic_response(raw).expect("parse");
+        assert_eq!(r.text, "Visible");
+        assert!(r.tool_calls.is_empty());
+    }
+
+    #[test]
+    fn parse_anthropic_invalid_json_returns_error() {
+        let r = parse_anthropic_response("not-json");
+        assert!(r.is_err());
+    }
+
+    #[test]
+    fn parse_openai_text_only() {
+        let raw = r#"{"choices": [{"message": {"role": "assistant", "content": "Plain reply"}}]}"#;
+        let r = parse_openai_response(raw).expect("parse");
+        assert_eq!(r.text, "Plain reply");
+        assert!(r.tool_calls.is_empty());
+    }
+
+    #[test]
+    fn parse_openai_tool_calls() {
+        let raw = r#"{"choices": [{"message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [{
+                "id": "call_abc",
+                "type": "function",
+                "function": {
+                    "name": "edit_block",
+                    "arguments": "{\"id\":\"abc\",\"patch\":{\"title\":\"New\"}}"
+                }
+            }]
+        }}]}"#;
+        let r = parse_openai_response(raw).expect("parse");
+        assert_eq!(r.text, "");
+        assert_eq!(r.tool_calls.len(), 1);
+        let call = &r.tool_calls[0];
+        assert_eq!(call.id, "call_abc");
+        assert_eq!(call.name, "edit_block");
+        assert_eq!(call.args["id"], "abc");
+        assert_eq!(call.args["patch"]["title"], "New");
+    }
+
+    #[test]
+    fn parse_openai_text_plus_tool_calls() {
+        let raw = r#"{"choices": [{"message": {
+            "role": "assistant",
+            "content": "Doing it.",
+            "tool_calls": [{
+                "id": "call_1",
+                "function": { "name": "delete_block", "arguments": "{\"id\":\"x\"}" }
+            }]
+        }}]}"#;
+        let r = parse_openai_response(raw).expect("parse");
+        assert_eq!(r.text, "Doing it.");
+        assert_eq!(r.tool_calls.len(), 1);
+        assert_eq!(r.tool_calls[0].args["id"], "x");
+    }
+
+    #[test]
+    fn parse_openai_invalid_arg_string_falls_back() {
+        let raw = r#"{"choices": [{"message": {
+            "tool_calls": [{
+                "id": "call_1",
+                "function": { "name": "noop", "arguments": "not-json" }
+            }]
+        }}]}"#;
+        let r = parse_openai_response(raw).expect("parse");
+        assert_eq!(r.tool_calls.len(), 1);
+        assert!(r.tool_calls[0].args.is_null());
+    }
+
+    #[test]
+    fn tool_defs_cover_all_actions() {
+        let names: Vec<&'static str> = tool_defs().iter().map(|(n, _, _)| *n).collect();
+        for expected in [
+            "add_block", "edit_block", "delete_block", "reorder_blocks",
+            "toggle_block", "update_theme", "update_profile", "set_schedule",
+        ] {
+            assert!(names.contains(&expected), "missing tool def: {expected}");
+        }
+    }
+
+    #[test]
+    fn claude_tools_have_input_schema() {
+        for tool in claude_tools() {
+            assert!(tool.get("name").is_some());
+            assert!(tool.get("description").is_some());
+            assert!(tool.get("input_schema").is_some());
+        }
+    }
+
+    #[test]
+    fn openai_tools_use_function_envelope() {
+        for tool in openai_tools() {
+            assert_eq!(tool["type"], "function");
+            assert!(tool["function"]["name"].is_string());
+            assert!(tool["function"]["parameters"].is_object());
+        }
+    }
+
+    #[test]
+    fn system_prompt_includes_config_json() {
+        let cfg = serde_json::json!({"profile": {"name": "Tester"}});
+        let prompt = system_prompt(&cfg);
+        assert!(prompt.contains("Tester"));
+        assert!(prompt.contains("opentree"));
+    }
+
+    #[tokio::test]
+    async fn verify_anthropic_at_returns_ok_on_200() {
+        let mut server = mockito::Server::new_async().await;
+        let m = server.mock("GET", "/v1/models")
+            .match_header("x-api-key", "secret")
+            .match_header("anthropic-version", "2023-06-01")
+            .with_status(200)
+            .with_body("{\"data\": []}")
+            .create_async()
+            .await;
+        let res = verify_anthropic_at("secret", &server.url()).await;
+        assert!(res.is_ok());
+        m.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn verify_anthropic_at_returns_err_on_401() {
+        let mut server = mockito::Server::new_async().await;
+        let _m = server.mock("GET", "/v1/models")
+            .with_status(401)
+            .create_async()
+            .await;
+        let res = verify_anthropic_at("bad-token", &server.url()).await;
+        assert!(res.is_err());
+        assert!(res.unwrap_err().contains("Anthropic"));
+    }
+
+    #[tokio::test]
+    async fn verify_openai_at_returns_ok_on_200() {
+        let mut server = mockito::Server::new_async().await;
+        let m = server.mock("GET", "/v1/models")
+            .match_header("authorization", "Bearer SK")
+            .with_status(200)
+            .with_body("{\"data\": []}")
+            .create_async()
+            .await;
+        let res = verify_openai_at("SK", &server.url()).await;
+        assert!(res.is_ok());
+        m.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn verify_openai_at_returns_err_on_401() {
+        let mut server = mockito::Server::new_async().await;
+        let _m = server.mock("GET", "/v1/models")
+            .with_status(401)
+            .create_async()
+            .await;
+        let res = verify_openai_at("bad", &server.url()).await;
+        assert!(res.is_err());
+    }
 }
