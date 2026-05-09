@@ -17,6 +17,30 @@ The format is intentionally simple:
 - Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Remove import-from-JSON feature — no clear use case without legacy CLI
 
+### Phase 5.5 — Windows Support
+
+- Add `.github/workflows/desktop-release.yml`: cross-platform release
+  pipeline using `tauri-apps/tauri-action` over a matrix of
+  macOS arm64, macOS x86_64, and Windows x86_64. Linux explicitly
+  excluded per roadmap. Triggers on `desktop-v*.*.*` tags or manual
+  `workflow_dispatch`.
+- Tauri bundle Windows config: SHA-256 Authenticode digest, DigiCert
+  timestamp URL, WiX (MSI) en-US, NSIS installer with English +
+  Korean language selector at install time. Existing `targets: "all"`
+  produces both `.msi` and NSIS `.exe`.
+- Code signing wiring (no certs committed):
+  - Windows Authenticode: `WINDOWS_CERTIFICATE` (base64 PFX) +
+    `WINDOWS_CERTIFICATE_PASSWORD` GitHub repo secrets
+  - macOS signing + notarization: `APPLE_CERTIFICATE`,
+    `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`,
+    `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`
+  - Updater signing: `TAURI_SIGNING_PRIVATE_KEY`,
+    `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+  - All optional — workflow runs unsigned if secrets missing
+- Custom URL scheme registration (`opentree://`) deferred — current AI
+  Chat uses API key paste, not OAuth; no callback target needed
+- Manual UI verification on Windows is left to release reviewer
+
 ### Phase 15 — Provider Expansion (long tail)
 
 - Analytics: extend AnalyticsConfig.provider to support 5 providers
