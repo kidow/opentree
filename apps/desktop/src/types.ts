@@ -4,10 +4,26 @@ export interface Profile {
   avatarUrl?: string;
 }
 
+export type ButtonStyle = "pill" | "rounded" | "square" | "outline" | "soft";
+export type LayoutStyle = "classic" | "featured";
+
+export type Background =
+  | { type: "solid"; color: string }
+  | { type: "gradient"; from: string; to: string; direction: string }
+  | { type: "image"; assetPath: string; url?: string; opacity?: number };
+
 export interface Theme {
   accentColor: string;
   backgroundColor: string;
   textColor: string;
+  borderColor?: string;
+  mutedColor?: string;
+  hoverColor?: string;
+  buttonStyle: ButtonStyle;
+  layout: LayoutStyle;
+  background?: Background;
+  fontFamily?: string;
+  customCss?: string;
 }
 
 export interface OembedCache {

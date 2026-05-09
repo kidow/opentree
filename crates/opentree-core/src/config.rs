@@ -349,18 +349,85 @@ impl Block {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ButtonStyle {
+    Pill,
+    Rounded,
+    Square,
+    Outline,
+    Soft,
+}
+
+impl Default for ButtonStyle {
+    fn default() -> Self { ButtonStyle::Outline }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LayoutStyle {
+    Classic,
+    Featured,
+}
+
+impl Default for LayoutStyle {
+    fn default() -> Self { LayoutStyle::Classic }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum Background {
+    #[serde(rename = "solid")]
+    Solid { color: String },
+    #[serde(rename = "gradient")]
+    Gradient {
+        from: String,
+        to: String,
+        #[serde(default)]
+        direction: String,
+    },
+    #[serde(rename = "image")]
+    Image {
+        #[serde(default)]
+        asset_path: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        url: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        opacity: Option<f64>,
+    },
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Theme {
     pub accent_color: String,
     pub background_color: String,
     pub text_color: String,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub border_color: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub muted_color: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hover_color: Option<String>,
+
+    #[serde(default)]
+    pub button_style: ButtonStyle,
+    #[serde(default)]
+    pub layout: LayoutStyle,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub background: Option<Background>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub font_family: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub custom_css: Option<String>,
 }
 
 impl Config {
     pub fn default_config() -> Self {
         Config {
-            schema_version: 8,
+            schema_version: 9,
             profile: Profile { name: String::new(), bio: None, avatar_url: None },
             blocks: vec![
                 Block::Profile { id: Uuid::new_v4().to_string(), enabled: true },
@@ -375,6 +442,14 @@ impl Config {
                 accent_color: "#000000".to_string(),
                 background_color: "#ffffff".to_string(),
                 text_color: "#000000".to_string(),
+                border_color: None,
+                muted_color: None,
+                hover_color: None,
+                button_style: ButtonStyle::Outline,
+                layout: LayoutStyle::Classic,
+                background: None,
+                font_family: None,
+                custom_css: None,
             },
             site_url: None,
             domain: None,

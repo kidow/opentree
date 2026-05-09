@@ -1,9 +1,14 @@
 use maud::{html, PreEscaped, DOCTYPE};
-use crate::config::{Block, CollectionLayout, CommerceProvider, Config, FormFieldType, OembedCache, SupportProvider};
+use crate::config::{Background, Block, ButtonStyle, CollectionLayout, CommerceProvider, Config, FormFieldType, LayoutStyle, OembedCache, SupportProvider};
 
 pub fn render_page(config: &Config) -> String {
     let analytics_head = render_analytics_head(config);
     let analytics_body = render_analytics_body(config);
+    let google_font_link = render_google_font_link(config);
+    let layout_class = match config.theme.layout {
+        LayoutStyle::Classic => "layout-classic",
+        LayoutStyle::Featured => "layout-featured",
+    };
     let markup = html! {
         (DOCTYPE)
         html lang="en" {
@@ -12,12 +17,15 @@ pub fn render_page(config: &Config) -> String {
                 meta name="viewport" content="width=device-width, initial-scale=1";
                 title { (config.profile.name) }
                 link rel="icon" type="image/svg+xml" href="/favicon.svg";
+                @if !google_font_link.is_empty() {
+                    (PreEscaped(google_font_link))
+                }
                 style { (PreEscaped(render_css(config))) }
                 @if !analytics_head.is_empty() {
                     (PreEscaped(analytics_head))
                 }
             }
-            body {
+            body class=(layout_class) {
                 main id="content" {
                     @for block in &config.blocks {
                         @if block.enabled() {
@@ -32,6 +40,19 @@ pub fn render_page(config: &Config) -> String {
         }
     };
     markup.into_string()
+}
+
+fn render_google_font_link(config: &Config) -> String {
+    let font = match &config.theme.font_family {
+        Some(f) if !f.trim().is_empty() => f.trim().to_string(),
+        _ => return String::new(),
+    };
+    let family_param = font.replace(' ', "+");
+    format!(
+        r#"<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family={family_param}:wght@400;600;700&display=swap" rel="stylesheet">"#
+    )
 }
 
 fn render_analytics_head(config: &Config) -> String {
@@ -377,6 +398,58 @@ fn url_encode(s: &str) -> String {
     out
 }
 
+fn render_body_background(config: &Config) -> String {
+    match &config.theme.background {
+        Some(Background::Solid { color }) => format!("background-color: {color};"),
+        Some(Background::Gradient { from, to, direction }) => {
+            let dir = if direction.trim().is_empty() { "to bottom" } else { direction.as_str() };
+            format!("background: linear-gradient({dir}, {from}, {to}); background-attachment: fixed;")
+        }
+        Some(Background::Image { asset_path, url, opacity }) => {
+            let src = if !asset_path.is_empty() { asset_path.clone() } else { url.clone().unwrap_or_default() };
+            if src.is_empty() {
+                format!("background-color: {};", config.theme.background_color)
+            } else {
+                let op = opacity.unwrap_or(1.0).clamp(0.0, 1.0);
+                if (op - 1.0).abs() < f64::EPSILON {
+                    format!("background-color: {}; background-image: url('{}'); background-size: cover; background-position: center; background-attachment: fixed;", config.theme.background_color, src)
+                } else {
+                    let overlay = format!("rgba(0,0,0,{:.2})", 1.0 - op);
+                    format!("background-color: {}; background-image: linear-gradient({overlay}, {overlay}), url('{}'); background-size: cover; background-position: center; background-attachment: fixed;", config.theme.background_color, src)
+                }
+            }
+        }
+        None => format!("background-color: {};", config.theme.background_color),
+    }
+}
+
+fn render_button_hover(style: &ButtonStyle, hover: &str, bg: &str) -> String {
+    match style {
+        ButtonStyle::Outline => format!("background-color: {hover}; color: {bg}; border-color: {hover};"),
+        _ => "opacity: 0.85; transform: translateY(-1px);".to_string(),
+    }
+}
+
+fn render_button_style(style: &ButtonStyle, accent: &str, bg: &str, text: &str) -> String {
+    match style {
+        ButtonStyle::Pill => format!(
+            "background-color: {accent}; color: {bg}; border: none; border-radius: 9999px;"
+        ),
+        ButtonStyle::Rounded => format!(
+            "background-color: {accent}; color: {bg}; border: none; border-radius: 12px;"
+        ),
+        ButtonStyle::Square => format!(
+            "background-color: {accent}; color: {bg}; border: none; border-radius: 0;"
+        ),
+        ButtonStyle::Outline => format!(
+            "background-color: transparent; color: {text}; border: 2px solid {accent}; border-radius: 8px;"
+        ),
+        ButtonStyle::Soft => format!(
+            "background-color: color-mix(in srgb, {accent} 12%, transparent); color: {accent}; border: none; border-radius: 12px;"
+        ),
+    }
+}
+
 fn commerce_provider_label(p: CommerceProvider) -> &'static str {
     match p {
         CommerceProvider::Stripe => "Stripe",
@@ -439,13 +512,37 @@ fn render_css(config: &Config) -> String {
     let bg = &config.theme.background_color;
     let text = &config.theme.text_color;
     let accent = &config.theme.accent_color;
+    let border = config.theme.border_color.as_deref().unwrap_or(accent);
+    let muted = config
+        .theme
+        .muted_color
+        .as_deref()
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| format!("color-mix(in srgb, {text} 55%, transparent)"));
+    let hover = config.theme.hover_color.as_deref().unwrap_or(accent);
+    let body_background = render_body_background(config);
+    let font_stack = config
+        .theme
+        .font_family
+        .as_deref()
+        .filter(|s| !s.trim().is_empty())
+        .map(|f| format!(r#"'{}', "#, f.trim()))
+        .unwrap_or_default();
+    let button_css = render_button_style(&config.theme.button_style, accent, bg, text);
+    let button_hover = render_button_hover(&config.theme.button_style, hover, bg);
+    let custom = config
+        .theme
+        .custom_css
+        .as_deref()
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or("");
     format!(
         r#"
 *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
 
 body {{
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background-color: {bg};
+    font-family: {font_stack}-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    {body_background}
     color: {text};
     min-height: 100vh;
     display: flex;
@@ -473,7 +570,7 @@ body {{
 
 .avatar {{ width: 80px; height: 80px; border-radius: 50%; object-fit: cover; }}
 .name {{ font-size: 1.25rem; font-weight: 700; }}
-.bio {{ font-size: 0.9rem; opacity: 0.7; }}
+.bio {{ font-size: 0.9rem; color: {muted}; }}
 
 .link-card {{
     display: flex;
@@ -481,15 +578,13 @@ body {{
     justify-content: center;
     width: 100%;
     padding: 16px 24px;
-    border: 2px solid {accent};
-    border-radius: 8px;
-    color: {text};
     text-decoration: none;
     font-weight: 600;
-    transition: background-color 0.15s;
+    transition: background-color 0.15s, transform 0.15s, opacity 0.15s;
     position: relative;
+    {button_css}
 }}
-.link-card:hover {{ background-color: {accent}; color: {bg}; }}
+.link-card:hover {{ {button_hover} }}
 
 .affiliate-card, .sponsored-card {{ justify-content: space-between; }}
 
@@ -531,14 +626,14 @@ body {{
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    border: 2px solid {accent};
+    border: 2px solid {border};
     color: {text};
     text-decoration: none;
     font-size: 0.7rem;
     font-weight: 700;
     transition: background-color 0.15s, color 0.15s;
 }}
-.social-btn:hover {{ background-color: {accent}; color: {bg}; }}
+.social-btn:hover {{ background-color: {hover}; color: {bg}; }}
 
 .image-block {{ max-width: 100%; height: auto; border-radius: 8px; }}
 
@@ -594,14 +689,14 @@ body {{
     flex-direction: column;
     gap: 8px;
     padding: 16px;
-    border: 2px solid {accent};
+    border: 2px solid {border};
     border-radius: 8px;
     background: rgba(0,0,0,0.02);
 }}
 .form-title {{ font-size: 0.95rem; font-weight: 600; }}
 .form-block input, .form-block textarea {{
     padding: 10px 12px;
-    border: 1px solid {accent};
+    border: 1px solid {border};
     border-radius: 6px;
     background: {bg};
     color: {text};
@@ -663,6 +758,25 @@ body {{
     background: rgba(0,0,0,0.06);
     margin-right: 8px;
 }}
+
+body.layout-featured #content > .link-card:first-of-type,
+body.layout-featured #content .profile + .link-card,
+body.layout-featured #content .profile + * + .link-card {{
+    padding: 28px 24px;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 20px color-mix(in srgb, {accent} 25%, transparent);
+}}
+
+@media (prefers-reduced-motion: reduce) {{
+    *, *::before, *::after {{
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }}
+}}
+
+{custom}
 "#
     )
 }

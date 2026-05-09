@@ -17,6 +17,30 @@ The format is intentionally simple:
 - Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Remove import-from-JSON feature — no clear use case without legacy CLI
 
+### Phase 12 — Theme Expansion
+
+- Extend Theme schema: optional `borderColor` / `mutedColor` /
+  `hoverColor` tokens (auto-fall back to accent / text-derived /
+  accent), `buttonStyle`, `layout`, `background`, `fontFamily`,
+  `customCss`
+- Button presets: outline (default — preserves existing look), pill,
+  rounded, square, soft
+- Layout variants: classic (current), featured (first card emphasized
+  with shadow + larger padding)
+- Backgrounds: solid color, linear gradient (from/to/direction), image
+  (assetPath or url + opacity overlay)
+- Google Fonts: set `fontFamily` to inject `<link>` tags + apply to
+  body font-stack at build time
+- Custom CSS escape hatch: arbitrary CSS appended to rendered `<style>`
+- Theme Bundle: JSON export/import in Design tab (community-shareable
+  preset format)
+- WCAG AA contrast warning when text/background ratio < 4.5:1
+- `prefers-reduced-motion` media query auto-disables transitions
+- Bump `schemaVersion` to 9
+
+Skipped vs roadmap (deferred): Unsplash picker (needs API), background
+video, complex animations.
+
 ### Phase 11 — AI Chat 편집
 
 - Add right-side AI Chat panel (toggles in/out of phone preview slot)
