@@ -1,6 +1,6 @@
 ---
 import { SearchCommand } from './SearchCommand';
-import LanguageSwitcher from './LanguageSwitcher.astro';
+import { LanguageSwitcher } from './LanguageSwitcher';
 import { getLangFromUrl, useTranslations, localizedHref, stripLocale } from '../i18n/utils';
 
 const GITHUB_URL = 'https://github.com/kidow/opentree';
@@ -51,7 +51,7 @@ function isActive(basePath: string) {
         </a>
       ))}
       <div class="ml-2 hidden sm:block">
-        <LanguageSwitcher />
+        <LanguageSwitcher client:idle lang={lang} pathname={Astro.url.pathname} />
       </div>
       <a
         href={GITHUB_URL}

@@ -472,6 +472,7 @@ video, complex animations.
 - Drop default model values from `/docs/ai-chat` (model names go stale; in-app picker is source of truth)
 - Split `/docs/blocks` into 4 category pages (Basic / Media / Forms & email / Commerce) with hub at `/docs/blocks`; sidebar gains nested children
 - Add Korean i18n: Astro `i18n` config (en at `/`, ko at `/ko/`), rewrite fallback so untranslated `/ko/*` routes serve English MDX under Korean chrome; bilingual catalog for chrome strings + LanguageSwitcher in header; Korean landing, download, and docs hub pages translated; hreflang + locale OG tags; SearchCommand lang-aware
+- Replace LanguageSwitcher pill toggle with a shadcn Select dropdown (Radix `@radix-ui/react-select` React island) — extensible for future locales beyond EN/KO
 
 ## v0.1.0 - 2026-03-08
 
