@@ -1,0 +1,166 @@
+---
+layout: ../../../layouts/DocsLayout.astro
+title: Basic blocks
+description: Lightweight building blocks with no external service — links, headings, text, social icons, custom HTML, and a container block.
+---
+
+These blocks need no API keys and connect to nothing external. They cover most of a typical link-in-bio page.
+
+## `link`
+
+A clickable link card.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `title` | `string` | yes |
+| `url`   | `string` | yes |
+
+```json
+{ "id": "1", "type": "link", "enabled": true, "title": "My Website", "url": "https://example.com" }
+```
+
+## `heading`
+
+A section title between blocks.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `text` | `string` | yes |
+
+```json
+{ "id": "2", "type": "heading", "enabled": true, "text": "Projects" }
+```
+
+## `text`
+
+A short paragraph of plain text.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `content` | `string` | yes |
+
+```json
+{ "id": "3", "type": "text", "enabled": true, "content": "Available for hire." }
+```
+
+## `footer`
+
+A small text line rendered at the bottom of the page.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `text` | `string` | yes |
+
+```json
+{ "id": "4", "type": "footer", "enabled": true, "text": "© 2026 Your Name" }
+```
+
+## `socials`
+
+A row of social icon links. Add multiple platforms per block.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `items` | `{ platform, url }[]` | yes |
+
+```json
+{
+  "id": "5",
+  "type": "socials",
+  "enabled": true,
+  "items": [
+    { "platform": "twitter", "url": "https://twitter.com/you" },
+    { "platform": "github", "url": "https://github.com/you" }
+  ]
+}
+```
+
+## `affiliate`
+
+A link card with built-in UTM parameters appended to the destination URL.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `title` | `string` | yes |
+| `url`   | `string` | yes |
+| `utm`   | `{ source, medium, campaign }` | no |
+
+```json
+{
+  "id": "6",
+  "type": "affiliate",
+  "enabled": true,
+  "title": "My favorite tool",
+  "url": "https://example.com/product",
+  "utm": { "source": "links", "medium": "bio", "campaign": "spring" }
+}
+```
+
+## `sponsored`
+
+A link card visually marked as sponsored content.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `title` | `string` | yes |
+| `url`   | `string` | yes |
+| `sponsor` | `string` | no |
+
+```json
+{
+  "id": "7",
+  "type": "sponsored",
+  "enabled": true,
+  "title": "Try Brand X",
+  "url": "https://brandx.example.com",
+  "sponsor": "Brand X"
+}
+```
+
+## `customHtml`
+
+An escape hatch — arbitrary HTML inserted into the page.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `html` | `string` | yes |
+
+```json
+{ "id": "8", "type": "customHtml", "enabled": true, "html": "<div>Hi</div>" }
+```
+
+> Use sparingly. Custom HTML bypasses the styling system and is not validated.
+
+## `languageSwitcher`
+
+Renders links to other locale variants of the page. See [Multi-locale](/docs/i18n).
+
+| Field | Type | Required |
+|-------|------|----------|
+| `style` | `"links" \| "select"` | no — default `links` |
+
+```json
+{ "id": "9", "type": "languageSwitcher", "enabled": true, "style": "links" }
+```
+
+## `collection`
+
+A container that holds other blocks (Link, Image, Music, Video, Pinterest only). Renders as a grid or carousel.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `layout`   | `"grid" \| "carousel"` | yes |
+| `children` | `Block[]`              | yes |
+
+```json
+{
+  "id": "10",
+  "type": "collection",
+  "enabled": true,
+  "layout": "grid",
+  "children": [
+    { "id": "10a", "type": "link", "enabled": true, "title": "A", "url": "https://a.example" },
+    { "id": "10b", "type": "link", "enabled": true, "title": "B", "url": "https://b.example" }
+  ]
+}
+```

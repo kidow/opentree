@@ -1,0 +1,93 @@
+---
+layout: ../../../layouts/DocsLayout.astro
+title: Commerce blocks
+description: Product cards, tip jars, and course links wired to hosted payment providers. No tokens stored — payments happen at the provider.
+---
+
+All commerce blocks render as plain `<a>` cards with provider-aware styling. Payments are processed entirely at the provider — Opentree never sees money or stores credentials. You just paste the hosted payment URL.
+
+## `commerce`
+
+A product card linking to a hosted payment page.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `provider`    | `"stripe" \| "gumroad" \| "lemonsqueezy" \| "polar"` | yes |
+| `url`         | `string` | yes |
+| `label`       | `string` | yes |
+| `description` | `string` | no |
+| `price`       | `string` | no |
+
+```json
+{
+  "id": "1",
+  "type": "commerce",
+  "enabled": true,
+  "provider": "gumroad",
+  "url": "https://yourname.gumroad.com/l/product",
+  "label": "My Product",
+  "description": "A short pitch.",
+  "price": "$29"
+}
+```
+
+### Where to get the URL
+
+| Provider     | URL source |
+|--------------|------------|
+| Stripe       | Stripe Dashboard → Payment Links → copy the link |
+| Gumroad      | Gumroad → Products → Share → copy product URL |
+| Lemon Squeezy | Lemon Squeezy → Products → Share → checkout link |
+| Polar        | Polar → Products → copy checkout URL |
+
+## `support`
+
+A donation or tip card.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `provider` | `"stripe" \| "kofi" \| "bmc" \| "paypal" \| "patreon"` | yes |
+| `url`      | `string` | yes |
+| `label`    | `string` | yes |
+
+```json
+{
+  "id": "2",
+  "type": "support",
+  "enabled": true,
+  "provider": "kofi",
+  "url": "https://ko-fi.com/yourname",
+  "label": "Buy me a coffee"
+}
+```
+
+| Provider key | Provider |
+|--------------|----------|
+| `stripe`     | Stripe Payment Link |
+| `kofi`       | Ko-fi |
+| `bmc`        | Buy Me a Coffee |
+| `paypal`     | PayPal donation link / PayPal.me |
+| `patreon`    | Patreon |
+
+## `course`
+
+An external course link with optional platform and price metadata.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `title`    | `string` | yes |
+| `url`      | `string` | yes |
+| `platform` | `string` | no — display label (e.g. `"Udemy"`, `"Maven"`) |
+| `price`    | `string` | no |
+
+```json
+{
+  "id": "3",
+  "type": "course",
+  "enabled": true,
+  "title": "Build a Rust desktop app",
+  "url": "https://courses.example.com/rust-desktop",
+  "platform": "Maven",
+  "price": "$199"
+}
+```

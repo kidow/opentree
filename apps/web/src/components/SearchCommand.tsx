@@ -28,6 +28,10 @@ const PAGES = [
 
 const DOCS = [
   { label: 'Block types', href: '/docs/blocks', icon: Layers },
+  { label: 'Basic blocks', href: '/docs/blocks/basic', icon: Layers },
+  { label: 'Media blocks', href: '/docs/blocks/media', icon: Layers },
+  { label: 'Forms & email blocks', href: '/docs/blocks/forms', icon: Layers },
+  { label: 'Commerce blocks', href: '/docs/blocks/commerce', icon: Layers },
   { label: 'Design', href: '/docs/design', icon: Palette },
   { label: 'AI editing', href: '/docs/ai-chat', icon: Sparkles },
   { label: 'Scheduling', href: '/docs/scheduling', icon: Calendar },

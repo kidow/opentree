@@ -1,0 +1,87 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+
+const cards = [
+  {
+    title: 'Basic blocks',
+    body: 'Links, headings, text, social icons, custom HTML, and other lightweight building blocks with no external service.',
+    href: '/docs/blocks/basic',
+    count: 10,
+  },
+  {
+    title: 'Media',
+    body: 'Image uploads, plus auto-embedded music, video, and Pinterest content.',
+    href: '/docs/blocks/media',
+    count: 4,
+  },
+  {
+    title: 'Forms & email',
+    body: 'Contact forms and email signups across multiple form/email providers.',
+    href: '/docs/blocks/forms',
+    count: 2,
+  },
+  {
+    title: 'Commerce',
+    body: 'Product cards, tip jars, and course links wired to hosted payment providers.',
+    href: '/docs/blocks/commerce',
+    count: 3,
+  },
+];
+---
+
+<DocsLayout
+  title="Block types"
+  description="19 user-addable block types organized into four categories. Pick a category to see field shapes, examples, and supported providers."
+>
+  <p>
+    Every entry in the <code>blocks</code> array of <code>opentree.config.json</code>
+    has at minimum:
+  </p>
+
+  <pre><code class="language-json">{`{ "id": "abc123", "type": "link", "enabled": true }`}</code></pre>
+
+  <p>
+    Per-type fields vary. The 19 block types below split into four categories — basic
+    blocks that need no external service, media embeds, forms / email signups, and
+    commerce cards. Pick a category for the field reference.
+  </p>
+
+  <div class="not-prose grid sm:grid-cols-2 gap-3 mt-10">
+    {cards.map((card) => (
+      <a
+        href={card.href}
+        class="group block p-5 rounded-xl border border-hairline dark:border-hairline-dark bg-canvas dark:bg-white/[0.02] hover:border-stone dark:hover:border-stone hover:bg-surface-soft dark:hover:bg-white/[0.05] transition-colors"
+      >
+        <div class="flex items-baseline justify-between mb-2">
+          <h3 class="text-base font-semibold text-ink dark:text-white group-hover:text-accent transition-colors">{card.title}</h3>
+          <span class="text-xs font-mono text-stone">{card.count} types</span>
+        </div>
+        <p class="text-sm text-stone leading-relaxed">{card.body}</p>
+      </a>
+    ))}
+  </div>
+
+  <h2>Common fields</h2>
+
+  <p>Every block has these three fields, regardless of type:</p>
+
+  <table>
+    <thead>
+      <tr><th>Field</th><th>Type</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>id</code></td><td><code>string</code></td><td>Stable unique id. Used by reorder + scheduling.</td></tr>
+      <tr><td><code>type</code></td><td><code>string</code></td><td>Discriminator — picks the variant. Listed on each category page.</td></tr>
+      <tr><td><code>enabled</code></td><td><code>boolean</code></td><td>Disabled blocks are kept but not rendered.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Profile is special</h2>
+
+  <p>
+    The <code>profile</code> block is always present at the top of the page and is
+    edited from the profile editor, not the block list. Its fields (<code>name</code>,
+    <code>bio</code>, <code>avatarUrl</code>) live on the top-level
+    <a href="/docs/schema">config</a>, not inside <code>blocks</code>.
+  </p>
+</DocsLayout>

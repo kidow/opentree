@@ -1,7 +1,18 @@
 ---
 const pathname = Astro.url.pathname.replace(/\/$/, '');
 
-const groups = [
+interface Item {
+  label: string;
+  href: string;
+  children?: { label: string; href: string }[];
+}
+
+interface Group {
+  title: string;
+  items: Item[];
+}
+
+const groups: Group[] = [
   {
     title: 'Overview',
     items: [{ label: 'Introduction', href: '/docs' }],
@@ -9,7 +20,16 @@ const groups = [
   {
     title: 'Editing',
     items: [
-      { label: 'Block types', href: '/docs/blocks' },
+      {
+        label: 'Block types',
+        href: '/docs/blocks',
+        children: [
+          { label: 'Basic', href: '/docs/blocks/basic' },
+          { label: 'Media', href: '/docs/blocks/media' },
+          { label: 'Forms & email', href: '/docs/blocks/forms' },
+          { label: 'Commerce', href: '/docs/blocks/commerce' },
+        ],
+      },
       { label: 'Design', href: '/docs/design' },
       { label: 'AI editing', href: '/docs/ai-chat' },
       { label: 'Scheduling', href: '/docs/scheduling' },
@@ -33,6 +53,8 @@ const groups = [
     ],
   },
 ];
+
+const isActive = (href: string) => pathname === href;
 ---
 
 <nav class="space-y-7 text-sm">
@@ -42,24 +64,40 @@ const groups = [
         {group.title}
       </p>
       <ul class="space-y-0.5">
-        {group.items.map((item) => {
-          const active = pathname === item.href;
-          return (
-            <li>
-              <a
-                href={item.href}
-                class:list={[
-                  'block px-3 py-1.5 rounded-md transition-colors',
-                  active
-                    ? 'text-accent font-medium bg-accent/10'
-                    : 'text-slate dark:text-stone hover:text-ink dark:hover:text-white hover:bg-surface dark:hover:bg-white/[0.04]',
-                ]}
-              >
-                {item.label}
-              </a>
-            </li>
-          );
-        })}
+        {group.items.map((item) => (
+          <li>
+            <a
+              href={item.href}
+              class:list={[
+                'block px-3 py-1.5 rounded-md transition-colors',
+                isActive(item.href)
+                  ? 'text-accent font-medium bg-accent/10'
+                  : 'text-slate dark:text-stone hover:text-ink dark:hover:text-white hover:bg-surface dark:hover:bg-white/[0.04]',
+              ]}
+            >
+              {item.label}
+            </a>
+            {item.children && (
+              <ul class="mt-0.5 ml-3 pl-3 border-l border-hairline dark:border-hairline-dark space-y-0.5">
+                {item.children.map((child) => (
+                  <li>
+                    <a
+                      href={child.href}
+                      class:list={[
+                        'block px-3 py-1.5 rounded-md transition-colors text-[13px]',
+                        isActive(child.href)
+                          ? 'text-accent font-medium bg-accent/10'
+                          : 'text-stone hover:text-ink dark:hover:text-white hover:bg-surface dark:hover:bg-white/[0.04]',
+                      ]}
+                    >
+                      {child.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))}
       </ul>
     </div>
   ))}

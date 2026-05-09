@@ -1,0 +1,96 @@
+---
+layout: ../../../layouts/DocsLayout.astro
+title: Media blocks
+description: Image uploads plus auto-embedded music, video, and Pinterest content.
+---
+
+Media blocks either reference a project asset (Image) or auto-embed by detecting the URL pattern (Music / Video / Pinterest). No API keys required — embeds use the providers' public iframe / oEmbed widgets.
+
+## `image`
+
+An image block. Supports either a project asset or an external URL. Optional click-through `url`.
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `assetPath` | `string` | yes | Relative path inside the project — usually `assets/...`. Imported via the in-app file picker, which dedupes by SHA-256 and resizes (avatar 512px, image 1920px, background 2560px). |
+| `alt`       | `string` | yes | Image alt text — required for accessibility. |
+| `url`       | `string` | no  | Wraps the image in an `<a>`. |
+
+```json
+{
+  "id": "1",
+  "type": "image",
+  "enabled": true,
+  "assetPath": "assets/product.jpg",
+  "alt": "Product screenshot",
+  "url": "https://product.example.com"
+}
+```
+
+## `music`
+
+Auto-embeds music players from URL patterns.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `url` | `string` | yes |
+
+Supported platforms (detected by URL pattern):
+
+| Platform   | URL formats |
+|------------|-------------|
+| Spotify    | track, album, playlist, artist, episode, show |
+| Apple Music | album, song, playlist, artist |
+| SoundCloud | track, set, user |
+
+```json
+{
+  "id": "2",
+  "type": "music",
+  "enabled": true,
+  "url": "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M"
+}
+```
+
+If the URL is not recognized, the block falls back to a plain link card.
+
+## `video`
+
+Auto-embeds video players from URL patterns.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `url` | `string` | yes |
+
+| Platform | URL formats |
+|----------|-------------|
+| YouTube  | `youtube.com/watch`, `youtu.be/<id>`, `youtube.com/shorts/<id>`, `youtube.com/embed/<id>` |
+| Vimeo    | `vimeo.com/<id>` |
+
+```json
+{
+  "id": "3",
+  "type": "video",
+  "enabled": true,
+  "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+}
+```
+
+If the URL is not recognized, the block falls back to a plain link card.
+
+## `pinterest`
+
+Embeds a Pinterest pin, board, or profile via the official `pinit.js` widget.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `url` | `string` | yes |
+
+```json
+{
+  "id": "4",
+  "type": "pinterest",
+  "enabled": true,
+  "url": "https://www.pinterest.com/pin/123456789/"
+}
+```

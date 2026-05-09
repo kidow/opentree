@@ -1,0 +1,81 @@
+---
+layout: ../../../layouts/DocsLayout.astro
+title: Forms & email
+description: Contact forms and email signups across multiple form / email providers. No tokens stored — provider IDs only.
+---
+
+Both block types submit to the provider's public endpoint. No API keys required and no tokens stored — just paste a form id (or full action URL) from your provider's dashboard.
+
+The renderer emits real HTML `<form>` elements (no JavaScript), so they keep working with JS disabled.
+
+## `form`
+
+A contact form with configurable fields.
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `provider`     | `string` | no | Provider hint — see table below. Defaults to Formspree when omitted. |
+| `formspreeId`  | `string` | when provider is `formspree` (or omitted) | Used to build `https://formspree.io/f/<id>` automatically. |
+| `actionUrl`    | `string` | when provider is anything else | Full submit URL — overrides `formspreeId`. |
+| `fields`       | `{ name, label, type, required }[]` | yes — at least one | `type` is `text`, `email`, or `textarea`. |
+| `submitLabel`  | `string` | no | Button text. Defaults to `Submit`. |
+
+### Supported providers
+
+| Provider key  | Action URL pattern |
+|---------------|--------------------|
+| `formspree`   | `https://formspree.io/f/<id>` (auto-built from `formspreeId`) |
+| `web3forms`   | `https://api.web3forms.com/submit` |
+| `basin`       | `https://usebasin.com/f/<id>` |
+| `getform`     | `https://getform.io/f/<id>` |
+| `custom`      | Whatever you put in `actionUrl` |
+
+```json
+{
+  "id": "1",
+  "type": "form",
+  "enabled": true,
+  "provider": "formspree",
+  "formspreeId": "abc123",
+  "submitLabel": "Get in touch",
+  "fields": [
+    { "name": "name", "label": "Your name", "type": "text", "required": true },
+    { "name": "email", "label": "Email", "type": "email", "required": true },
+    { "name": "message", "label": "Message", "type": "textarea", "required": true }
+  ]
+}
+```
+
+## `email`
+
+A single-email signup form.
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `provider`         | `string` | no | Provider hint. Defaults to Kit when omitted. |
+| `convertkitFormId` | `string` | when provider is `kit` (or omitted) | Used to build the Kit endpoint. |
+| `actionUrl`        | `string` | when provider is anything else | Full submit URL. |
+| `submitLabel`      | `string` | no | Button text. Defaults to `Subscribe`. |
+
+### Supported providers
+
+The email field name in the rendered form changes per provider so you don't have to think about it:
+
+| Provider key | Action URL | Email field name |
+|--------------|------------|------------------|
+| `kit`        | `https://app.kit.com/forms/<id>/subscriptions` (auto-built) | `email_address` |
+| `mailchimp`  | Your audience embed URL — paste in `actionUrl` | `EMAIL` |
+| `klaviyo`    | Your list signup URL — paste in `actionUrl` | `email` |
+| `buttondown` | `https://buttondown.email/api/emails/embed-subscribe/<username>` | `email` |
+| `custom`     | Whatever you put in `actionUrl` | Defaults to `email` |
+
+```json
+{
+  "id": "2",
+  "type": "email",
+  "enabled": true,
+  "provider": "kit",
+  "convertkitFormId": "1234567",
+  "submitLabel": "Subscribe"
+}
+```
