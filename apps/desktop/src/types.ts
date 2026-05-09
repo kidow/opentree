@@ -76,6 +76,12 @@ export interface Schedule {
   unpublishAt?: string;
 }
 
+export interface SeoConfig {
+  title?: string;
+  description?: string;
+  ogImage?: string;
+}
+
 export interface Config {
   schemaVersion: number;
   profile: Profile;
@@ -86,4 +92,6 @@ export interface Config {
   connections: string[];
   analytics?: AnalyticsConfig;
   schedules?: Record<string, Schedule>;
+  seo?: SeoConfig;
+  locale?: string;
 }

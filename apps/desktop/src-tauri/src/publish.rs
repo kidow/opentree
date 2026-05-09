@@ -231,7 +231,15 @@ pub async fn deploy_vercel(
     let mut files = vec![
         VercelFile { file: "index.html".to_string(), data: output.index_html, encoding: "utf-8".to_string() },
         VercelFile { file: "favicon.svg".to_string(), data: output.favicon_svg, encoding: "utf-8".to_string() },
+        VercelFile { file: "robots.txt".to_string(), data: output.robots_txt, encoding: "utf-8".to_string() },
     ];
+    if !output.sitemap_xml.is_empty() {
+        files.push(VercelFile {
+            file: "sitemap.xml".to_string(),
+            data: output.sitemap_xml,
+            encoding: "utf-8".to_string(),
+        });
+    }
     for (rel_path, bytes) in load_project_assets(project_path) {
         files.push(VercelFile {
             file: rel_path,
@@ -399,18 +407,28 @@ pub async fn deploy_cloudflare(
 
     let html_bytes = output.index_html.into_bytes();
     let svg_bytes = output.favicon_svg.into_bytes();
+    let robots_bytes = output.robots_txt.into_bytes();
     let html_hash = sha256_hex(&html_bytes);
     let svg_hash = sha256_hex(&svg_bytes);
+    let robots_hash = sha256_hex(&robots_bytes);
 
     let assets = load_project_assets(project_path);
     let mut manifest = serde_json::json!({
         "index.html": html_hash,
         "favicon.svg": svg_hash,
+        "robots.txt": robots_hash,
     });
     let mut parts: Vec<(String, Vec<u8>, &'static str)> = vec![
         (html_hash, html_bytes, "text/html"),
         (svg_hash, svg_bytes, "image/svg+xml"),
+        (robots_hash, robots_bytes, "text/plain"),
     ];
+    if !output.sitemap_xml.is_empty() {
+        let sitemap_bytes = output.sitemap_xml.into_bytes();
+        let sitemap_hash = sha256_hex(&sitemap_bytes);
+        manifest["sitemap.xml"] = serde_json::Value::String(sitemap_hash.clone());
+        parts.push((sitemap_hash, sitemap_bytes, "application/xml"));
+    }
     for (rel_path, bytes) in &assets {
         let hash = sha256_hex(bytes);
         manifest[rel_path.as_str()] = serde_json::Value::String(hash.clone());
@@ -576,6 +594,10 @@ pub async fn deploy_github_pages(
     ensure_gh_repo(&client, token, repo).await?;
     put_gh_file(&client, token, repo, "index.html", output.index_html.as_bytes()).await?;
     put_gh_file(&client, token, repo, "favicon.svg", output.favicon_svg.as_bytes()).await?;
+    put_gh_file(&client, token, repo, "robots.txt", output.robots_txt.as_bytes()).await?;
+    if !output.sitemap_xml.is_empty() {
+        put_gh_file(&client, token, repo, "sitemap.xml", output.sitemap_xml.as_bytes()).await?;
+    }
     for (rel_path, bytes) in load_project_assets(project_path) {
         put_gh_file(&client, token, repo, &rel_path, &bytes).await?;
     }

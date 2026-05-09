@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { useAppStore } from "../store";
+import { useT, useLang, type Lang } from "../i18n";
 
 interface Props {
   store: ReturnType<typeof useAppStore>;
@@ -107,6 +108,8 @@ function ProviderCard({
 
 export default function Settings({ store, projectPath }: Props) {
   const { config } = store;
+  const t = useT();
+  const [lang, setLang] = useLang();
   const siteUrlRef = useRef<HTMLInputElement>(null);
   const [connections, setConnections] = useState<Record<Provider, ConnState>>({
     vercel: { connected: false, masked: "" },
@@ -181,7 +184,7 @@ export default function Settings({ store, projectPath }: Props) {
   return (
     <main className="settings">
       <div className="settings-header">
-        <h2 className="settings-title">Settings</h2>
+        <h2 className="settings-title">{t("settings.title")}</h2>
       </div>
       <div className="settings-body">
 
@@ -299,7 +302,81 @@ export default function Settings({ store, projectPath }: Props) {
         </section>
 
         <section className="settings-section">
-          <h3 className="settings-section-title">사이트</h3>
+          <h3 className="settings-section-title">{t("settings.seo")}</h3>
+          <div className="settings-field">
+            <label className="settings-label">{t("seo.metaTitle")}</label>
+            <p className="settings-hint">{t("seo.metaTitleHint")}</p>
+            <input
+              type="text"
+              defaultValue={config.seo?.title ?? ""}
+              placeholder={config.profile.name}
+              onBlur={(e) => {
+                const v = e.target.value.trim() || undefined;
+                store.update({ ...config, seo: { ...(config.seo ?? {}), title: v } });
+              }}
+            />
+          </div>
+          <div className="settings-field">
+            <label className="settings-label">{t("seo.metaDescription")}</label>
+            <p className="settings-hint">{t("seo.metaDescriptionHint")}</p>
+            <input
+              type="text"
+              defaultValue={config.seo?.description ?? ""}
+              placeholder=""
+              onBlur={(e) => {
+                const v = e.target.value.trim() || undefined;
+                store.update({ ...config, seo: { ...(config.seo ?? {}), description: v } });
+              }}
+            />
+          </div>
+          <div className="settings-field">
+            <label className="settings-label">{t("seo.ogImage")}</label>
+            <p className="settings-hint">{t("seo.ogImageHint")}</p>
+            <input
+              type="url"
+              defaultValue={config.seo?.ogImage ?? ""}
+              placeholder="https://..."
+              onBlur={(e) => {
+                const v = e.target.value.trim() || undefined;
+                store.update({ ...config, seo: { ...(config.seo ?? {}), ogImage: v } });
+              }}
+            />
+          </div>
+          <div className="settings-field">
+            <label className="settings-label">{t("seo.locale")}</label>
+            <p className="settings-hint">{t("seo.localeHint")}</p>
+            <input
+              type="text"
+              defaultValue={config.locale ?? ""}
+              placeholder="en"
+              maxLength={5}
+              onBlur={(e) => {
+                const v = e.target.value.trim() || undefined;
+                store.update({ ...config, locale: v });
+              }}
+            />
+          </div>
+        </section>
+
+        <section className="settings-section">
+          <h3 className="settings-section-title">{t("settings.language")}</h3>
+          <div className="settings-field">
+            <p className="settings-hint">{t("settings.languageHint")}</p>
+            <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+              {(["ko", "en"] as Lang[]).map((l) => (
+                <button
+                  key={l}
+                  className={`provider-connect-btn`}
+                  style={{ background: lang === l ? "var(--accent)" : "var(--surface)", color: lang === l ? "white" : "var(--text)", border: "1px solid var(--border)", padding: "6px 14px" }}
+                  onClick={() => setLang(l)}
+                >{l === "ko" ? "한국어" : "English"}</button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="settings-section">
+          <h3 className="settings-section-title">{t("settings.site")}</h3>
           <div className="settings-field">
             <label className="settings-label">Site URL</label>
             <p className="settings-hint">배포 후 실제 URL. sitemap.xml, og 태그에 사용됩니다.</p>

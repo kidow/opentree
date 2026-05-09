@@ -17,6 +17,29 @@ The format is intentionally simple:
 - Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Remove import-from-JSON feature — no clear use case without legacy CLI
 
+### Phase 14 — i18n + SEO + a11y polish
+
+- Add `seo: {title, description, ogImage}` and `locale` fields to Config
+- Render injects: `<html lang>`, `<meta name="description">`,
+  Open Graph tags (`og:title/type/description/image/url`),
+  Twitter Card meta, JSON-LD `schema.org/Person` (with `sameAs` from
+  link blocks)
+- Build emits `robots.txt` (with sitemap reference if siteUrl set) and
+  `sitemap.xml` (when siteUrl set) — uploaded by all deploy providers
+  (Vercel utf-8, CF Pages SHA-256 multipart, GH Pages Contents API)
+  and copied on local export
+- Add visible `:focus-visible` outline on all interactive elements
+  using accent color (a11y)
+- Desktop UI i18n scaffold: `i18n.ts` with ko/en catalogs + `t()`,
+  `useT()`, `useLang()` hooks; localStorage-persisted; auto-detects
+  from `navigator.language`
+- Settings → SEO section (meta title / description / OG image / page
+  locale) and Language picker (한국어 / English)
+- Bump `schemaVersion` to 11
+
+Deferred from roadmap: multi-locale per project (`/ko` + `/en` builds
+with language switcher block) — Phase 14.2.
+
 ### Phase 13 — Link Scheduling
 
 - Add `schedules` field to Config: map of block id → `{publishAt, unpublishAt}`

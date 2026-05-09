@@ -19,6 +19,21 @@ pub struct Config {
     pub analytics: Option<AnalyticsConfig>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub schedules: HashMap<String, Schedule>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub seo: Option<SeoConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub locale: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SeoConfig {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub og_image: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -439,7 +454,7 @@ pub struct Theme {
 impl Config {
     pub fn default_config() -> Self {
         Config {
-            schema_version: 10,
+            schema_version: 11,
             profile: Profile { name: String::new(), bio: None, avatar_url: None },
             blocks: vec![
                 Block::Profile { id: Uuid::new_v4().to_string(), enabled: true },
@@ -468,6 +483,8 @@ impl Config {
             connections: Vec::new(),
             analytics: None,
             schedules: HashMap::new(),
+            seo: None,
+            locale: None,
         }
     }
 

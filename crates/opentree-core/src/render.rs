@@ -5,22 +5,37 @@ pub fn render_page(config: &Config) -> String {
     let analytics_head = render_analytics_head(config);
     let analytics_body = render_analytics_body(config);
     let google_font_link = render_google_font_link(config);
+    let seo_meta = render_seo_meta(config);
+    let json_ld = render_json_ld(config);
+    let lang = config.locale.as_deref().filter(|s| !s.is_empty()).unwrap_or("en");
+    let title = config
+        .seo
+        .as_ref()
+        .and_then(|s| s.title.clone())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| config.profile.name.clone());
     let layout_class = match config.theme.layout {
         LayoutStyle::Classic => "layout-classic",
         LayoutStyle::Featured => "layout-featured",
     };
     let markup = html! {
         (DOCTYPE)
-        html lang="en" {
+        html lang=(lang) {
             head {
                 meta charset="utf-8";
                 meta name="viewport" content="width=device-width, initial-scale=1";
-                title { (config.profile.name) }
+                title { (title) }
                 link rel="icon" type="image/svg+xml" href="/favicon.svg";
+                @if !seo_meta.is_empty() {
+                    (PreEscaped(seo_meta))
+                }
                 @if !google_font_link.is_empty() {
                     (PreEscaped(google_font_link))
                 }
                 style { (PreEscaped(render_css(config))) }
+                @if !json_ld.is_empty() {
+                    script type="application/ld+json" { (PreEscaped(json_ld)) }
+                }
                 @if !analytics_head.is_empty() {
                     (PreEscaped(analytics_head))
                 }
@@ -43,6 +58,125 @@ pub fn render_page(config: &Config) -> String {
         }
     };
     markup.into_string()
+}
+
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;").replace('\'', "&#39;")
+}
+
+fn render_seo_meta(config: &Config) -> String {
+    let title = config
+        .seo
+        .as_ref()
+        .and_then(|s| s.title.clone())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| config.profile.name.clone());
+    let description = config
+        .seo
+        .as_ref()
+        .and_then(|s| s.description.clone())
+        .or_else(|| config.profile.bio.clone())
+        .unwrap_or_default();
+    let og_image = config
+        .seo
+        .as_ref()
+        .and_then(|s| s.og_image.clone())
+        .or_else(|| config.profile.avatar_url.clone())
+        .unwrap_or_default();
+    let url = config.site_url.clone().unwrap_or_default();
+
+    let mut out = String::new();
+    if !description.is_empty() {
+        out.push_str(&format!("<meta name=\"description\" content=\"{}\">\n", html_escape(&description)));
+    }
+    out.push_str(&format!("<meta property=\"og:title\" content=\"{}\">\n", html_escape(&title)));
+    out.push_str(&format!("<meta property=\"og:type\" content=\"profile\">\n"));
+    if !description.is_empty() {
+        out.push_str(&format!("<meta property=\"og:description\" content=\"{}\">\n", html_escape(&description)));
+    }
+    if !og_image.is_empty() {
+        out.push_str(&format!("<meta property=\"og:image\" content=\"{}\">\n", html_escape(&og_image)));
+    }
+    if !url.is_empty() {
+        out.push_str(&format!("<meta property=\"og:url\" content=\"{}\">\n", html_escape(&url)));
+    }
+    out.push_str(&format!("<meta name=\"twitter:card\" content=\"{}\">\n", if og_image.is_empty() { "summary" } else { "summary_large_image" }));
+    out.push_str(&format!("<meta name=\"twitter:title\" content=\"{}\">\n", html_escape(&title)));
+    if !description.is_empty() {
+        out.push_str(&format!("<meta name=\"twitter:description\" content=\"{}\">\n", html_escape(&description)));
+    }
+    if !og_image.is_empty() {
+        out.push_str(&format!("<meta name=\"twitter:image\" content=\"{}\">\n", html_escape(&og_image)));
+    }
+    out
+}
+
+fn render_json_ld(config: &Config) -> String {
+    let name = &config.profile.name;
+    if name.trim().is_empty() {
+        return String::new();
+    }
+    let mut obj = serde_json::json!({
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "name": name,
+    });
+    if let Some(bio) = &config.profile.bio {
+        if !bio.is_empty() {
+            obj["description"] = serde_json::Value::String(bio.clone());
+        }
+    }
+    if let Some(avatar) = &config.profile.avatar_url {
+        if !avatar.is_empty() {
+            obj["image"] = serde_json::Value::String(avatar.clone());
+        }
+    }
+    if let Some(url) = &config.site_url {
+        if !url.is_empty() {
+            obj["url"] = serde_json::Value::String(url.clone());
+        }
+    }
+    let urls: Vec<String> = config
+        .blocks
+        .iter()
+        .filter_map(|b| match b {
+            Block::Link { url, .. } | Block::Affiliate { url, .. } | Block::Sponsored { url, .. } => Some(url.clone()),
+            _ => None,
+        })
+        .filter(|u| !u.is_empty())
+        .collect();
+    if !urls.is_empty() {
+        obj["sameAs"] = serde_json::Value::Array(urls.into_iter().map(serde_json::Value::String).collect());
+    }
+    serde_json::to_string(&obj).unwrap_or_default()
+}
+
+pub fn render_sitemap(config: &Config) -> String {
+    let url = match config.site_url.as_deref().filter(|s| !s.is_empty()) {
+        Some(u) => u.trim_end_matches('/').to_string(),
+        None => return String::new(),
+    };
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>{}/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>
+"#,
+        html_escape(&url)
+    )
+}
+
+pub fn render_robots(config: &Config) -> String {
+    let mut out = String::from("User-agent: *\nAllow: /\n");
+    if let Some(url) = config.site_url.as_deref().filter(|s| !s.is_empty()) {
+        let trimmed = url.trim_end_matches('/');
+        out.push_str(&format!("Sitemap: {trimmed}/sitemap.xml\n"));
+    }
+    out
 }
 
 fn render_scheduled_wrapper(block: &Block, config: &Config) -> maud::Markup {
@@ -798,6 +932,12 @@ body.layout-featured #content .profile + * + .link-card {{
 
 .scheduled {{ display: contents; }}
 .scheduled.scheduled-hidden {{ display: none !important; }}
+
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {{
+    outline: 2px solid {accent};
+    outline-offset: 2px;
+    border-radius: 4px;
+}}
 
 @media (prefers-reduced-motion: reduce) {{
     *, *::before, *::after {{

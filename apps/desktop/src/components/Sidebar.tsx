@@ -1,3 +1,5 @@
+import { useT } from "../i18n";
+
 type Tab = "links" | "design" | "settings" | "publish" | "stats";
 
 interface Props {
@@ -15,6 +17,7 @@ interface Props {
 }
 
 export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExport, canUndo, canRedo, onUndo, onRedo, chatOpen, onToggleChat }: Props) {
+  const t = useT();
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
@@ -26,50 +29,50 @@ export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExpor
           className={`sidebar-nav-item ${activeTab === "links" ? "active" : ""}`}
           onClick={() => onTabChange("links")}
         >
-          Links
+          {t("tab.links")}
         </button>
         <button
           className={`sidebar-nav-item ${activeTab === "design" ? "active" : ""}`}
           onClick={() => onTabChange("design")}
         >
-          Design
+          {t("tab.design")}
         </button>
         <button
           className={`sidebar-nav-item ${activeTab === "publish" ? "active" : ""}`}
           onClick={() => onTabChange("publish")}
         >
-          Publish
+          {t("tab.publish")}
         </button>
         <button
           className={`sidebar-nav-item ${activeTab === "stats" ? "active" : ""}`}
           onClick={() => onTabChange("stats")}
         >
-          Stats
+          {t("tab.stats")}
         </button>
         <button
           className={`sidebar-nav-item ${activeTab === "settings" ? "active" : ""}`}
           onClick={() => onTabChange("settings")}
         >
-          Settings
+          {t("tab.settings")}
         </button>
       </nav>
       <div className="sidebar-actions">
         <button
           className={`sidebar-chat-btn${chatOpen ? " active" : ""}`}
           onClick={onToggleChat}
-          title="AI Chat 토글"
+          title="AI Chat"
         >
-          {chatOpen ? "✕ Chat 닫기" : "✨ AI Chat"}
+          {chatOpen ? t("action.closeChat") : t("action.aiChat")}
         </button>
         <div className="undo-redo-row">
           <button className="undo-redo-btn" onClick={onUndo} disabled={!canUndo} title="실행 취소 (⌘Z)">↩</button>
           <button className="undo-redo-btn" onClick={onRedo} disabled={!canRedo} title="다시 실행 (⌘⇧Z)">↪</button>
         </div>
         <button className="sidebar-save-btn" onClick={onSave} disabled={!dirty}>
-          저장 {dirty ? "•" : ""}
+          {t("action.save")} {dirty ? "•" : ""}
         </button>
         <button className="sidebar-export-btn" onClick={onExport}>
-          내보내기
+          {t("action.export")}
         </button>
       </div>
       <style>{`
