@@ -1,0 +1,155 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Design
+description: Theme reference — colors, button styles, layouts, backgrounds, fonts, custom CSS.
+---
+
+The **Design** tab controls how your published page looks. Everything here maps to the `theme` field of `opentree.config.json`.
+
+## Required colors
+
+```json
+{
+  "accentColor": "#16a34a",
+  "backgroundColor": "#ffffff",
+  "textColor": "#0a0a0a"
+}
+```
+
+| Field | Notes |
+|-------|-------|
+| `accentColor`     | Primary action color — buttons, links, focus rings. |
+| `backgroundColor` | Page background. |
+| `textColor`       | Default text color. |
+
+All colors must be 6-character hex strings.
+
+## Optional colors
+
+These derive from the required colors when absent. Override only when the auto-fallback doesn't suit your palette.
+
+| Field | Defaults to |
+|-------|-------------|
+| `borderColor` | accent at low opacity |
+| `mutedColor`  | text-derived (60% opacity equivalent) |
+| `hoverColor`  | accent at slightly different lightness |
+
+## `buttonStyle`
+
+Controls the shape of clickable cards (links, commerce, etc.).
+
+| Value | Look |
+|-------|------|
+| `outline` | 1px border, transparent fill (default — preserves classic Linktree feel) |
+| `pill`    | Fully rounded, accent-tinted fill |
+| `rounded` | Mid-rounded corners with subtle shadow |
+| `square`  | Sharp corners, flat fill |
+| `soft`    | Rounded corners, low-saturation accent fill |
+
+```json
+{ "buttonStyle": "pill" }
+```
+
+## `layout`
+
+Controls how blocks stack.
+
+| Value | Effect |
+|-------|--------|
+| `classic`  | Equal cards, top to bottom (default). |
+| `featured` | First card emphasized — larger padding, drop shadow, slightly bigger type. |
+
+```json
+{ "layout": "featured" }
+```
+
+## `background`
+
+Replaces the flat `backgroundColor` with something richer. Four variants:
+
+### Solid
+
+Same as `backgroundColor` — useful when you want to leave `backgroundColor` for fallback compatibility.
+
+```json
+{ "background": { "type": "solid", "color": "#fafafa" } }
+```
+
+### Gradient
+
+Linear gradient between two colors.
+
+```json
+{
+  "background": {
+    "type": "gradient",
+    "from": "#dcfce7",
+    "to": "#fefce8",
+    "direction": "to bottom"
+  }
+}
+```
+
+`direction` accepts any CSS gradient direction (`to bottom`, `45deg`, `to right`, etc.).
+
+### Image
+
+A project asset or external URL with an optional opacity overlay.
+
+```json
+{
+  "background": {
+    "type": "image",
+    "assetPath": "assets/bg.jpg",
+    "opacity": 0.5,
+    "attribution": "Photo by Jane Doe"
+  }
+}
+```
+
+Either `assetPath` (project file) or `url` (external) is required. `attribution` renders as small text in the page footer.
+
+### Video
+
+A looping background video.
+
+```json
+{
+  "background": {
+    "type": "video",
+    "assetPath": "assets/loop.mp4",
+    "poster": "assets/poster.jpg",
+    "opacity": 0.7
+  }
+}
+```
+
+## `fontFamily`
+
+Set this to a Google Font name. The renderer injects the appropriate `<link>` tags and applies the font to the body stack at build time.
+
+```json
+{ "fontFamily": "Inter" }
+```
+
+Common picks: `Inter`, `Manrope`, `Geist`, `JetBrains Mono`, `Playfair Display`.
+
+## `customCss`
+
+An escape hatch — arbitrary CSS appended to the page's `<style>` block.
+
+```json
+{
+  "customCss": ".op-link { letter-spacing: -0.02em; }"
+}
+```
+
+Use sparingly. The renderer applies your CSS *after* its own, so specificity may matter.
+
+## Theme bundles
+
+The Design tab has **Export** and **Import** buttons that read/write a standalone `theme.json` file. Useful for sharing presets across projects or with the community.
+
+## Accessibility
+
+The app shows a contrast warning in the Design tab when your `textColor` / `backgroundColor` ratio drops below WCAG AA (4.5:1). Published pages also respect `prefers-reduced-motion` — transitions are auto-disabled for users who request it.

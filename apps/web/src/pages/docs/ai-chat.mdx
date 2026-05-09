@@ -1,0 +1,81 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: AI editing
+description: Edit your link page with Claude or GPT. Tool-driven, preview-then-apply, pay your own provider.
+---
+
+Open the **AI Chat** panel from the right sidebar (it slides in over the phone preview). Type a request and the model proposes block edits via tool calls. Every change shows up as a *pending preview* — you click **Apply** to commit it to the undo stack, or **Cancel** to revert.
+
+## Setup
+
+### 1. Pick a provider
+
+Two backends are supported:
+
+| Provider | Model default |
+|----------|---------------|
+| Anthropic | `claude-sonnet-4-5-20250929` |
+| OpenAI    | `gpt-4o-mini` |
+
+You pay your own provider — Opentree just makes API calls with your key.
+
+### 2. Add your API key
+
+1. Open **Settings → 연결 (Connections) → AI**.
+2. Paste your **Anthropic** or **OpenAI** API key.
+3. The key is stored in your OS Keychain. It is never written to `opentree.config.json`.
+
+Get keys from:
+- Anthropic: [console.anthropic.com](https://console.anthropic.com/settings/keys)
+- OpenAI: [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+
+### 3. Open the chat
+
+Toggle the AI panel from the editor toolbar. The panel sees your current config JSON and exposes the tools below.
+
+## Tools the model can call
+
+The AI doesn't edit your file directly. Instead it requests changes through these tools:
+
+| Tool | Arguments |
+|------|-----------|
+| `add_block`       | `{ block: Block }` — full block object including type and id |
+| `edit_block`      | `{ id: string, fields: Partial<Block> }` |
+| `delete_block`    | `{ id: string }` |
+| `reorder_blocks`  | `{ ids: string[] }` — full ordered list of block ids |
+| `toggle_block`    | `{ id: string, enabled: boolean }` |
+| `update_theme`    | `{ fields: Partial<Theme> }` |
+| `update_profile`  | `{ fields: Partial<Profile> }` |
+| `set_schedule`    | `{ id: string, publishAt?: string, unpublishAt?: string }` — RFC3339 UTC |
+
+Each call renders as a diff in the preview before you commit it.
+
+## Workflow
+
+1. Type a request: *"Add my GitHub and Twitter to the socials block"*, *"Make all buttons pill-shaped"*, *"Schedule the announcement block to publish next Monday at 9am UTC"*.
+2. The model responds with one or more tool calls.
+3. The phone preview live-updates with the proposed change.
+4. Click **Apply** to keep it (added to undo history) or **Cancel** to revert.
+
+Apply commits go through the same undo stack as manual edits — `Cmd/Ctrl+Z` works on AI-applied changes too.
+
+## What the AI sees
+
+On every turn, the model receives:
+
+- The current `opentree.config.json` (entire file)
+- The conversation history in this chat
+- The tool definitions above
+
+It does **not** see:
+- Your API tokens or Keychain entries
+- Other projects or files on your disk
+- Network history or analytics data
+
+## Cost notes
+
+Tool calls use a moderate amount of tokens (full config sent per turn). A typical edit session burns 5–20k input tokens. Both providers offer free tiers / low-cost models if you don't need top-tier quality — switch the model in **Settings → AI**.
+
+## Disabling
+
+Remove the API key in **Settings → 연결 → AI** to disable the panel. The panel will refuse to send requests until a key is present.

@@ -1,0 +1,207 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Block types
+description: All 20 block types you can drop into your link-in-bio page, grouped by category.
+---
+
+Every entry in `blocks` has at minimum:
+
+```json
+{ "id": "abc123", "type": "link", "enabled": true }
+```
+
+Per-type fields are below. JSON keys use camelCase. All blocks are added through the **Links** tab — you rarely need to write them by hand.
+
+## Basic
+
+### `profile`
+
+A header card showing your name, bio, and avatar. Always present at the top — managed in the profile editor, not the block list.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `enabled` | `boolean` | yes |
+
+### `link`
+
+A clickable link card.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `title` | `string` | yes |
+| `url`   | `string` | yes |
+
+### `heading`
+
+A section title between blocks.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `text` | `string` | yes |
+
+### `text`
+
+A short paragraph of plain text.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `content` | `string` | yes |
+
+### `footer`
+
+A small text line rendered at the bottom of the page.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `text` | `string` | yes |
+
+## Media
+
+### `image`
+
+An image block. Supports either a project asset or an external URL. Optional click-through `url`.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `assetPath` | `string` | yes — relative path inside the project (`assets/...`) |
+| `alt`       | `string` | yes |
+| `url`       | `string` | no — wraps the image in an `<a>` |
+
+### `music`
+
+Auto-embeds Spotify (track/album/playlist/artist/episode/show), Apple Music, or SoundCloud.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `url` | `string` | yes |
+
+### `video`
+
+Auto-embeds YouTube (watch / youtu.be / shorts / embed) or Vimeo.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `url` | `string` | yes |
+
+### `pinterest`
+
+Embeds a Pinterest pin, board, or profile via the official `pinit.js` widget.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `url` | `string` | yes |
+
+## Social
+
+### `socials`
+
+A row of social icon links (Twitter, GitHub, Instagram, etc.). Add multiple platforms per block.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `items` | `{ platform, url }[]` | yes |
+
+### `affiliate`
+
+A link block with built-in UTM tracking parameters appended to the destination URL.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `title` | `string` | yes |
+| `url`   | `string` | yes |
+| `utm`   | `{ source, medium, campaign }` | no |
+
+### `sponsored`
+
+A link block visually marked as sponsored content.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `title` | `string` | yes |
+| `url`   | `string` | yes |
+| `sponsor` | `string` | no |
+
+### `languageSwitcher`
+
+Shows links to other locale variants of the page. See [Multi-locale](/docs/i18n).
+
+| Field | Type | Required |
+|-------|------|----------|
+| `style` | `"links" \| "select"` | no — default `links` |
+
+## Form & Email
+
+### `form`
+
+Submits to Formspree. No tokens needed — you only need a Formspree form id.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `formspreeId` | `string` | yes |
+| `fields` | `{ name, label, type, required }[]` | yes — at least one |
+
+`type` is `text`, `email`, or `textarea`.
+
+### `email`
+
+A single-email signup form for ConvertKit / Kit.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `convertkitFormId` | `string` | yes |
+
+## Commerce
+
+### `commerce`
+
+A product card linking to a hosted payment page. No tokens stored — payment happens at the provider.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `provider` | `"stripe" \| "gumroad" \| "lemonsqueezy" \| "polar"` | yes |
+| `url`   | `string` | yes |
+| `label` | `string` | yes |
+| `description` | `string` | no |
+| `price` | `string` | no |
+
+### `support`
+
+A donation/tip card.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `provider` | `"stripe" \| "kofi" \| "bmc" \| "paypal" \| "patreon"` | yes |
+| `url`   | `string` | yes |
+| `label` | `string` | yes |
+
+### `course`
+
+An external course link with optional platform and price metadata.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `title` | `string` | yes |
+| `url`   | `string` | yes |
+| `platform` | `string` | no |
+| `price` | `string` | no |
+
+## Utility
+
+### `collection`
+
+A grid or carousel containing other blocks (Link, Image, Music, Video, Pinterest only).
+
+| Field | Type | Required |
+|-------|------|----------|
+| `layout` | `"grid" \| "carousel"` | yes |
+| `children` | `Block[]` | yes |
+
+### `customHtml`
+
+An escape hatch — arbitrary HTML inserted into the page.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `html` | `string` | yes |
+
+> Use sparingly. Custom HTML bypasses the styling system and is not validated.
