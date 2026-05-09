@@ -213,6 +213,22 @@ function BlockLabel({ block, profile }: { block: Block; profile: Profile }) {
           <span className="block-value">{block.children.length}개 항목</span>
         </>
       );
+    case "form":
+      return (
+        <>
+          <span className="block-type-label">Form · Formspree</span>
+          <span className="block-value">{block.title || "(제목 없음)"} · {block.fields.length}개 필드</span>
+          {block.formspreeId && <span className="block-url">formspree.io/f/{block.formspreeId}</span>}
+        </>
+      );
+    case "email":
+      return (
+        <>
+          <span className="block-type-label">Email · ConvertKit</span>
+          <span className="block-value">{block.title || "(제목 없음)"}</span>
+          {block.convertkitFormId && <span className="block-url">form: {block.convertkitFormId}</span>}
+        </>
+      );
   }
 }
 
@@ -528,6 +544,130 @@ function BlockEditor({
               defaultValue={block.url}
               placeholder="https://pinterest.com/... (핀/보드)"
               onBlur={(e) => onUpdate({ url: e.target.value } as Partial<Block>)}
+            />
+          </div>
+        </div>
+      );
+    case "form": {
+      const fields = block.fields;
+      return (
+        <div className="block-edit-form">
+          <div>
+            <div className="block-edit-label">Formspree Form ID</div>
+            <input
+              defaultValue={block.formspreeId}
+              placeholder="xpzgkqyz (formspree.io 대시보드에서 복사)"
+              onBlur={(e) => onUpdate({ formspreeId: e.target.value.trim() } as Partial<Block>)}
+            />
+          </div>
+          <div>
+            <div className="block-edit-label">제목</div>
+            <input
+              defaultValue={block.title}
+              placeholder="문의하기"
+              onBlur={(e) => onUpdate({ title: e.target.value } as Partial<Block>)}
+            />
+          </div>
+          <div>
+            <div className="block-edit-label">전송 버튼 라벨</div>
+            <input
+              defaultValue={block.submitLabel}
+              placeholder="Send"
+              onBlur={(e) => onUpdate({ submitLabel: e.target.value } as Partial<Block>)}
+            />
+          </div>
+          <div>
+            <div className="block-edit-label">필드</div>
+            {fields.map((field, i) => (
+              <div key={i} className="block-row" style={{ marginBottom: 4, flexWrap: "wrap" }}>
+                <input
+                  defaultValue={field.name}
+                  placeholder="name (필드 이름)"
+                  style={{ flex: 1 }}
+                  onBlur={(e) => {
+                    const next = fields.map((f, j) => j === i ? { ...f, name: e.target.value } : f);
+                    onUpdate({ fields: next } as Partial<Block>);
+                  }}
+                />
+                <input
+                  defaultValue={field.label}
+                  placeholder="라벨 (placeholder)"
+                  style={{ flex: 1 }}
+                  onBlur={(e) => {
+                    const next = fields.map((f, j) => j === i ? { ...f, label: e.target.value } : f);
+                    onUpdate({ fields: next } as Partial<Block>);
+                  }}
+                />
+                <select
+                  defaultValue={field.fieldType}
+                  onChange={(e) => {
+                    const next = fields.map((f, j) => j === i ? { ...f, fieldType: e.target.value as "text" | "email" | "textarea" } : f);
+                    onUpdate({ fields: next } as Partial<Block>);
+                  }}
+                >
+                  <option value="text">text</option>
+                  <option value="email">email</option>
+                  <option value="textarea">textarea</option>
+                </select>
+                <label style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 2 }}>
+                  <input
+                    type="checkbox"
+                    defaultChecked={field.required}
+                    onChange={(e) => {
+                      const next = fields.map((f, j) => j === i ? { ...f, required: e.target.checked } : f);
+                      onUpdate({ fields: next } as Partial<Block>);
+                    }}
+                  />필수
+                </label>
+                <button
+                  className="block-row-del"
+                  onClick={() => onUpdate({ fields: fields.filter((_, j) => j !== i) } as Partial<Block>)}
+                >✕</button>
+              </div>
+            ))}
+            <button
+              className="block-add-item-btn"
+              onClick={() => onUpdate({
+                fields: [...fields, { name: "", label: "", fieldType: "text", required: false }],
+              } as Partial<Block>)}
+            >+ 필드 추가</button>
+          </div>
+        </div>
+      );
+    }
+    case "email":
+      return (
+        <div className="block-edit-form">
+          <div>
+            <div className="block-edit-label">ConvertKit/Kit Form ID</div>
+            <input
+              defaultValue={block.convertkitFormId}
+              placeholder="1234567 (Kit 대시보드 → Form → Embed에서 확인)"
+              onBlur={(e) => onUpdate({ convertkitFormId: e.target.value.trim() } as Partial<Block>)}
+            />
+          </div>
+          <div>
+            <div className="block-edit-label">제목</div>
+            <input
+              defaultValue={block.title}
+              placeholder="뉴스레터 가입"
+              onBlur={(e) => onUpdate({ title: e.target.value } as Partial<Block>)}
+            />
+          </div>
+          <div>
+            <div className="block-edit-label">이메일 placeholder</div>
+            <input
+              defaultValue={block.placeholder}
+              placeholder="you@example.com"
+              onBlur={(e) => onUpdate({ placeholder: e.target.value } as Partial<Block>)}
+            />
+          </div>
+          <div>
+            <div className="block-edit-label">전송 버튼 라벨</div>
+            <input
+              defaultValue={block.submitLabel}
+              placeholder="Subscribe"
+              onBlur={(e) => onUpdate({ submitLabel: e.target.value } as Partial<Block>)}
             />
           </div>
         </div>

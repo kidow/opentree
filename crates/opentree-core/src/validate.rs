@@ -51,6 +51,14 @@ pub enum ValidationError {
     InvalidPinterestUrl { id: String },
     #[error("block {id}: collection child type {child_type} is not allowed")]
     InvalidCollectionChild { id: String, child_type: String },
+    #[error("block {id}: formspree form id is required")]
+    MissingFormspreeId { id: String },
+    #[error("block {id}: form must have at least one field")]
+    EmptyFormFields { id: String },
+    #[error("block {id}: form field name is required")]
+    MissingFormFieldName { id: String },
+    #[error("block {id}: convertkit form id is required")]
+    MissingConvertkitFormId { id: String },
 }
 
 pub fn validate(config: &Config) -> Vec<ValidationError> {
@@ -145,6 +153,24 @@ pub fn validate(config: &Config) -> Vec<ValidationError> {
                     errors.push(ValidationError::InvalidPinterestUrl { id: id.clone() });
                 }
             }
+            Block::Form { id, formspree_id, fields, .. } => {
+                if formspree_id.trim().is_empty() {
+                    errors.push(ValidationError::MissingFormspreeId { id: id.clone() });
+                }
+                if fields.is_empty() {
+                    errors.push(ValidationError::EmptyFormFields { id: id.clone() });
+                }
+                for field in fields {
+                    if field.name.trim().is_empty() {
+                        errors.push(ValidationError::MissingFormFieldName { id: id.clone() });
+                    }
+                }
+            }
+            Block::Email { id, convertkit_form_id, .. } => {
+                if convertkit_form_id.trim().is_empty() {
+                    errors.push(ValidationError::MissingConvertkitFormId { id: id.clone() });
+                }
+            }
             Block::Collection { id, children, .. } => {
                 for child in children {
                     let allowed = matches!(
@@ -186,6 +212,8 @@ fn child_type_name(b: &Block) -> &'static str {
         Block::Video { .. } => "video",
         Block::Pinterest { .. } => "pinterest",
         Block::Collection { .. } => "collection",
+        Block::Form { .. } => "form",
+        Block::Email { .. } => "email",
     }
 }
 

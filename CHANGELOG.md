@@ -17,6 +17,20 @@ The format is intentionally simple:
 - Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Remove import-from-JSON feature — no clear use case without legacy CLI
 
+### Phase 8 — Forms + Email
+
+- Add `form` block type — submits to Formspree (`https://formspree.io/f/<id>`)
+  with configurable fields (name + label + type: text/email/textarea + required)
+- Add `email` block type — submits to ConvertKit/Kit
+  (`https://app.kit.com/forms/<id>/subscriptions`); single email field signup form
+- No tokens or provider connections needed — both endpoints are public
+  by design and meant for embed in static sites
+- Render produces real HTML `<form>` elements (no JavaScript), so they
+  work even with JS disabled
+- Add validation: form requires formspreeId + ≥1 field with name; email
+  requires convertkitFormId
+- Bump `schemaVersion` to 6
+
 ### Phase 7 — Block Expansion B (Embed)
 
 - Add 4 new block types: Music, Video, Pinterest, Collection

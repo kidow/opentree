@@ -1,5 +1,5 @@
 use maud::{html, PreEscaped, DOCTYPE};
-use crate::config::{Block, CollectionLayout, Config, OembedCache};
+use crate::config::{Block, CollectionLayout, Config, FormFieldType, OembedCache};
 
 pub fn render_page(config: &Config) -> String {
     let markup = html! {
@@ -131,6 +131,55 @@ fn render_block(block: &Block, config: &Config) -> maud::Markup {
                             (render_block(child, config))
                         }
                     }
+                }
+            }
+        }
+
+        Block::Form { formspree_id, title, submit_label, fields, .. } => {
+            let action = format!("https://formspree.io/f/{formspree_id}");
+            let submit = if submit_label.is_empty() { "Send" } else { submit_label.as_str() };
+            html! {
+                form class="form-block" action=(action) method="POST" {
+                    @if !title.is_empty() { h3 class="form-title" { (title) } }
+                    @for field in fields {
+                        @match field.field_type {
+                            FormFieldType::Textarea => {
+                                textarea
+                                    name=(field.name)
+                                    placeholder=(field.label)
+                                    rows="4"
+                                    required[field.required] {}
+                            },
+                            FormFieldType::Email => {
+                                input
+                                    type="email"
+                                    name=(field.name)
+                                    placeholder=(field.label)
+                                    required[field.required];
+                            },
+                            FormFieldType::Text => {
+                                input
+                                    type="text"
+                                    name=(field.name)
+                                    placeholder=(field.label)
+                                    required[field.required];
+                            },
+                        }
+                    }
+                    button type="submit" class="form-submit" { (submit) }
+                }
+            }
+        }
+
+        Block::Email { convertkit_form_id, title, submit_label, placeholder, .. } => {
+            let action = format!("https://app.kit.com/forms/{convertkit_form_id}/subscriptions");
+            let submit = if submit_label.is_empty() { "Subscribe" } else { submit_label.as_str() };
+            let ph = if placeholder.is_empty() { "you@example.com" } else { placeholder.as_str() };
+            html! {
+                form class="form-block email-block" action=(action) method="POST" target="_blank" {
+                    @if !title.is_empty() { h3 class="form-title" { (title) } }
+                    input type="email" name="email_address" placeholder=(ph) required;
+                    button type="submit" class="form-submit" { (submit) }
                 }
             }
         }
@@ -433,6 +482,44 @@ body {{
     flex: 0 0 80%;
     scroll-snap-align: start;
 }}
+
+.form-block {{
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    border: 2px solid {accent};
+    border-radius: 8px;
+    background: rgba(0,0,0,0.02);
+}}
+.form-title {{ font-size: 0.95rem; font-weight: 600; }}
+.form-block input, .form-block textarea {{
+    padding: 10px 12px;
+    border: 1px solid {accent};
+    border-radius: 6px;
+    background: {bg};
+    color: {text};
+    font-family: inherit;
+    font-size: 0.9rem;
+    width: 100%;
+    box-sizing: border-box;
+}}
+.form-block textarea {{ resize: vertical; min-height: 80px; }}
+.form-submit {{
+    padding: 10px 16px;
+    background: {accent};
+    color: {bg};
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.9rem;
+}}
+.form-submit:hover {{ opacity: 0.85; }}
+.email-block {{ flex-direction: row; flex-wrap: wrap; align-items: center; }}
+.email-block .form-title {{ width: 100%; }}
+.email-block input {{ flex: 1; min-width: 180px; }}
 "#
     )
 }

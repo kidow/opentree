@@ -13,7 +13,8 @@ function newId() {
 type BlockType =
   | "link" | "heading" | "text" | "socials"
   | "image" | "footer" | "affiliate" | "sponsored" | "custom-html"
-  | "music" | "video" | "pinterest" | "collection";
+  | "music" | "video" | "pinterest" | "collection"
+  | "form" | "email";
 
 const BLOCK_TYPES: { type: BlockType; label: string; desc: string }[] = [
   { type: "link", label: "Link", desc: "URL 링크 추가" },
@@ -25,6 +26,8 @@ const BLOCK_TYPES: { type: BlockType; label: string; desc: string }[] = [
   { type: "video", label: "Video", desc: "YouTube / Vimeo 임베드" },
   { type: "pinterest", label: "Pinterest", desc: "Pinterest 핀/보드 임베드" },
   { type: "collection", label: "Collection", desc: "여러 링크/이미지를 그리드/캐러셀로" },
+  { type: "form", label: "Form", desc: "Formspree 컨택트 폼" },
+  { type: "email", label: "Email Signup", desc: "ConvertKit/Kit 뉴스레터 가입 폼" },
   { type: "footer", label: "Footer", desc: "페이지 하단 푸터" },
   { type: "affiliate", label: "Affiliate", desc: "제휴 링크 (UTM 지원)" },
   { type: "sponsored", label: "Sponsored", desc: "스폰서 링크" },
@@ -75,6 +78,29 @@ export default function AddBlockModal({ onAdd, onClose }: Props) {
         break;
       case "collection":
         onAdd({ ...base, type: "collection", layout: "grid", children: [] });
+        break;
+      case "form":
+        onAdd({
+          ...base,
+          type: "form",
+          formspreeId: "",
+          title: "",
+          submitLabel: "Send",
+          fields: [
+            { name: "email", label: "이메일", fieldType: "email", required: true },
+            { name: "message", label: "메시지", fieldType: "textarea", required: true },
+          ],
+        });
+        break;
+      case "email":
+        onAdd({
+          ...base,
+          type: "email",
+          convertkitFormId: "",
+          title: "",
+          submitLabel: "Subscribe",
+          placeholder: "you@example.com",
+        });
         break;
     }
   };

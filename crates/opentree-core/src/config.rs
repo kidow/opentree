@@ -66,6 +66,29 @@ impl Default for CollectionLayout {
     fn default() -> Self { CollectionLayout::Grid }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FormFieldType {
+    Text,
+    Email,
+    Textarea,
+}
+
+impl Default for FormFieldType {
+    fn default() -> Self { FormFieldType::Text }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FormField {
+    pub name: String,
+    pub label: String,
+    #[serde(default)]
+    pub field_type: FormFieldType,
+    #[serde(default)]
+    pub required: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum Block {
@@ -167,6 +190,34 @@ pub enum Block {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         children: Vec<Block>,
     },
+
+    #[serde(rename = "form")]
+    Form {
+        id: String,
+        enabled: bool,
+        #[serde(default)]
+        formspree_id: String,
+        #[serde(default)]
+        title: String,
+        #[serde(default)]
+        submit_label: String,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        fields: Vec<FormField>,
+    },
+
+    #[serde(rename = "email")]
+    Email {
+        id: String,
+        enabled: bool,
+        #[serde(default)]
+        convertkit_form_id: String,
+        #[serde(default)]
+        title: String,
+        #[serde(default)]
+        submit_label: String,
+        #[serde(default)]
+        placeholder: String,
+    },
 }
 
 impl Block {
@@ -186,6 +237,8 @@ impl Block {
             Block::Video { id, .. } => id,
             Block::Pinterest { id, .. } => id,
             Block::Collection { id, .. } => id,
+            Block::Form { id, .. } => id,
+            Block::Email { id, .. } => id,
         }
     }
 
@@ -205,6 +258,8 @@ impl Block {
             Block::Video { enabled, .. } => *enabled,
             Block::Pinterest { enabled, .. } => *enabled,
             Block::Collection { enabled, .. } => *enabled,
+            Block::Form { enabled, .. } => *enabled,
+            Block::Email { enabled, .. } => *enabled,
         }
     }
 }
@@ -220,7 +275,7 @@ pub struct Theme {
 impl Config {
     pub fn default_config() -> Self {
         Config {
-            schema_version: 5,
+            schema_version: 6,
             profile: Profile { name: String::new(), bio: None, avatar_url: None },
             blocks: vec![
                 Block::Profile { id: Uuid::new_v4().to_string(), enabled: true },
