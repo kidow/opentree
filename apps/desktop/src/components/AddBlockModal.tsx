@@ -12,7 +12,8 @@ function newId() {
 
 type BlockType =
   | "link" | "heading" | "text" | "socials"
-  | "image" | "footer" | "affiliate" | "sponsored" | "custom-html";
+  | "image" | "footer" | "affiliate" | "sponsored" | "custom-html"
+  | "music" | "video" | "pinterest" | "collection";
 
 const BLOCK_TYPES: { type: BlockType; label: string; desc: string }[] = [
   { type: "link", label: "Link", desc: "URL 링크 추가" },
@@ -20,6 +21,10 @@ const BLOCK_TYPES: { type: BlockType; label: string; desc: string }[] = [
   { type: "text", label: "Text", desc: "텍스트 단락" },
   { type: "socials", label: "Socials", desc: "소셜 미디어 링크 모음" },
   { type: "image", label: "Image", desc: "이미지 블록" },
+  { type: "music", label: "Music", desc: "Spotify / Apple Music / SoundCloud" },
+  { type: "video", label: "Video", desc: "YouTube / Vimeo 임베드" },
+  { type: "pinterest", label: "Pinterest", desc: "Pinterest 핀/보드 임베드" },
+  { type: "collection", label: "Collection", desc: "여러 링크/이미지를 그리드/캐러셀로" },
   { type: "footer", label: "Footer", desc: "페이지 하단 푸터" },
   { type: "affiliate", label: "Affiliate", desc: "제휴 링크 (UTM 지원)" },
   { type: "sponsored", label: "Sponsored", desc: "스폰서 링크" },
@@ -58,6 +63,18 @@ export default function AddBlockModal({ onAdd, onClose }: Props) {
         break;
       case "custom-html":
         onAdd({ ...base, type: "custom-html", html: "" });
+        break;
+      case "music":
+        onAdd({ ...base, type: "music", url: "" });
+        break;
+      case "video":
+        onAdd({ ...base, type: "video", url: "" });
+        break;
+      case "pinterest":
+        onAdd({ ...base, type: "pinterest", url: "" });
+        break;
+      case "collection":
+        onAdd({ ...base, type: "collection", layout: "grid", children: [] });
         break;
     }
   };

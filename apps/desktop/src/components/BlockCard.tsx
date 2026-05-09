@@ -183,6 +183,36 @@ function BlockLabel({ block, profile }: { block: Block; profile: Profile }) {
           </span>
         </>
       );
+    case "music":
+      return (
+        <>
+          <span className="block-type-label">Music</span>
+          <span className="block-value">{block.oembedCache?.title || "(URL 입력 필요)"}</span>
+          {block.url && <span className="block-url">{block.url}</span>}
+        </>
+      );
+    case "video":
+      return (
+        <>
+          <span className="block-type-label">Video</span>
+          <span className="block-value">{block.oembedCache?.title || "(URL 입력 필요)"}</span>
+          {block.url && <span className="block-url">{block.url}</span>}
+        </>
+      );
+    case "pinterest":
+      return (
+        <>
+          <span className="block-type-label">Pinterest</span>
+          <span className="block-value">{block.url || "(URL 입력 필요)"}</span>
+        </>
+      );
+    case "collection":
+      return (
+        <>
+          <span className="block-type-label">Collection · {block.layout}</span>
+          <span className="block-value">{block.children.length}개 항목</span>
+        </>
+      );
   }
 }
 
@@ -463,5 +493,117 @@ function BlockEditor({
           </div>
         </div>
       );
+    case "music":
+      return (
+        <div className="block-edit-form">
+          <div>
+            <div className="block-edit-label">음악 URL</div>
+            <input
+              defaultValue={block.url}
+              placeholder="https://open.spotify.com/... · soundcloud.com/... · music.apple.com/..."
+              onBlur={(e) => onUpdate({ url: e.target.value } as Partial<Block>)}
+            />
+          </div>
+        </div>
+      );
+    case "video":
+      return (
+        <div className="block-edit-form">
+          <div>
+            <div className="block-edit-label">영상 URL</div>
+            <input
+              defaultValue={block.url}
+              placeholder="https://youtube.com/watch?v=... 또는 vimeo.com/..."
+              onBlur={(e) => onUpdate({ url: e.target.value } as Partial<Block>)}
+            />
+          </div>
+        </div>
+      );
+    case "pinterest":
+      return (
+        <div className="block-edit-form">
+          <div>
+            <div className="block-edit-label">Pinterest URL</div>
+            <input
+              defaultValue={block.url}
+              placeholder="https://pinterest.com/... (핀/보드)"
+              onBlur={(e) => onUpdate({ url: e.target.value } as Partial<Block>)}
+            />
+          </div>
+        </div>
+      );
+    case "collection": {
+      const children = block.children;
+      return (
+        <div className="block-edit-form">
+          <div>
+            <div className="block-edit-label">레이아웃</div>
+            <select
+              defaultValue={block.layout}
+              onChange={(e) => onUpdate({ layout: e.target.value as "grid" | "carousel" } as Partial<Block>)}
+            >
+              <option value="grid">Grid</option>
+              <option value="carousel">Carousel</option>
+            </select>
+          </div>
+          <div>
+            <div className="block-edit-label">자식 항목 (Link 만 UI 편집 지원)</div>
+            {children.map((child, i) => {
+              if (child.type !== "link") {
+                return (
+                  <div key={child.id} className="block-row" style={{ marginBottom: 4 }}>
+                    <span className="block-url" style={{ flex: 1 }}>
+                      {child.type} (UI 편집 미지원)
+                    </span>
+                    <button
+                      className="block-row-del"
+                      onClick={() => onUpdate({ children: children.filter((_, j) => j !== i) } as Partial<Block>)}
+                    >✕</button>
+                  </div>
+                );
+              }
+              return (
+                <div key={child.id} className="block-row" style={{ marginBottom: 4 }}>
+                  <input
+                    defaultValue={child.title}
+                    placeholder="제목"
+                    onBlur={(e) => {
+                      const next = children.map((c, j) =>
+                        j === i && c.type === "link" ? { ...c, title: e.target.value } : c
+                      );
+                      onUpdate({ children: next } as Partial<Block>);
+                    }}
+                  />
+                  <input
+                    defaultValue={child.url}
+                    placeholder="https://..."
+                    style={{ flex: 2 }}
+                    onBlur={(e) => {
+                      const next = children.map((c, j) =>
+                        j === i && c.type === "link" ? { ...c, url: e.target.value } : c
+                      );
+                      onUpdate({ children: next } as Partial<Block>);
+                    }}
+                  />
+                  <button
+                    className="block-row-del"
+                    onClick={() => onUpdate({ children: children.filter((_, j) => j !== i) } as Partial<Block>)}
+                  >✕</button>
+                </div>
+              );
+            })}
+            <button
+              className="block-add-item-btn"
+              onClick={() => onUpdate({
+                children: [
+                  ...children,
+                  { id: crypto.randomUUID(), type: "link", enabled: true, title: "", url: "" },
+                ],
+              } as Partial<Block>)}
+            >+ 링크 추가</button>
+          </div>
+        </div>
+      );
+    }
   }
 }

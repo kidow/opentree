@@ -1,5 +1,5 @@
 use maud::{html, PreEscaped, DOCTYPE};
-use crate::config::{Block, Config};
+use crate::config::{Block, CollectionLayout, Config, OembedCache};
 
 pub fn render_page(config: &Config) -> String {
     let markup = html! {
@@ -114,7 +114,132 @@ fn render_block(block: &Block, config: &Config) -> maud::Markup {
         Block::CustomHtml { html, .. } => html! {
             (PreEscaped(html))
         },
+
+        Block::Music { url, oembed_cache, .. } => render_embed(url, oembed_cache.as_ref(), music_embed(url), "음악"),
+        Block::Video { url, oembed_cache, .. } => render_embed(url, oembed_cache.as_ref(), video_embed(url), "영상"),
+        Block::Pinterest { url, oembed_cache, .. } => render_embed(url, oembed_cache.as_ref(), pinterest_embed(url), "Pinterest"),
+
+        Block::Collection { layout, children, .. } => {
+            let class = match layout {
+                CollectionLayout::Grid => "collection collection-grid",
+                CollectionLayout::Carousel => "collection collection-carousel",
+            };
+            html! {
+                div class=(class) {
+                    @for child in children {
+                        @if child.enabled() {
+                            (render_block(child, config))
+                        }
+                    }
+                }
+            }
+        }
     }
+}
+
+fn render_embed(
+    url: &str,
+    cache: Option<&OembedCache>,
+    auto: Option<String>,
+    fallback_label: &str,
+) -> maud::Markup {
+    if let Some(c) = cache {
+        if let Some(html_str) = &c.html {
+            return html! { div class="embed-block" { (PreEscaped(html_str)) } };
+        }
+    }
+    if let Some(html_str) = auto {
+        return html! { div class="embed-block" { (PreEscaped(html_str)) } };
+    }
+    html! {
+        a class="link-card embed-fallback" href=(url) target="_blank" rel="noopener noreferrer" {
+            span class="link-title" { (fallback_label) }
+            span class="link-url" { (url) }
+        }
+    }
+}
+
+fn music_embed(url: &str) -> Option<String> {
+    if let Some(rest) = url.strip_prefix("https://open.spotify.com/") {
+        let parts: Vec<&str> = rest.split('/').collect();
+        if parts.len() >= 2 {
+            let kind = parts[0];
+            let id = parts[1].split('?').next().unwrap_or("");
+            if matches!(kind, "track" | "album" | "playlist" | "artist" | "episode" | "show") && !id.is_empty() {
+                return Some(format!(
+                    r#"<iframe src="https://open.spotify.com/embed/{kind}/{id}" width="100%" height="80" frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>"#
+                ));
+            }
+        }
+    }
+    if let Some(rest) = url.strip_prefix("https://music.apple.com/") {
+        return Some(format!(
+            r#"<iframe src="https://embed.music.apple.com/{rest}" width="100%" height="175" frameborder="0" allow="autoplay *; encrypted-media *; clipboard-write" loading="lazy"></iframe>"#
+        ));
+    }
+    if url.starts_with("https://soundcloud.com/") {
+        let encoded = url_encode(url);
+        return Some(format!(
+            r#"<iframe src="https://w.soundcloud.com/player/?url={encoded}&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true" width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay" loading="lazy"></iframe>"#
+        ));
+    }
+    None
+}
+
+fn video_embed(url: &str) -> Option<String> {
+    let yt_id = if let Some(rest) = url.strip_prefix("https://www.youtube.com/watch?v=") {
+        Some(rest.split(&['&', '#'][..]).next().unwrap_or(""))
+    } else if let Some(rest) = url.strip_prefix("https://youtu.be/") {
+        Some(rest.split(&['?', '/', '#'][..]).next().unwrap_or(""))
+    } else if let Some(rest) = url.strip_prefix("https://www.youtube.com/embed/") {
+        Some(rest.split(&['?', '/', '#'][..]).next().unwrap_or(""))
+    } else if let Some(rest) = url.strip_prefix("https://www.youtube.com/shorts/") {
+        Some(rest.split(&['?', '/', '#'][..]).next().unwrap_or(""))
+    } else {
+        None
+    };
+    if let Some(id) = yt_id {
+        if !id.is_empty() {
+            return Some(format!(
+                r#"<iframe src="https://www.youtube.com/embed/{id}" width="100%" style="aspect-ratio:16/9" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>"#
+            ));
+        }
+    }
+    if let Some(rest) = url.strip_prefix("https://vimeo.com/") {
+        let id = rest.split(&['?', '/', '#'][..]).next().unwrap_or("");
+        if id.chars().all(|c| c.is_ascii_digit()) && !id.is_empty() {
+            return Some(format!(
+                r#"<iframe src="https://player.vimeo.com/video/{id}" width="100%" style="aspect-ratio:16/9" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen loading="lazy"></iframe>"#
+            ));
+        }
+    }
+    None
+}
+
+fn pinterest_embed(url: &str) -> Option<String> {
+    if !url.contains("pinterest.") {
+        return None;
+    }
+    Some(format!(
+        r#"<a data-pin-do="embedPin" data-pin-width="medium" href="{url}"></a><script async defer src="//assets.pinterest.com/js/pinit.js"></script>"#
+    ))
+}
+
+fn url_encode(s: &str) -> String {
+    let mut out = String::new();
+    for c in s.chars() {
+        match c {
+            'A'..='Z' | 'a'..='z' | '0'..='9' | '-' | '_' | '.' | '~' => out.push(c),
+            _ => {
+                let mut buf = [0u8; 4];
+                let bytes = c.encode_utf8(&mut buf).as_bytes().to_vec();
+                for b in bytes {
+                    out.push_str(&format!("%{:02X}", b));
+                }
+            }
+        }
+    }
+    out
 }
 
 fn social_abbr(platform: &str) -> String {
@@ -280,6 +405,34 @@ body {{
     text-decoration: none;
 }}
 .footer-nav a:hover {{ opacity: 1; }}
+
+.embed-block {{
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgba(0,0,0,0.04);
+}}
+.embed-block iframe {{ display: block; border: 0; width: 100%; }}
+.embed-fallback .link-url {{ font-size: 0.7rem; opacity: 0.6; margin-left: 8px; }}
+
+.collection {{ width: 100%; }}
+.collection-grid {{
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}}
+.collection-carousel {{
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+}}
+.collection-carousel > * {{
+    flex: 0 0 80%;
+    scroll-snap-align: start;
+}}
 "#
     )
 }

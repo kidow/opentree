@@ -40,6 +40,32 @@ pub struct FooterLink {
     pub url: String,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OembedCache {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub html: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thumbnail_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub author_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CollectionLayout {
+    Grid,
+    Carousel,
+}
+
+impl Default for CollectionLayout {
+    fn default() -> Self { CollectionLayout::Grid }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum Block {
@@ -104,6 +130,43 @@ pub enum Block {
 
     #[serde(rename = "custom-html")]
     CustomHtml { id: String, enabled: bool, html: String },
+
+    #[serde(rename = "music")]
+    Music {
+        id: String,
+        enabled: bool,
+        url: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        oembed_cache: Option<OembedCache>,
+    },
+
+    #[serde(rename = "video")]
+    Video {
+        id: String,
+        enabled: bool,
+        url: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        oembed_cache: Option<OembedCache>,
+    },
+
+    #[serde(rename = "pinterest")]
+    Pinterest {
+        id: String,
+        enabled: bool,
+        url: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        oembed_cache: Option<OembedCache>,
+    },
+
+    #[serde(rename = "collection")]
+    Collection {
+        id: String,
+        enabled: bool,
+        #[serde(default)]
+        layout: CollectionLayout,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        children: Vec<Block>,
+    },
 }
 
 impl Block {
@@ -119,6 +182,10 @@ impl Block {
             Block::Affiliate { id, .. } => id,
             Block::Sponsored { id, .. } => id,
             Block::CustomHtml { id, .. } => id,
+            Block::Music { id, .. } => id,
+            Block::Video { id, .. } => id,
+            Block::Pinterest { id, .. } => id,
+            Block::Collection { id, .. } => id,
         }
     }
 
@@ -134,6 +201,10 @@ impl Block {
             Block::Affiliate { enabled, .. } => *enabled,
             Block::Sponsored { enabled, .. } => *enabled,
             Block::CustomHtml { enabled, .. } => *enabled,
+            Block::Music { enabled, .. } => *enabled,
+            Block::Video { enabled, .. } => *enabled,
+            Block::Pinterest { enabled, .. } => *enabled,
+            Block::Collection { enabled, .. } => *enabled,
         }
     }
 }
@@ -149,7 +220,7 @@ pub struct Theme {
 impl Config {
     pub fn default_config() -> Self {
         Config {
-            schema_version: 2,
+            schema_version: 5,
             profile: Profile { name: String::new(), bio: None, avatar_url: None },
             blocks: vec![
                 Block::Profile { id: Uuid::new_v4().to_string(), enabled: true },

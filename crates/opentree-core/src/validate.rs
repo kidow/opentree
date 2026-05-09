@@ -37,6 +37,20 @@ pub enum ValidationError {
     InvalidProfileBlockCount,
     #[error("duplicate block id: {id}")]
     DuplicateBlockId { id: String },
+    #[error("block {id}: music url is required")]
+    MissingMusicUrl { id: String },
+    #[error("block {id}: music url is not a valid URL")]
+    InvalidMusicUrl { id: String },
+    #[error("block {id}: video url is required")]
+    MissingVideoUrl { id: String },
+    #[error("block {id}: video url is not a valid URL")]
+    InvalidVideoUrl { id: String },
+    #[error("block {id}: pinterest url is required")]
+    MissingPinterestUrl { id: String },
+    #[error("block {id}: pinterest url is not a valid URL")]
+    InvalidPinterestUrl { id: String },
+    #[error("block {id}: collection child type {child_type} is not allowed")]
+    InvalidCollectionChild { id: String, child_type: String },
 }
 
 pub fn validate(config: &Config) -> Vec<ValidationError> {
@@ -110,11 +124,69 @@ pub fn validate(config: &Config) -> Vec<ValidationError> {
                     errors.push(ValidationError::MissingSponsoredUrl { id: id.clone() });
                 }
             }
+            Block::Music { id, url, .. } => {
+                if url.trim().is_empty() {
+                    errors.push(ValidationError::MissingMusicUrl { id: id.clone() });
+                } else if !is_valid_url(url) {
+                    errors.push(ValidationError::InvalidMusicUrl { id: id.clone() });
+                }
+            }
+            Block::Video { id, url, .. } => {
+                if url.trim().is_empty() {
+                    errors.push(ValidationError::MissingVideoUrl { id: id.clone() });
+                } else if !is_valid_url(url) {
+                    errors.push(ValidationError::InvalidVideoUrl { id: id.clone() });
+                }
+            }
+            Block::Pinterest { id, url, .. } => {
+                if url.trim().is_empty() {
+                    errors.push(ValidationError::MissingPinterestUrl { id: id.clone() });
+                } else if !is_valid_url(url) {
+                    errors.push(ValidationError::InvalidPinterestUrl { id: id.clone() });
+                }
+            }
+            Block::Collection { id, children, .. } => {
+                for child in children {
+                    let allowed = matches!(
+                        child,
+                        Block::Link { .. }
+                            | Block::Image { .. }
+                            | Block::Music { .. }
+                            | Block::Video { .. }
+                            | Block::Pinterest { .. }
+                    );
+                    if !allowed {
+                        errors.push(ValidationError::InvalidCollectionChild {
+                            id: id.clone(),
+                            child_type: child_type_name(child).to_string(),
+                        });
+                    }
+                }
+            }
             _ => {}
         }
     }
 
     errors
+}
+
+fn child_type_name(b: &Block) -> &'static str {
+    match b {
+        Block::Profile { .. } => "profile",
+        Block::Link { .. } => "link",
+        Block::Heading { .. } => "heading",
+        Block::Text { .. } => "text",
+        Block::Socials { .. } => "socials",
+        Block::Image { .. } => "image",
+        Block::Footer { .. } => "footer",
+        Block::Affiliate { .. } => "affiliate",
+        Block::Sponsored { .. } => "sponsored",
+        Block::CustomHtml { .. } => "custom-html",
+        Block::Music { .. } => "music",
+        Block::Video { .. } => "video",
+        Block::Pinterest { .. } => "pinterest",
+        Block::Collection { .. } => "collection",
+    }
 }
 
 fn is_valid_url(url: &str) -> bool {

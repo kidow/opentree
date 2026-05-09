@@ -17,6 +17,18 @@ The format is intentionally simple:
 - Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Remove import-from-JSON feature — no clear use case without legacy CLI
 
+### Phase 7 — Block Expansion B (Embed)
+
+- Add 4 new block types: Music, Video, Pinterest, Collection
+- Music block auto-embeds Spotify (track/album/playlist/artist/episode/show), Apple Music, SoundCloud
+- Video block auto-embeds YouTube (watch / youtu.be / shorts / embed) and Vimeo
+- Pinterest block embeds via official `pinit.js` widget
+- Collection block: grid or carousel layout containing child blocks (Link/Image/Music/Video/Pinterest)
+- Add `oembedCache` field on embed blocks for future metadata enrichment
+- Render fallback: any embed block with unrecognised URL falls back to a plain link card
+- Bump `schemaVersion` to 5 (Block enum extended; existing configs auto-migrate via serde defaults)
+- Add validation: music/video/pinterest require URL, collection rejects non-allowed child types
+
 ### Phase 6 — Block Expansion A + Asset Infrastructure
 
 - Add 6 new block types: Socials, Image, Footer, Affiliate (UTM), Sponsored, Custom HTML

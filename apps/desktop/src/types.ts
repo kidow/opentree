@@ -10,6 +10,14 @@ export interface Theme {
   textColor: string;
 }
 
+export interface OembedCache {
+  html?: string;
+  thumbnailUrl?: string;
+  title?: string;
+  authorName?: string;
+  providerName?: string;
+}
+
 export type Block =
   | { id: string; type: "profile"; enabled: boolean }
   | { id: string; type: "link"; enabled: boolean; title: string; url: string }
@@ -20,7 +28,11 @@ export type Block =
   | { id: string; type: "footer"; enabled: boolean; text: string; links: { label: string; url: string }[] }
   | { id: string; type: "affiliate"; enabled: boolean; title: string; url: string; utmSource?: string; utmMedium?: string; utmCampaign?: string }
   | { id: string; type: "sponsored"; enabled: boolean; title: string; url: string }
-  | { id: string; type: "custom-html"; enabled: boolean; html: string };
+  | { id: string; type: "custom-html"; enabled: boolean; html: string }
+  | { id: string; type: "music"; enabled: boolean; url: string; oembedCache?: OembedCache }
+  | { id: string; type: "video"; enabled: boolean; url: string; oembedCache?: OembedCache }
+  | { id: string; type: "pinterest"; enabled: boolean; url: string; oembedCache?: OembedCache }
+  | { id: string; type: "collection"; enabled: boolean; layout: "grid" | "carousel"; children: Block[] };
 
 export interface Config {
   schemaVersion: number;
