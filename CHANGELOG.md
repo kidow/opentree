@@ -17,6 +17,41 @@ The format is intentionally simple:
 - Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Remove import-from-JSON feature — no clear use case without legacy CLI
 
+### Testing — remaining UI components (Vitest)
+
+- 56 new component tests across 7 files closing the remaining UI gap:
+  - `Welcome.test.tsx` (2) — title + onOpen callback
+  - `PhonePreview.test.tsx` (8) — profile / link / heading / text
+    rendering, disabled blocks hidden, avatar img vs placeholder
+    fallback, theme color application, unsupported block types
+    silently skipped
+  - `Editor.test.tsx` (6) — null config short-circuit, BlockCard
+    list per config, AddBlockModal open/close + append, remove +
+    toggle wired through store
+  - `Settings.test.tsx` (8) — six provider cards rendered, masked
+    token display when connected, verify_connection + set_token
+    invocation chain, Site URL + Analytics dropdown + Locale
+    Variants editor + language picker + project info
+  - `Publish.test.tsx` (8) — 3 provider tabs, "connect in Settings"
+    state, project name input + deploy button, deploy_vercel
+    payload (config + projectName + projectPath), success URL
+    rendering, error state, project name sanitisation, provider
+    switch clears stale result
+  - `Design.test.tsx` (13) — 6 colour rows, hex update, WCAG
+    warning, button preset / layout / background type switching,
+    font family + custom CSS blur, theme bundle export + import
+    (success + invalid JSON), Unsplash modal open + search-result
+    rendering
+  - `ChatSidebar.test.tsx` (11) — title + provider dropdown, hint
+    visible on empty state, send disabled while empty, missing
+    token error, chat_send invocation payload, assistant text
+    rendering, pending tool call summary + Apply/Cancel buttons,
+    Cancel reverts preview, Apply dismisses pending UI, Enter to
+    submit, error state on invoke throw
+- Total UI test count rises from 43 to 99
+- Full repo test count: opentree-core 54 + desktop backend 59 +
+  desktop UI 99 + E2E specs 3 = **215**
+
 ### Testing — asset.rs (image import + resize)
 
 - 14 inline tests covering `import_asset` and `resize_if_needed`:
