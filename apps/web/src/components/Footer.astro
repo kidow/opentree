@@ -1,0 +1,18 @@
+---
+const year = new Date().getFullYear();
+const GITHUB_URL = 'https://github.com/kidow/opentree';
+---
+
+<footer class="px-6 py-8 border-t border-neutral-200 dark:border-neutral-800">
+  <div class="max-w-2xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-neutral-400 dark:text-neutral-600">
+    <span>© {year} Opentree · Apache 2.0</span>
+    <a
+      href={GITHUB_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="hover:text-neutral-600 dark:hover:text-neutral-400 transition-colors"
+    >
+      GitHub
+    </a>
+  </div>
+</footer>

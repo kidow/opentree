@@ -34,6 +34,8 @@ The format is intentionally simple:
 - Add `apps/web` — Astro + Tailwind + Inter + MDX landing site scaffold
 - Register `apps/web` in root npm workspaces, remove stale `apps/docs` reference
 - Delete legacy `docs/` directory (CLI-era artifact)
+- Add Hero, Author, and Footer components with full copy and CTAs
+- Add full SEO meta: title, description, OG, JSON-LD, sitemap, robots
 
 ## v0.1.0 - 2026-03-08
 
