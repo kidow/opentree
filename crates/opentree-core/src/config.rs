@@ -205,7 +205,7 @@ pub enum Block {
         items: Vec<SocialItem>,
     },
 
-    #[serde(rename = "image")]
+    #[serde(rename = "image", rename_all = "camelCase")]
     Image {
         id: String,
         enabled: bool,
@@ -227,7 +227,7 @@ pub enum Block {
         links: Vec<FooterLink>,
     },
 
-    #[serde(rename = "affiliate")]
+    #[serde(rename = "affiliate", rename_all = "camelCase")]
     Affiliate {
         id: String,
         enabled: bool,
@@ -247,7 +247,7 @@ pub enum Block {
     #[serde(rename = "custom-html")]
     CustomHtml { id: String, enabled: bool, html: String },
 
-    #[serde(rename = "music")]
+    #[serde(rename = "music", rename_all = "camelCase")]
     Music {
         id: String,
         enabled: bool,
@@ -256,7 +256,7 @@ pub enum Block {
         oembed_cache: Option<OembedCache>,
     },
 
-    #[serde(rename = "video")]
+    #[serde(rename = "video", rename_all = "camelCase")]
     Video {
         id: String,
         enabled: bool,
@@ -265,7 +265,7 @@ pub enum Block {
         oembed_cache: Option<OembedCache>,
     },
 
-    #[serde(rename = "pinterest")]
+    #[serde(rename = "pinterest", rename_all = "camelCase")]
     Pinterest {
         id: String,
         enabled: bool,
@@ -284,7 +284,7 @@ pub enum Block {
         children: Vec<Block>,
     },
 
-    #[serde(rename = "form")]
+    #[serde(rename = "form", rename_all = "camelCase")]
     Form {
         id: String,
         enabled: bool,
@@ -302,7 +302,7 @@ pub enum Block {
         fields: Vec<FormField>,
     },
 
-    #[serde(rename = "email")]
+    #[serde(rename = "email", rename_all = "camelCase")]
     Email {
         id: String,
         enabled: bool,
@@ -468,7 +468,7 @@ pub enum Background {
         #[serde(default)]
         direction: String,
     },
-    #[serde(rename = "image")]
+    #[serde(rename = "image", rename_all = "camelCase")]
     Image {
         #[serde(default)]
         asset_path: String,
@@ -479,7 +479,7 @@ pub enum Background {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         attribution: Option<BackgroundAttribution>,
     },
-    #[serde(rename = "video")]
+    #[serde(rename = "video", rename_all = "camelCase")]
     Video {
         #[serde(default)]
         asset_path: String,

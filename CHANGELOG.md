@@ -17,6 +17,34 @@ The format is intentionally simple:
 - Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Remove import-from-JSON feature — no clear use case without legacy CLI
 
+### Testing — opentree-core integration tests
+
+- Add 54 integration tests across 5 files in `crates/opentree-core/tests/`:
+  - `config_roundtrip.rs` (7) — serialize/deserialize parity for every
+    Block variant + selective omitted fields + camelCase JSON keys
+  - `validate.rs` (19) — positive paths + every `ValidationError` rule
+    triggered with focused negative cases
+  - `build.rs` (8) — `BuildOutput` fields, schedule filtering at build
+    time, locale page emission, `write_output` filesystem side-effects
+  - `render_snapshots.rs` (13) — insta snapshot tests for representative
+    pages (minimal / all-blocks / analytics / image-bg with credit /
+    scheduled wrapper / locale-merge / button styles / featured layout /
+    video bg / favicon / sitemap / robots)
+  - `schema_migration.rs` (7) — legacy fixture configs (schemaVersion
+    2 / 3 / 6 / 8 / 10) parse + validate + build cleanly. Unknown
+    future fields tolerated
+- Shared `tests/common/mod.rs` builds configs with stable UUIDs so
+  snapshots stay deterministic
+- Bug fix surfaced by tests: Block variants with multi-word fields
+  (`asset_path`, `oembed_cache`, `formspree_id`, `convertkit_form_id`,
+  `action_url`, `submit_label`, `utm_*`) now serialize as camelCase to
+  match TypeScript types. Per-variant `#[serde(rename_all = "camelCase")]`
+  added. Without this, image / form / email block fields were silently
+  dropped on round-trip
+- Rewrite `.github/workflows/ci.yml`: split into `rust` (cargo test
+  opentree-core) and `frontend` (tsc --noEmit) jobs. Drops obsolete
+  `npm test` / `npm run test:smoke` from legacy CLI era
+
 ### Phase 14.2 — Multi-locale per Project
 
 - Add `localeVariants: LocaleVariant[]` field on Config — each variant

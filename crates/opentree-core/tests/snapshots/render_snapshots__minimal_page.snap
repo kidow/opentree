@@ -1,0 +1,302 @@
+---
+source: crates/opentree-core/tests/render_snapshots.rs
+expression: html
+---
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Test User</title><link rel="icon" type="image/svg+xml" href="/favicon.svg"><meta name="description" content="Bio line">
+<meta property="og:title" content="Test User">
+<meta property="og:type" content="profile">
+<meta property="og:description" content="Bio line">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Test User">
+<meta name="twitter:description" content="Bio line">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background-color: #ffffff;
+    color: #111111;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 48px 16px;
+}
+
+#content {
+    width: 100%;
+    max-width: 680px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.profile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; }
+.name { font-size: 1.25rem; font-weight: 700; }
+.bio { font-size: 0.9rem; color: color-mix(in srgb, #111111 55%, transparent); }
+
+.link-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 16px 24px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: background-color 0.15s, transform 0.15s, opacity 0.15s;
+    position: relative;
+    background-color: transparent; color: #111111; border: 2px solid #000000; border-radius: 8px;
+}
+.link-card:hover { background-color: #000000; color: #ffffff; border-color: #000000; }
+
+.affiliate-card, .sponsored-card { justify-content: space-between; }
+
+.link-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    flex-shrink: 0;
+}
+.affiliate-badge { background: rgba(234,179,8,0.15); color: #b45309; }
+.sponsored-badge { background: rgba(107,114,128,0.15); color: #6b7280; }
+
+.heading {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.5;
+    align-self: flex-start;
+}
+
+.text-block { font-size: 0.9rem; opacity: 0.7; text-align: center; line-height: 1.6; }
+
+.socials {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    width: 100%;
+}
+
+.social-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid #000000;
+    color: #111111;
+    text-decoration: none;
+    font-size: 0.7rem;
+    font-weight: 700;
+    transition: background-color 0.15s, color 0.15s;
+}
+.social-btn:hover { background-color: #000000; color: #ffffff; }
+
+.image-block { max-width: 100%; height: auto; border-radius: 8px; }
+
+.footer {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+.footer-text { font-size: 0.8rem; opacity: 0.5; text-align: center; }
+.footer-nav { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+.footer-nav a {
+    font-size: 0.8rem;
+    color: #111111;
+    opacity: 0.6;
+    text-decoration: none;
+}
+.footer-nav a:hover { opacity: 1; }
+
+.embed-block {
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgba(0,0,0,0.04);
+}
+.embed-block iframe { display: block; border: 0; width: 100%; }
+.embed-fallback .link-url { font-size: 0.7rem; opacity: 0.6; margin-left: 8px; }
+
+.collection { width: 100%; }
+.collection-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+.collection-carousel {
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+}
+.collection-carousel > * {
+    flex: 0 0 80%;
+    scroll-snap-align: start;
+}
+
+.form-block {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    border: 2px solid #000000;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.02);
+}
+.form-title { font-size: 0.95rem; font-weight: 600; }
+.form-block input, .form-block textarea {
+    padding: 10px 12px;
+    border: 1px solid #000000;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #111111;
+    font-family: inherit;
+    font-size: 0.9rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+.form-block textarea { resize: vertical; min-height: 80px; }
+.form-submit {
+    padding: 10px 16px;
+    background: #000000;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+.form-submit:hover { opacity: 0.85; }
+.email-block { flex-direction: row; flex-wrap: wrap; align-items: center; }
+.email-block .form-title { width: 100%; }
+.email-block input { flex: 1; min-width: 180px; }
+
+.commerce-card, .support-card, .course-card {
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
+}
+.commerce-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+.commerce-provider {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.55;
+    font-weight: 600;
+}
+.commerce-desc { font-size: 0.75rem; opacity: 0.7; font-weight: 400; }
+.commerce-price {
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(0,0,0,0.06);
+    flex-shrink: 0;
+}
+.link-card:hover .commerce-price { background: rgba(255,255,255,0.18); }
+.support-icon {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: rgba(0,0,0,0.06);
+    margin-right: 8px;
+}
+
+body.layout-featured #content > .link-card:first-of-type,
+body.layout-featured #content .profile + .link-card,
+body.layout-featured #content .profile + * + .link-card {
+    padding: 28px 24px;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 20px color-mix(in srgb, #000000 25%, transparent);
+}
+
+.scheduled { display: contents; }
+.scheduled.scheduled-hidden { display: none !important; }
+
+.bg-video {
+    position: fixed; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    z-index: -1;
+    pointer-events: none;
+}
+
+.bg-credit {
+    position: fixed;
+    bottom: 12px;
+    right: 12px;
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    background: rgba(0,0,0,0.45);
+    color: white;
+    border-radius: 4px;
+    z-index: 5;
+    backdrop-filter: blur(4px);
+}
+.bg-credit a { color: white; text-decoration: underline; }
+
+.language-switcher {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    width: 100%;
+}
+.language-switcher .lang-btn {
+    padding: 4px 10px;
+    border: 1px solid #000000;
+    border-radius: 4px;
+    color: #111111;
+    text-decoration: none;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+.language-switcher .lang-btn:hover { background-color: #000000; color: #ffffff; }
+
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: 2px solid #000000;
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+    .bg-video { display: none !important; }
+}
+
+
+</style><script type="application/ld+json">{"@context":"https://schema.org","@type":"Person","description":"Bio line","name":"Test User","sameAs":["https://github.com/example"]}</script></head><body class="layout-classic"><main id="content"><div class="profile"><h1 class="name">Test User</h1><p class="bio">Bio line</p></div><a class="link-card" href="https://github.com/example" target="_blank" rel="noopener noreferrer" data-track-id="00000000-0000-4000-8000-0000link0001" data-track-type="link" data-track-label="GitHub"><span class="link-title">GitHub</span></a></main></body></html>

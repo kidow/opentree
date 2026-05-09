@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 2,
+  "profile": {
+    "name": "Legacy User",
+    "bio": "From v2"
+  },
+  "blocks": [
+    { "id": "00000000-0000-4000-8000-000000000001", "type": "profile", "enabled": true },
+    { "id": "00000000-0000-4000-8000-000000000002", "type": "link", "enabled": true, "title": "Old Link", "url": "https://example.com" }
+  ],
+  "theme": {
+    "accentColor": "#000000",
+    "backgroundColor": "#ffffff",
+    "textColor": "#000000"
+  },
+  "siteUrl": "https://example.com"
+}

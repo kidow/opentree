@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 3,
+  "profile": { "name": "v3 User" },
+  "blocks": [
+    { "id": "00000000-0000-4000-8000-000000000001", "type": "profile", "enabled": true }
+  ],
+  "theme": {
+    "accentColor": "#000000",
+    "backgroundColor": "#ffffff",
+    "textColor": "#000000"
+  },
+  "domain": "v3.example.com",
+  "connections": ["vercel"]
+}

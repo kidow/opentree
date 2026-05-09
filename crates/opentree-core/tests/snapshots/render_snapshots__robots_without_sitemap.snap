@@ -1,0 +1,6 @@
+---
+source: crates/opentree-core/tests/render_snapshots.rs
+expression: render_robots(&c)
+---
+User-agent: *
+Allow: /

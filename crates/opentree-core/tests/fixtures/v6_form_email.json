@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 6,
+  "profile": { "name": "v6 User" },
+  "blocks": [
+    { "id": "00000000-0000-4000-8000-000000000001", "type": "profile", "enabled": true },
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "type": "form",
+      "enabled": true,
+      "formspreeId": "abcdef",
+      "title": "Contact",
+      "submitLabel": "Send",
+      "fields": [
+        { "name": "email", "label": "Email", "fieldType": "email", "required": true }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "type": "email",
+      "enabled": true,
+      "convertkitFormId": "12345",
+      "title": "Newsletter",
+      "submitLabel": "Subscribe",
+      "placeholder": "you@example.com"
+    }
+  ],
+  "theme": {
+    "accentColor": "#111",
+    "backgroundColor": "#fff",
+    "textColor": "#000"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 10,
+  "profile": { "name": "v10 User" },
+  "blocks": [
+    { "id": "00000000-0000-4000-8000-000000000001", "type": "profile", "enabled": true },
+    { "id": "00000000-0000-4000-8000-000000000002", "type": "link", "enabled": true, "title": "Scheduled", "url": "https://example.com" }
+  ],
+  "theme": {
+    "accentColor": "#000",
+    "backgroundColor": "#fff",
+    "textColor": "#000"
+  },
+  "schedules": {
+    "00000000-0000-4000-8000-000000000002": {
+      "publishAt": "2026-01-01T00:00:00Z"
+    }
+  }
+}

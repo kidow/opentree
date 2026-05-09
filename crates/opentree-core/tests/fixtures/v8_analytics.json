@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 8,
+  "profile": { "name": "v8 User" },
+  "blocks": [
+    { "id": "00000000-0000-4000-8000-000000000001", "type": "profile", "enabled": true }
+  ],
+  "theme": {
+    "accentColor": "#000",
+    "backgroundColor": "#fff",
+    "textColor": "#000"
+  },
+  "analytics": {
+    "provider": "plausible",
+    "domain": "v8.example.com"
+  }
+}
