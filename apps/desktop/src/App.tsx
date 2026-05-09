@@ -1,17 +1,23 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { open, save } from "@tauri-apps/plugin-dialog";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "./store";
 import type { Config } from "./types";
 import Sidebar from "./components/Sidebar";
 import Editor from "./components/Editor";
 import PhonePreview from "./components/PhonePreview";
 import Welcome from "./components/Welcome";
+import CloseConfirmDialog from "./components/CloseConfirmDialog";
 import "./App.css";
 
 export default function App() {
   const store = useAppStore(null);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const dirtyRef = useRef(store.dirty);
+  useEffect(() => { dirtyRef.current = store.dirty; }, [store.dirty]);
 
+  // Cmd+S 저장
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
@@ -22,6 +28,28 @@ export default function App() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [store.config, store.projectPath]);
+
+  // 창 닫기 경고 — 인앱 다이얼로그로 처리 (OS 다이얼로그 async race 방지)
+  useEffect(() => {
+    const win = getCurrentWindow();
+    let unlisten: (() => void) | undefined;
+    win.onCloseRequested((event) => {
+      if (!dirtyRef.current) return;
+      event.preventDefault();
+      setShowCloseConfirm(true);
+    }).then((fn) => { unlisten = fn; });
+    return () => unlisten?.();
+  }, []);
+
+  // Profile 편집 이벤트 수신
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as Record<string, string>;
+      store.updateProfile(detail);
+    };
+    window.addEventListener("profile-update", handler);
+    return () => window.removeEventListener("profile-update", handler);
+  }, [store.updateProfile]);
 
   const handleOpen = useCallback(async () => {
     const selected = await open({
@@ -55,10 +83,19 @@ export default function App() {
 
   const handleExport = useCallback(async () => {
     if (!store.config) return;
-    const dest = await save({ title: "내보낼 폴더 선택" });
-    if (!dest) return;
+    const dest = await open({
+      directory: true,
+      multiple: false,
+      title: "내보낼 폴더 선택",
+    });
+    if (!dest || typeof dest !== "string") return;
     await invoke("export_site", { config: store.config, dest });
   }, [store]);
+
+  const handleForceClose = useCallback(async () => {
+    setShowCloseConfirm(false);
+    await getCurrentWindow().destroy();
+  }, []);
 
   if (!store.config || !store.projectPath) {
     return <Welcome onOpen={handleOpen} />;
@@ -69,6 +106,12 @@ export default function App() {
       <Sidebar dirty={store.dirty} onSave={handleSave} onExport={handleExport} />
       <Editor store={store} />
       <PhonePreview config={store.config} />
+      {showCloseConfirm && (
+        <CloseConfirmDialog
+          onConfirm={handleForceClose}
+          onCancel={() => setShowCloseConfirm(false)}
+        />
+      )}
     </div>
   );
 }
