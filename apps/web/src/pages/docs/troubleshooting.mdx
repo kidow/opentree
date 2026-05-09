@@ -1,0 +1,90 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Troubleshooting
+description: Common deploy errors, token validation failures, and how to resolve them.
+---
+
+If publish fails, the app shows the exact provider error in the Publish tab. The most common ones — and what to do about them — are below.
+
+## Token validation errors
+
+These appear immediately after you paste a token in **Settings → Connections**. They mean the token call returned a non-success HTTP status.
+
+### "유효하지 않은 Vercel 토큰입니다."
+
+The token failed `GET /v2/user`. Causes:
+
+- The token was copied with a leading/trailing space — re-paste cleanly.
+- The token was scoped to a team you no longer belong to.
+- The token has expired.
+
+Generate a new token at [vercel.com/account/tokens](https://vercel.com/account/tokens) and paste it again.
+
+### "유효하지 않은 Cloudflare 토큰 또는 Account ID입니다."
+
+The token failed `GET /accounts/{account_id}/pages/projects`. Causes:
+
+- The token doesn't have **Account · Cloudflare Pages · Edit** permission.
+- The Account ID doesn't match the account the token was issued for.
+- The token is restricted to specific zones — broaden it or scope it to "All accounts."
+
+Re-issue the token at [dash.cloudflare.com/profile/api-tokens](https://dash.cloudflare.com/profile/api-tokens) with the right permission.
+
+### "유효하지 않은 GitHub 토큰입니다."
+
+The token failed `GET /user`. Causes:
+
+- Missing `repo` scope (classic) or missing repository contents read+write (fine-grained).
+- The fine-grained token's repository access doesn't include the `owner/repo` you connected.
+- The token has expired.
+
+Issue a new token at [github.com/settings/tokens](https://github.com/settings/tokens).
+
+## Publish errors
+
+### `"Vercel 오류 ({status}): {message}"`
+
+The Vercel API rejected the deploy request. The status code tells you what went wrong:
+
+- **`400`** — usually a bad project name (must be lowercase, no spaces, no special chars).
+- **`403`** — token lost permission for the project, or you hit a plan limit.
+- **`404`** — project name typo on a project you didn't create yet — Vercel only auto-creates on the first deploy if the name is otherwise valid.
+
+### `"파일 업로드 오류 ({path}): {text}"`
+
+GitHub Pages couldn't write the listed file. Common causes:
+
+- The repository is empty and has no default branch yet — push any initial commit (even an empty README) to the repo first, then retry.
+- The repository was renamed; update **Settings → Connections → GitHub Pages** with the new `owner/repo`.
+- The token lost `repo` scope.
+
+### `"빌드 오류: {message}"`
+
+The build step failed before any upload happened. The message contains the underlying error from the Rust core. Most often:
+
+- A block has an invalid value (e.g. an empty link URL). Open the block and fix the field.
+- The avatar file referenced in `profile.avatarUrl` was moved or deleted. Re-import it via the profile editor.
+
+### `"네트워크 오류: {message}"`
+
+The HTTP request never completed. Check your internet connection. If you're behind a corporate proxy, deploys to provider APIs may be blocked — try a different network.
+
+## Domain verification stuck
+
+If your custom domain has been "pending" for more than 30 minutes:
+
+1. **Recheck the DNS records.** Use `dig <your-domain>` or [dnschecker.org](https://dnschecker.org) to confirm propagation.
+2. **Verify record type.** Apex domains need `A` records; subdomains need `CNAME`. See [Custom domains](/docs/domains).
+3. **Remove and re-add.** In **Settings → Domain**, remove the domain and add it again — this re-issues the verification request to the provider.
+
+## File-corruption recovery
+
+If `opentree.config.json` won't open:
+
+1. The app keeps a `.opentree.config.json.bak` backup next to the original on every save.
+2. Quit the app, copy the backup over the broken file, and reopen.
+3. If both files are broken, open the file in a text editor and check for trailing commas or unclosed braces — these are the most common JSON edit errors.
+
+## Still stuck?
+
+Open an issue at [github.com/kidow/opentree/issues](https://github.com/kidow/opentree/issues) with the exact error text and the provider you were publishing to. Logs from **Settings → About → Show Logs** help a lot.

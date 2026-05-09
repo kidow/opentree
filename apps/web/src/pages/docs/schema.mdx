@@ -1,0 +1,144 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Config schema
+description: Field-by-field reference for the opentree.config.json file.
+---
+
+Your entire site is one file: `opentree.config.json`. The app reads and writes it for you, but you can also edit it directly with any text editor — useful for bulk changes, version control, or scripting.
+
+## File location
+
+The file lives wherever you opened or created your project. Open the file's folder from **Settings → Project → Show in Finder**.
+
+## Top-level shape
+
+```json
+{
+  "schemaVersion": 9,
+  "profile": { "name": "Your Name", "bio": "Your bio" },
+  "blocks": [],
+  "theme": {
+    "accentColor": "#16a34a",
+    "backgroundColor": "#ffffff",
+    "textColor": "#0a0a0a"
+  },
+  "siteUrl": "https://example.com",
+  "domain": "links.example.com",
+  "connections": ["vercel"]
+}
+```
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `schemaVersion` | `number` | yes | Auto-managed by the app. Don't change manually. |
+| `profile`       | `object` | yes | Header information shown above your blocks. |
+| `blocks`        | `array`  | yes | Ordered list of content blocks. |
+| `theme`         | `object` | yes | Colors used by the rendered site. |
+| `siteUrl`       | `string` | no  | Canonical URL set on the published page. |
+| `domain`        | `string` | no  | Custom domain attached via the Domain settings. |
+| `connections`   | `string[]` | no | Names of providers you've connected (e.g. `"vercel"`). Token values are not stored here — they live in the OS Keychain. |
+
+## `profile`
+
+```json
+{
+  "name": "Your Name",
+  "bio": "Short description shown under your name",
+  "avatarUrl": "assets/avatar.png"
+}
+```
+
+| Field | Type | Required |
+|-------|------|----------|
+| `name`      | `string` | yes |
+| `bio`       | `string` | no  |
+| `avatarUrl` | `string` | no  — relative path inside the project, usually `assets/...` |
+
+## `blocks`
+
+An ordered array. The renderer outputs blocks top-to-bottom in the order they appear. Every block has at minimum:
+
+```json
+{ "id": "abc123", "type": "link", "enabled": true }
+```
+
+| Field | Type | Required |
+|-------|------|----------|
+| `id`      | `string`  | yes — stable unique id |
+| `enabled` | `boolean` | yes — disabled blocks are kept but not rendered |
+
+### `link`
+
+```json
+{
+  "id": "1",
+  "type": "link",
+  "enabled": true,
+  "title": "My Website",
+  "url": "https://example.com"
+}
+```
+
+| Field | Type | Required |
+|-------|------|----------|
+| `title` | `string` | yes |
+| `url`   | `string` | yes |
+
+### `heading`
+
+```json
+{
+  "id": "2",
+  "type": "heading",
+  "enabled": true,
+  "text": "Projects"
+}
+```
+
+| Field | Type | Required |
+|-------|------|----------|
+| `text` | `string` | yes |
+
+### `text`
+
+```json
+{
+  "id": "3",
+  "type": "text",
+  "enabled": true,
+  "content": "Available for hire."
+}
+```
+
+| Field | Type | Required |
+|-------|------|----------|
+| `content` | `string` | yes |
+
+> More block types (Socials, Image, Footer, Affiliate, Sponsored, Custom HTML, and others) ship in later releases. This page documents only the v1-stable blocks.
+
+## `theme`
+
+```json
+{
+  "accentColor": "#16a34a",
+  "backgroundColor": "#ffffff",
+  "textColor": "#0a0a0a"
+}
+```
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `accentColor`     | `string` | yes | Hex color used for buttons and links. |
+| `backgroundColor` | `string` | yes | Page background. |
+| `textColor`       | `string` | yes | Default text color. |
+
+All colors must be 6-character hex strings (e.g. `"#16a34a"`).
+
+## Editing by hand
+
+Two rules:
+
+1. **Don't change `schemaVersion`.** The app upgrades it automatically when its format changes; bumping it manually can corrupt the file.
+2. **Keep `id` values unique.** Block reorders depend on `id`; collisions break drag-and-drop.
+
+Otherwise the file is plain JSON — edit it in any text editor, save, and the app will pick up the changes when you switch back.

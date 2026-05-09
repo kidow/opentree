@@ -1,3 +1,5 @@
+import typography from '@tailwindcss/typography';
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}'],
@@ -42,7 +44,72 @@ export default {
         'heading-1': ['clamp(2rem, 4vw, 3rem)', { lineHeight: '1.10', letterSpacing: '-0.025em', fontWeight: '600' }],
         'heading-2': ['clamp(1.5rem, 3vw, 2.25rem)', { lineHeight: '1.20', letterSpacing: '-0.02em', fontWeight: '600' }],
       },
+      typography: ({ theme }) => ({
+        DEFAULT: {
+          css: {
+            '--tw-prose-body': theme('colors.charcoal'),
+            '--tw-prose-headings': theme('colors.ink'),
+            '--tw-prose-lead': theme('colors.slate'),
+            '--tw-prose-links': theme('colors.accent.DEFAULT'),
+            '--tw-prose-bold': theme('colors.ink'),
+            '--tw-prose-counters': theme('colors.stone'),
+            '--tw-prose-bullets': theme('colors.muted'),
+            '--tw-prose-hr': theme('colors.hairline'),
+            '--tw-prose-quotes': theme('colors.slate'),
+            '--tw-prose-quote-borders': theme('colors.hairline'),
+            '--tw-prose-captions': theme('colors.stone'),
+            '--tw-prose-code': theme('colors.ink'),
+            '--tw-prose-pre-code': '#e5e5e5',
+            '--tw-prose-pre-bg': theme('colors.surface-code'),
+            '--tw-prose-th-borders': theme('colors.hairline'),
+            '--tw-prose-td-borders': theme('colors.hairline-soft'),
+            '--tw-prose-invert-body': theme('colors.muted'),
+            '--tw-prose-invert-headings': '#ffffff',
+            '--tw-prose-invert-links': theme('colors.accent.DEFAULT'),
+            '--tw-prose-invert-bold': '#ffffff',
+            '--tw-prose-invert-hr': theme('colors.hairline-dark'),
+            '--tw-prose-invert-quote-borders': theme('colors.hairline-dark'),
+            '--tw-prose-invert-th-borders': theme('colors.hairline-dark'),
+            '--tw-prose-invert-td-borders': theme('colors.hairline-dark'),
+            fontSize: '15px',
+            lineHeight: '1.7',
+            'h1': { fontWeight: '600', letterSpacing: '-0.025em' },
+            'h2': { fontWeight: '600', letterSpacing: '-0.02em', marginTop: '2.5em' },
+            'h3': { fontWeight: '600', letterSpacing: '-0.015em' },
+            'code': {
+              fontWeight: '500',
+              fontSize: '0.875em',
+              backgroundColor: theme('colors.surface'),
+              padding: '0.15em 0.4em',
+              borderRadius: '4px',
+              border: `1px solid ${theme('colors.hairline')}`,
+            },
+            'code::before': { content: '""' },
+            'code::after': { content: '""' },
+            'pre': {
+              borderRadius: '12px',
+              border: `1px solid ${theme('colors.hairline-dark')}`,
+            },
+            'pre code': {
+              backgroundColor: 'transparent',
+              border: 'none',
+              padding: '0',
+            },
+            'a': { textDecoration: 'none', fontWeight: '500' },
+            'a:hover': { textDecoration: 'underline' },
+            'table': { fontSize: '14px' },
+          },
+        },
+        invert: {
+          css: {
+            'code': {
+              backgroundColor: 'rgba(255,255,255,0.06)',
+              border: `1px solid ${theme('colors.hairline-dark')}`,
+            },
+          },
+        },
+      }),
     },
   },
-  plugins: [],
+  plugins: [typography],
 };

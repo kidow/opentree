@@ -1,0 +1,54 @@
+---
+const pathname = Astro.url.pathname.replace(/\/$/, '');
+
+const groups = [
+  {
+    title: 'Overview',
+    items: [{ label: 'Introduction', href: '/docs' }],
+  },
+  {
+    title: 'Guides',
+    items: [
+      { label: 'Deploy', href: '/docs/deploy' },
+      { label: 'Custom domains', href: '/docs/domains' },
+    ],
+  },
+  {
+    title: 'Reference',
+    items: [
+      { label: 'Config schema', href: '/docs/schema' },
+      { label: 'Troubleshooting', href: '/docs/troubleshooting' },
+    ],
+  },
+];
+---
+
+<nav class="space-y-7 text-sm">
+  {groups.map((group) => (
+    <div>
+      <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone mb-3 px-3">
+        {group.title}
+      </p>
+      <ul class="space-y-0.5">
+        {group.items.map((item) => {
+          const active = pathname === item.href;
+          return (
+            <li>
+              <a
+                href={item.href}
+                class:list={[
+                  'block px-3 py-1.5 rounded-md transition-colors',
+                  active
+                    ? 'text-accent font-medium bg-accent/10'
+                    : 'text-slate dark:text-stone hover:text-ink dark:hover:text-white hover:bg-surface dark:hover:bg-white/[0.04]',
+                ]}
+              >
+                {item.label}
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  ))}
+</nav>

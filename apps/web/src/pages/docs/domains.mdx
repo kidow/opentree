@@ -1,0 +1,78 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Custom domains
+description: Point your own domain at your published Opentree site. DNS record values per provider.
+---
+
+Once your site is published, you can attach a custom domain in **Settings → Domain**. The app shows you the exact DNS records to create at your registrar (e.g. Namecheap, Cloudflare, Route 53), then polls the provider until the domain verifies.
+
+You only need to add records once per domain. Verification is automatic after that.
+
+## Apex vs. subdomain
+
+- **Apex** (e.g. `example.com`) — the bare domain.
+- **Subdomain** (e.g. `links.example.com`, `bio.example.com`) — a prefix.
+
+Most providers handle subdomains with a single `CNAME` record. Apex domains require an `A` record because DNS does not allow `CNAME` at the root.
+
+## Vercel
+
+### Apex (`example.com`)
+
+| Type | Host | Value |
+|------|------|-------|
+| `A`     | `@`   | `76.76.21.21` |
+| `CNAME` | `www` | `cname.vercel-dns.com` |
+
+The second record covers the `www.example.com` redirect.
+
+### Subdomain (`links.example.com`)
+
+| Type | Host | Value |
+|------|------|-------|
+| `CNAME` | `links` | `cname.vercel-dns.com` |
+
+### Verification
+
+After adding records, the app polls `GET /v9/projects/{project}/domains/{domain}` and shows the `verified` status. DNS propagation usually takes 5–15 minutes; some registrars take longer.
+
+## Cloudflare Pages
+
+If your domain is already on Cloudflare, the dashboard handles the DNS automatically when you add the domain to your Pages project. No manual records needed.
+
+If your domain is at another registrar, point a `CNAME` to your `*.pages.dev` URL:
+
+| Type | Host | Value |
+|------|------|-------|
+| `CNAME` | `links` (or `@` via CNAME flattening) | `your-project.pages.dev` |
+
+> Cloudflare Pages domain management from inside Opentree is in development. For now, manage the domain in the Cloudflare dashboard and the connection will resolve automatically.
+
+## GitHub Pages
+
+### 1. Set the domain in the app
+
+In **Settings → Domain**, enter your domain. The app calls `PUT /repos/{owner}/{repo}/pages` with a `cname` field, which writes a `CNAME` file to your repo and tells GitHub to expect that domain.
+
+### 2. Add the DNS record
+
+| Type | Host | Value |
+|------|------|-------|
+| `CNAME` | your subdomain | `<owner>.github.io` |
+
+For an apex domain, GitHub recommends four `A` records pointing to its servers — see [GitHub's docs on apex DNS](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site#configuring-an-apex-domain) for the current IP list.
+
+### 3. Verification
+
+The app polls `GET /repos/{owner}/{repo}/pages` and waits for both:
+
+- the `cname` field to match your domain
+- the `status` field to equal `built`
+
+Once both are true, your domain is live with HTTPS (GitHub provisions a Let's Encrypt certificate automatically).
+
+## Troubleshooting
+
+- **Records added but still not verified** — DNS can take an hour or more on some registrars. The app keeps polling; just leave the dialog open or come back later.
+- **Wrong record type** — Apex domains need `A` records, not `CNAME`. Subdomains need `CNAME`, not `A`.
+- **HTTPS warning in browser** — certificate provisioning happens after DNS verification. Wait 1–5 minutes after the app reports "verified."

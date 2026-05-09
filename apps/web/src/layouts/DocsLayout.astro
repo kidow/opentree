@@ -1,0 +1,45 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import DocsSidebar from '../components/DocsSidebar.astro';
+import Footer from '../components/Footer.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+  frontmatter?: { title: string; description?: string };
+}
+
+const fm = Astro.props.frontmatter;
+const title = fm?.title ?? Astro.props.title;
+const description = fm?.description ?? Astro.props.description;
+const pageTitle = `${title} — Opentree docs`;
+---
+
+<BaseLayout title={pageTitle} description={description}>
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="grid lg:grid-cols-[14rem_1fr] gap-10 lg:gap-14 py-10 sm:py-14">
+      <aside class="lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:pb-6 -mx-3 lg:mx-0">
+        <DocsSidebar />
+      </aside>
+
+      <main class="min-w-0">
+        <header class="mb-10 pb-8 border-b border-hairline dark:border-hairline-dark">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-accent mb-3">Docs</p>
+          <h1 class="text-3xl sm:text-4xl font-semibold tracking-tight text-ink dark:text-white mb-3">
+            {title}
+          </h1>
+          {description && (
+            <p class="text-base text-slate dark:text-stone leading-relaxed max-w-2xl">
+              {description}
+            </p>
+          )}
+        </header>
+
+        <article class="prose prose-neutral dark:prose-invert max-w-none">
+          <slot />
+        </article>
+      </main>
+    </div>
+  </div>
+  <Footer />
+</BaseLayout>

@@ -1,0 +1,61 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+
+const cards = [
+  {
+    label: 'Guide',
+    title: 'Deploy',
+    body: 'Connect Vercel, Cloudflare Pages, or GitHub Pages. Tokens, project setup, first publish.',
+    href: '/docs/deploy',
+  },
+  {
+    label: 'Guide',
+    title: 'Custom domains',
+    body: 'Point your own domain at your published site. DNS records and verification per provider.',
+    href: '/docs/domains',
+  },
+  {
+    label: 'Reference',
+    title: 'Config schema',
+    body: 'Field-by-field reference for the opentree.config.json file: profile, blocks, theme.',
+    href: '/docs/schema',
+  },
+  {
+    label: 'Reference',
+    title: 'Troubleshooting',
+    body: 'Common deploy errors, token validation failures, and how to fix them.',
+    href: '/docs/troubleshooting',
+  },
+];
+---
+
+<DocsLayout
+  title="Documentation"
+  description="Everything you need to get Opentree deployed, connected to your domain, and edited with confidence."
+>
+  <p>
+    Opentree is a desktop app for macOS that turns a single
+    <code>opentree.config.json</code> file on your disk into a published
+    link-in-bio site. These docs cover the parts that touch the outside world —
+    deploys, domains, and the schema — so the app's UI can stay quiet.
+  </p>
+
+  <p>
+    If you just installed the app, open it and add a few link blocks first. You
+    only need these guides when you connect a hosting provider or want to read
+    your config file directly.
+  </p>
+
+  <div class="not-prose grid sm:grid-cols-2 gap-3 mt-10">
+    {cards.map((card) => (
+      <a
+        href={card.href}
+        class="group block p-5 rounded-xl border border-hairline dark:border-hairline-dark bg-canvas dark:bg-white/[0.02] hover:border-stone dark:hover:border-stone hover:bg-surface-soft dark:hover:bg-white/[0.05] transition-colors"
+      >
+        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-accent mb-2">{card.label}</p>
+        <h3 class="text-base font-semibold text-ink dark:text-white mb-1.5 group-hover:text-accent transition-colors">{card.title}</h3>
+        <p class="text-sm text-stone leading-relaxed">{card.body}</p>
+      </a>
+    ))}
+  </div>
+</DocsLayout>
