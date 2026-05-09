@@ -12,7 +12,7 @@ interface Props {
 const fm = Astro.props.frontmatter;
 const title = fm?.title ?? Astro.props.title;
 const description = fm?.description ?? Astro.props.description;
-const pageTitle = `${title} — Opentree docs`;
+const pageTitle = title === 'Documentation' ? 'Documentation — Opentree' : `${title} — Opentree docs`;
 ---
 
 <BaseLayout title={pageTitle} description={description}>
