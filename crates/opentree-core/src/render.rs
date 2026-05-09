@@ -1,7 +1,12 @@
+use std::collections::HashMap;
 use maud::{html, PreEscaped, DOCTYPE};
-use crate::config::{Background, Block, ButtonStyle, CollectionLayout, CommerceProvider, Config, FormFieldType, LayoutStyle, OembedCache, SupportProvider};
+use crate::config::{Background, Block, ButtonStyle, CollectionLayout, CommerceProvider, Config, FormFieldType, LayoutStyle, OembedCache, Schedule, SupportProvider};
 
 pub fn render_page(config: &Config) -> String {
+    render_page_with_time(config, None)
+}
+
+pub fn render_page_with_time(config: &Config, now: Option<&str>) -> String {
     let analytics_head = render_analytics_head(config);
     let analytics_body = render_analytics_body(config);
     let google_font_link = render_google_font_link(config);
@@ -18,6 +23,11 @@ pub fn render_page(config: &Config) -> String {
         LayoutStyle::Classic => "layout-classic",
         LayoutStyle::Featured => "layout-featured",
     };
+    let visible_blocks: Vec<&Block> = config
+        .blocks
+        .iter()
+        .filter(|b| b.enabled() && schedule_visible_at(b.id(), &config.schedules, now))
+        .collect();
     let markup = html! {
         (DOCTYPE)
         html lang=(lang) {
@@ -42,10 +52,8 @@ pub fn render_page(config: &Config) -> String {
             }
             body class=(layout_class) {
                 main id="content" {
-                    @for block in &config.blocks {
-                        @if block.enabled() {
-                            (render_scheduled_wrapper(block, config))
-                        }
+                    @for block in &visible_blocks {
+                        (render_scheduled_wrapper(block, config))
                     }
                 }
                 @if !analytics_body.is_empty() {
@@ -177,6 +185,24 @@ pub fn render_robots(config: &Config) -> String {
         out.push_str(&format!("Sitemap: {trimmed}/sitemap.xml\n"));
     }
     out
+}
+
+fn schedule_visible_at(id: &str, schedules: &HashMap<String, Schedule>, now: Option<&str>) -> bool {
+    let now = match now {
+        Some(n) if !n.is_empty() => n,
+        _ => return true,
+    };
+    let s = match schedules.get(id) {
+        Some(s) => s,
+        None => return true,
+    };
+    if let Some(p) = s.publish_at.as_deref() {
+        if !p.is_empty() && now < p { return false; }
+    }
+    if let Some(u) = s.unpublish_at.as_deref() {
+        if !u.is_empty() && now >= u { return false; }
+    }
+    true
 }
 
 fn render_scheduled_wrapper(block: &Block, config: &Config) -> maud::Markup {

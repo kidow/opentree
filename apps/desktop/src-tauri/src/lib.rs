@@ -3,11 +3,16 @@ mod asset;
 mod publish;
 
 use opentree_core::{
-    build::{build, write_output},
+    build::{build_with_time, write_output},
     config::Config,
 };
 use std::path::Path;
 use tauri::command;
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
+
+fn now_iso() -> String {
+    OffsetDateTime::now_utc().format(&Rfc3339).unwrap_or_default()
+}
 
 #[command]
 fn default_config() -> Result<Config, String> {
@@ -31,7 +36,8 @@ fn save_config(path: String, config: Config) -> Result<(), String> {
 
 #[command]
 fn export_site(config: Config, dest: String, project_path: String) -> Result<(), String> {
-    let output = build(&config).map_err(|e| format!("빌드 오류: {e}"))?;
+    let now = now_iso();
+    let output = build_with_time(&config, Some(&now)).map_err(|e| format!("빌드 오류: {e}"))?;
     write_output(&output, Path::new(&dest)).map_err(|e| format!("출력 오류: {e}"))?;
 
     let src_assets = Path::new(&project_path).join("assets");

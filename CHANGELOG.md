@@ -17,6 +17,27 @@ The format is intentionally simple:
 - Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Remove import-from-JSON feature — no clear use case without legacy CLI
 
+### Phase 13.2 — Build-time Schedule Filtering
+
+- Add `build_with_time(config, now)` and `render_page_with_time(config, now)`
+  to opentree-core: when `now` is provided, blocks scheduled outside the
+  publish/unpublish window are excluded from the rendered HTML
+- Desktop publish + export commands now pass current UTC time
+  (`OffsetDateTime::now_utc()` formatted as RFC3339) to the build, so
+  scheduled-out blocks are absent from deployed HTML source — not just
+  client-side hidden
+- Comparison is lexical on ISO8601 UTC strings (sortable by design)
+- Backward compatible: existing `build(config)` and `render_page(config)`
+  still work and skip filtering (no time provided)
+
+Provider cron auto-setup (GH Actions / Vercel crons / CF Worker)
+remains deferred. opentree's static-upload deployment model means
+external schedulers can't usefully trigger redeploys without a
+server-side rebuild step that runs opentree-core. Practical workaround:
+re-publish from the desktop app at any time and the new HTML reflects
+the current schedule. Client-side JS hide (Phase 13.1) still bridges
+the gap between manual publishes.
+
 ### Phase 5.5 — Windows Support
 
 - Add `.github/workflows/desktop-release.yml`: cross-platform release

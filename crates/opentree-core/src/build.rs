@@ -1,7 +1,7 @@
 use std::path::Path;
 use thiserror::Error;
 use crate::config::Config;
-use crate::render::{render_favicon, render_page, render_robots, render_sitemap};
+use crate::render::{render_favicon, render_page_with_time, render_robots, render_sitemap};
 use crate::validate::{validate, ValidationError};
 
 #[derive(Debug, Error)]
@@ -22,13 +22,17 @@ pub struct BuildOutput {
 }
 
 pub fn build(config: &Config) -> Result<BuildOutput, BuildError> {
+    build_with_time(config, None)
+}
+
+pub fn build_with_time(config: &Config, now: Option<&str>) -> Result<BuildOutput, BuildError> {
     let errors = validate(config);
     if !errors.is_empty() {
         return Err(BuildError::Validation(errors));
     }
 
     Ok(BuildOutput {
-        index_html: render_page(config),
+        index_html: render_page_with_time(config, now),
         favicon_svg: render_favicon(&config.theme.accent_color),
         sitemap_xml: render_sitemap(config),
         robots_txt: render_robots(config),

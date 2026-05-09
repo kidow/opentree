@@ -1,8 +1,13 @@
 use base64::Engine;
 use keyring::Entry;
-use opentree_core::{build::build, config::Config};
+use opentree_core::{build::build_with_time, config::Config};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
+
+fn now_iso() -> String {
+    OffsetDateTime::now_utc().format(&Rfc3339).unwrap_or_default()
+}
 
 // ── Keychain ─────────────────────────────────────────────────────────────────
 
@@ -227,7 +232,7 @@ pub async fn deploy_vercel(
     project_name: &str,
     project_path: &str,
 ) -> Result<DeployResult, String> {
-    let output = build(config).map_err(|e| format!("빌드 오류: {e}"))?;
+    let output = build_with_time(config, Some(&now_iso())).map_err(|e| format!("빌드 오류: {e}"))?;
     let mut files = vec![
         VercelFile { file: "index.html".to_string(), data: output.index_html, encoding: "utf-8".to_string() },
         VercelFile { file: "favicon.svg".to_string(), data: output.favicon_svg, encoding: "utf-8".to_string() },
@@ -398,7 +403,7 @@ pub async fn deploy_cloudflare(
     project_name: &str,
     project_path: &str,
 ) -> Result<DeployResult, String> {
-    let output = build(config).map_err(|e| format!("빌드 오류: {e}"))?;
+    let output = build_with_time(config, Some(&now_iso())).map_err(|e| format!("빌드 오류: {e}"))?;
     let client = reqwest::Client::new();
     let token = &conn.token;
     let account_id = &conn.account_id;
@@ -586,7 +591,7 @@ pub async fn deploy_github_pages(
     conn: &GhConnection,
     project_path: &str,
 ) -> Result<DeployResult, String> {
-    let output = build(config).map_err(|e| format!("빌드 오류: {e}"))?;
+    let output = build_with_time(config, Some(&now_iso())).map_err(|e| format!("빌드 오류: {e}"))?;
     let client = reqwest::Client::new();
     let token = &conn.token;
     let repo = &conn.repo;
