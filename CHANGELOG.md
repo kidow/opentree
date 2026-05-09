@@ -38,6 +38,7 @@ The format is intentionally simple:
 - Add full SEO meta: title, description, OG, JSON-LD, sitemap, robots
 - Add five content sections: Local-first, Editor, Preview, Deploy, Open
 - Add `/download` page with build-time GitHub API fetch, version/date/size/checksum, and fallback
+- Add `redeploy-web.yml` — triggers Vercel deploy on every published release
 
 ## v0.1.0 - 2026-03-08
 
