@@ -17,6 +17,16 @@ The format is intentionally simple:
 - Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Remove import-from-JSON feature — no clear use case without legacy CLI
 
+### Phase 6 — Block Expansion A + Asset Infrastructure
+
+- Add 6 new block types: Socials, Image, Footer, Affiliate (UTM), Sponsored, Custom HTML
+- Add `import_asset` command: imports image files into project `assets/` folder with SHA-256 dedup and resize (avatar 512px, image 1920px, background 2560px)
+- Add image file picker in block editor (invokes `import_asset` via Tauri)
+- Include `assets/` folder in all deployment providers (Vercel base64, CF Pages SHA-256 multipart, GitHub Pages Contents API)
+- Copy `assets/` folder on local site export
+- Render new block types in HTML output with full CSS
+- Add validation for Image (alt required, source required), Affiliate (URL required + valid), Sponsored (title+URL required)
+
 ### Phase 5 — Hosting + Domain + Connections
 
 - Replace plaintext token storage with OS Keychain via `keyring` crate

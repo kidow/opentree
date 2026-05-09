@@ -10,16 +10,26 @@ function newId() {
   return crypto.randomUUID();
 }
 
-const BLOCK_TYPES = [
+type BlockType =
+  | "link" | "heading" | "text" | "socials"
+  | "image" | "footer" | "affiliate" | "sponsored" | "custom-html";
+
+const BLOCK_TYPES: { type: BlockType; label: string; desc: string }[] = [
   { type: "link", label: "Link", desc: "URL 링크 추가" },
   { type: "heading", label: "Heading", desc: "섹션 제목" },
   { type: "text", label: "Text", desc: "텍스트 단락" },
-] as const;
+  { type: "socials", label: "Socials", desc: "소셜 미디어 링크 모음" },
+  { type: "image", label: "Image", desc: "이미지 블록" },
+  { type: "footer", label: "Footer", desc: "페이지 하단 푸터" },
+  { type: "affiliate", label: "Affiliate", desc: "제휴 링크 (UTM 지원)" },
+  { type: "sponsored", label: "Sponsored", desc: "스폰서 링크" },
+  { type: "custom-html", label: "Custom HTML", desc: "직접 HTML 삽입" },
+];
 
 export default function AddBlockModal({ onAdd, onClose }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  const handleAdd = (type: "link" | "heading" | "text") => {
+  const handleAdd = (type: BlockType) => {
     const base = { id: newId(), enabled: true };
     switch (type) {
       case "link":
@@ -30,6 +40,24 @@ export default function AddBlockModal({ onAdd, onClose }: Props) {
         break;
       case "text":
         onAdd({ ...base, type: "text", content: "" });
+        break;
+      case "socials":
+        onAdd({ ...base, type: "socials", items: [] });
+        break;
+      case "image":
+        onAdd({ ...base, type: "image", assetPath: "", alt: "" });
+        break;
+      case "footer":
+        onAdd({ ...base, type: "footer", text: "", links: [] });
+        break;
+      case "affiliate":
+        onAdd({ ...base, type: "affiliate", title: "", url: "" });
+        break;
+      case "sponsored":
+        onAdd({ ...base, type: "sponsored", title: "", url: "" });
+        break;
+      case "custom-html":
+        onAdd({ ...base, type: "custom-html", html: "" });
         break;
     }
   };
@@ -74,7 +102,7 @@ export default function AddBlockModal({ onAdd, onClose }: Props) {
           border-bottom: 1px solid var(--border);
           font-weight: 600;
         }
-        .modal-list { padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+        .modal-list { padding: 8px; display: flex; flex-direction: column; gap: 2px; max-height: 480px; overflow-y: auto; }
         .modal-item {
           display: flex; flex-direction: column; align-items: flex-start;
           gap: 2px; padding: 12px 14px; border-radius: 8px; text-align: left;

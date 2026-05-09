@@ -62,6 +62,7 @@ export default function Editor({ store }: Props) {
                 key={block.id}
                 block={block}
                 profile={config.profile}
+                projectPath={store.projectPath ?? ""}
                 onUpdate={(patch) => store.updateBlock(block.id, patch)}
                 onRemove={
                   block.type !== "profile"

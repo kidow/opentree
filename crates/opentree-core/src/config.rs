@@ -27,29 +27,83 @@ pub struct Profile {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SocialItem {
+    pub platform: String,
+    pub url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FooterLink {
+    pub label: String,
+    pub url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum Block {
     #[serde(rename = "profile")]
     Profile { id: String, enabled: bool },
+
     #[serde(rename = "link")]
-    Link {
+    Link { id: String, enabled: bool, title: String, url: String },
+
+    #[serde(rename = "heading")]
+    Heading { id: String, enabled: bool, text: String },
+
+    #[serde(rename = "text")]
+    Text { id: String, enabled: bool, content: String },
+
+    #[serde(rename = "socials")]
+    Socials {
+        id: String,
+        enabled: bool,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        items: Vec<SocialItem>,
+    },
+
+    #[serde(rename = "image")]
+    Image {
+        id: String,
+        enabled: bool,
+        #[serde(default)]
+        asset_path: String,
+        #[serde(default)]
+        alt: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        url: Option<String>,
+    },
+
+    #[serde(rename = "footer")]
+    Footer {
+        id: String,
+        enabled: bool,
+        #[serde(default)]
+        text: String,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        links: Vec<FooterLink>,
+    },
+
+    #[serde(rename = "affiliate")]
+    Affiliate {
         id: String,
         enabled: bool,
         title: String,
         url: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        utm_source: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        utm_medium: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        utm_campaign: Option<String>,
     },
-    #[serde(rename = "heading")]
-    Heading {
-        id: String,
-        enabled: bool,
-        text: String,
-    },
-    #[serde(rename = "text")]
-    Text {
-        id: String,
-        enabled: bool,
-        content: String,
-    },
+
+    #[serde(rename = "sponsored")]
+    Sponsored { id: String, enabled: bool, title: String, url: String },
+
+    #[serde(rename = "custom-html")]
+    CustomHtml { id: String, enabled: bool, html: String },
 }
 
 impl Block {
@@ -59,6 +113,12 @@ impl Block {
             Block::Link { id, .. } => id,
             Block::Heading { id, .. } => id,
             Block::Text { id, .. } => id,
+            Block::Socials { id, .. } => id,
+            Block::Image { id, .. } => id,
+            Block::Footer { id, .. } => id,
+            Block::Affiliate { id, .. } => id,
+            Block::Sponsored { id, .. } => id,
+            Block::CustomHtml { id, .. } => id,
         }
     }
 
@@ -68,6 +128,12 @@ impl Block {
             Block::Link { enabled, .. } => *enabled,
             Block::Heading { enabled, .. } => *enabled,
             Block::Text { enabled, .. } => *enabled,
+            Block::Socials { enabled, .. } => *enabled,
+            Block::Image { enabled, .. } => *enabled,
+            Block::Footer { enabled, .. } => *enabled,
+            Block::Affiliate { enabled, .. } => *enabled,
+            Block::Sponsored { enabled, .. } => *enabled,
+            Block::CustomHtml { enabled, .. } => *enabled,
         }
     }
 }
@@ -84,16 +150,9 @@ impl Config {
     pub fn default_config() -> Self {
         Config {
             schema_version: 2,
-            profile: Profile {
-                name: String::new(),
-                bio: None,
-                avatar_url: None,
-            },
+            profile: Profile { name: String::new(), bio: None, avatar_url: None },
             blocks: vec![
-                Block::Profile {
-                    id: Uuid::new_v4().to_string(),
-                    enabled: true,
-                },
+                Block::Profile { id: Uuid::new_v4().to_string(), enabled: true },
                 Block::Link {
                     id: Uuid::new_v4().to_string(),
                     enabled: true,

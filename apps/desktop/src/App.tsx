@@ -95,7 +95,7 @@ export default function App() {
       title: "내보낼 폴더 선택",
     });
     if (!dest || typeof dest !== "string") return;
-    await invoke("export_site", { config: store.config, dest });
+    await invoke("export_site", { config: store.config, dest, projectPath: store.projectPath });
   }, [store]);
 
   const handleForceClose = useCallback(async () => {
@@ -122,7 +122,7 @@ export default function App() {
       />
       {activeTab === "links" && <Editor store={store} />}
       {activeTab === "design" && <Design store={store} />}
-      {activeTab === "publish" && <Publish store={store} />}
+      {activeTab === "publish" && <Publish store={store} projectPath={store.projectPath!} />}
       {activeTab === "settings" && (
         <Settings store={store} projectPath={store.projectPath!} />
       )}

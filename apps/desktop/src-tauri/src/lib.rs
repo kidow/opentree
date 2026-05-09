@@ -1,3 +1,4 @@
+mod asset;
 mod publish;
 
 use opentree_core::{
@@ -28,9 +29,27 @@ fn save_config(path: String, config: Config) -> Result<(), String> {
 }
 
 #[command]
-fn export_site(config: Config, dest: String) -> Result<(), String> {
+fn export_site(config: Config, dest: String, project_path: String) -> Result<(), String> {
     let output = build(&config).map_err(|e| format!("빌드 오류: {e}"))?;
-    write_output(&output, Path::new(&dest)).map_err(|e| format!("출력 오류: {e}"))
+    write_output(&output, Path::new(&dest)).map_err(|e| format!("출력 오류: {e}"))?;
+
+    let src_assets = Path::new(&project_path).join("assets");
+    if src_assets.exists() {
+        let dest_assets = Path::new(&dest).join("assets");
+        std::fs::create_dir_all(&dest_assets)
+            .map_err(|e| format!("assets 폴더 생성 오류: {e}"))?;
+        for entry in std::fs::read_dir(&src_assets)
+            .map_err(|e| format!("assets 읽기 오류: {e}"))?
+        {
+            let entry = entry.map_err(|e| e.to_string())?;
+            if entry.path().is_file() {
+                let dest_file = dest_assets.join(entry.file_name());
+                std::fs::copy(entry.path(), &dest_file)
+                    .map_err(|e| format!("파일 복사 오류: {e}"))?;
+            }
+        }
+    }
+    Ok(())
 }
 
 #[command]
@@ -39,6 +58,11 @@ fn validate_config(config: Config) -> Vec<String> {
         .into_iter()
         .map(|e| e.to_string())
         .collect()
+}
+
+#[command]
+fn import_asset(src_path: String, project_path: String, role: String) -> Result<String, String> {
+    asset::import_asset(&src_path, &project_path, &role)
 }
 
 // ── Token / Connection ────────────────────────────────────────────────────────
@@ -82,10 +106,11 @@ async fn verify_connection(provider: String, data: String) -> Result<(), String>
 async fn deploy_vercel(
     config: Config,
     project_name: String,
+    project_path: String,
 ) -> Result<publish::DeployResult, String> {
     let token = publish::load_token("vercel")?
         .ok_or_else(|| "Vercel 토큰이 없습니다. Settings → Connections에서 연결하세요.".to_string())?;
-    publish::deploy_vercel(&config, &token, &project_name).await
+    publish::deploy_vercel(&config, &token, &project_name, &project_path).await
 }
 
 #[command]
@@ -99,21 +124,25 @@ async fn check_deploy_state(deploy_id: String) -> Result<String, String> {
 async fn deploy_cloudflare(
     config: Config,
     project_name: String,
+    project_path: String,
 ) -> Result<publish::DeployResult, String> {
     let raw = publish::load_token("cloudflare")?
         .ok_or_else(|| "Cloudflare 연결 정보가 없습니다. Settings → Connections에서 연결하세요.".to_string())?;
     let conn: publish::CfConnection =
         serde_json::from_str(&raw).map_err(|_| "Cloudflare 연결 데이터 파싱 오류".to_string())?;
-    publish::deploy_cloudflare(&config, &conn, &project_name).await
+    publish::deploy_cloudflare(&config, &conn, &project_name, &project_path).await
 }
 
 #[command]
-async fn deploy_github_pages(config: Config) -> Result<publish::DeployResult, String> {
+async fn deploy_github_pages(
+    config: Config,
+    project_path: String,
+) -> Result<publish::DeployResult, String> {
     let raw = publish::load_token("github")?
         .ok_or_else(|| "GitHub 연결 정보가 없습니다. Settings → Connections에서 연결하세요.".to_string())?;
     let conn: publish::GhConnection =
         serde_json::from_str(&raw).map_err(|_| "GitHub 연결 데이터 파싱 오류".to_string())?;
-    publish::deploy_github_pages(&config, &conn).await
+    publish::deploy_github_pages(&config, &conn, &project_path).await
 }
 
 // ── Domain ───────────────────────────────────────────────────────────────────
@@ -186,6 +215,7 @@ pub fn run() {
             save_config,
             export_site,
             validate_config,
+            import_asset,
             get_token,
             set_token,
             delete_token,

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Block, Profile } from "../types";
@@ -6,12 +8,13 @@ import type { Block, Profile } from "../types";
 interface Props {
   block: Block;
   profile: Profile;
+  projectPath: string;
   onUpdate: (patch: Partial<Block>) => void;
   onRemove?: () => void;
   onToggle: () => void;
 }
 
-export default function BlockCard({ block, profile, onUpdate, onRemove, onToggle }: Props) {
+export default function BlockCard({ block, profile, projectPath, onUpdate, onRemove, onToggle }: Props) {
   const [editing, setEditing] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: block.id, disabled: block.type === "profile" });
@@ -48,7 +51,7 @@ export default function BlockCard({ block, profile, onUpdate, onRemove, onToggle
           </button>
         )}
       </div>
-      {editing && <BlockEditor block={block} profile={profile} onUpdate={onUpdate} />}
+      {editing && <BlockEditor block={block} profile={profile} projectPath={projectPath} onUpdate={onUpdate} />}
       <style>{`
         .block-card {
           background: var(--surface);
@@ -90,6 +93,12 @@ export default function BlockCard({ block, profile, onUpdate, onRemove, onToggle
         .block-edit-form { padding: 0 12px 14px 32px; display: flex; flex-direction: column; gap: 8px; width: 100%; }
         .block-edit-form input, .block-edit-form textarea { font-size: 13px; }
         .block-edit-label { font-size: 11px; color: var(--text-muted); margin-bottom: 2px; }
+        .block-add-item-btn { font-size: 12px; color: var(--accent); padding: 4px 0; text-align: left; }
+        .block-file-btn { font-size: 12px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); }
+        .block-file-btn:hover { background: var(--surface); }
+        .block-row { display: flex; gap: 6px; align-items: center; }
+        .block-row input { flex: 1; }
+        .block-row-del { color: #ef4444; font-size: 12px; padding: 4px; flex-shrink: 0; }
       `}</style>
     </div>
   );
@@ -127,10 +136,67 @@ function BlockLabel({ block, profile }: { block: Block; profile: Profile }) {
           <span className="block-value">{block.content || "(내용 없음)"}</span>
         </>
       );
+    case "socials":
+      return (
+        <>
+          <span className="block-type-label">Socials</span>
+          <span className="block-value">{block.items.length}개 소셜 링크</span>
+        </>
+      );
+    case "image":
+      return (
+        <>
+          <span className="block-type-label">Image</span>
+          <span className="block-value">{block.alt || "(alt 없음)"}</span>
+          {block.assetPath && <span className="block-url">{block.assetPath}</span>}
+        </>
+      );
+    case "footer":
+      return (
+        <>
+          <span className="block-type-label">Footer</span>
+          <span className="block-value">{block.text || "(푸터 텍스트)"}</span>
+        </>
+      );
+    case "affiliate":
+      return (
+        <>
+          <span className="block-type-label">Affiliate</span>
+          <span className="block-value">{block.title || "(제목 없음)"}</span>
+          <span className="block-url">{block.url}</span>
+        </>
+      );
+    case "sponsored":
+      return (
+        <>
+          <span className="block-type-label">Sponsored</span>
+          <span className="block-value">{block.title || "(제목 없음)"}</span>
+          <span className="block-url">{block.url}</span>
+        </>
+      );
+    case "custom-html":
+      return (
+        <>
+          <span className="block-type-label">Custom HTML</span>
+          <span className="block-value" style={{ fontFamily: "monospace", fontSize: "12px" }}>
+            {block.html.slice(0, 60) || "(HTML 없음)"}
+          </span>
+        </>
+      );
   }
 }
 
-function BlockEditor({ block, profile, onUpdate }: { block: Block; profile: Profile; onUpdate: (p: Partial<Block>) => void }) {
+function BlockEditor({
+  block,
+  profile,
+  projectPath,
+  onUpdate,
+}: {
+  block: Block;
+  profile: Profile;
+  projectPath: string;
+  onUpdate: (p: Partial<Block>) => void;
+}) {
   switch (block.type) {
     case "profile":
       return (
@@ -142,8 +208,6 @@ function BlockEditor({ block, profile, onUpdate }: { block: Block; profile: Prof
               placeholder="이름"
               onChange={() => {}}
               onBlur={(e) => {
-                // profile fields are edited via updateProfile in parent
-                // dispatch via custom event for simplicity
                 window.dispatchEvent(new CustomEvent("profile-update", { detail: { name: e.target.value } }));
               }}
             />
@@ -210,6 +274,191 @@ function BlockEditor({ block, profile, onUpdate }: { block: Block; profile: Prof
               placeholder="내용"
               rows={3}
               onBlur={(e) => onUpdate({ content: e.target.value } as Partial<Block>)}
+            />
+          </div>
+        </div>
+      );
+    case "socials":
+      return (
+        <div className="block-edit-form">
+          {block.items.map((item, i) => (
+            <div key={i} className="block-row">
+              <input
+                defaultValue={item.platform}
+                placeholder="플랫폼 (instagram, twitter…)"
+                style={{ flex: 1 }}
+                onBlur={(e) => {
+                  const items = block.items.map((it, j) =>
+                    j === i ? { ...it, platform: e.target.value } : it
+                  );
+                  onUpdate({ items } as Partial<Block>);
+                }}
+              />
+              <input
+                defaultValue={item.url}
+                placeholder="https://..."
+                style={{ flex: 2 }}
+                onBlur={(e) => {
+                  const items = block.items.map((it, j) =>
+                    j === i ? { ...it, url: e.target.value } : it
+                  );
+                  onUpdate({ items } as Partial<Block>);
+                }}
+              />
+              <button
+                className="block-row-del"
+                onClick={() => onUpdate({ items: block.items.filter((_, j) => j !== i) } as Partial<Block>)}
+              >✕</button>
+            </div>
+          ))}
+          <button
+            className="block-add-item-btn"
+            onClick={() => onUpdate({ items: [...block.items, { platform: "", url: "" }] } as Partial<Block>)}
+          >+ 소셜 추가</button>
+        </div>
+      );
+    case "image":
+      return (
+        <div className="block-edit-form">
+          <div>
+            <div className="block-edit-label">Alt 텍스트</div>
+            <input
+              defaultValue={block.alt}
+              placeholder="이미지 설명"
+              onBlur={(e) => onUpdate({ alt: e.target.value } as Partial<Block>)}
+            />
+          </div>
+          <div>
+            <div className="block-edit-label">이미지 파일</div>
+            <button
+              className="block-file-btn"
+              onClick={async () => {
+                const file = await open({
+                  multiple: false,
+                  filters: [{ name: "Image", extensions: ["jpg", "jpeg", "png", "gif", "webp"] }],
+                });
+                if (!file || typeof file !== "string") return;
+                try {
+                  const assetPath: string = await invoke("import_asset", {
+                    srcPath: file,
+                    projectPath,
+                    role: "image",
+                  });
+                  onUpdate({ assetPath } as Partial<Block>);
+                } catch (e) {
+                  alert(String(e));
+                }
+              }}
+            >파일 선택</button>
+            {block.assetPath && <span className="block-url" style={{ marginTop: "4px" }}>{block.assetPath}</span>}
+          </div>
+          <div>
+            <div className="block-edit-label">링크 URL (선택)</div>
+            <input
+              defaultValue={block.url ?? ""}
+              placeholder="https://..."
+              onBlur={(e) => onUpdate({ url: e.target.value || undefined } as Partial<Block>)}
+            />
+          </div>
+        </div>
+      );
+    case "footer":
+      return (
+        <div className="block-edit-form">
+          <div>
+            <div className="block-edit-label">텍스트</div>
+            <input
+              defaultValue={block.text}
+              placeholder="© 2025 이름"
+              onBlur={(e) => onUpdate({ text: e.target.value } as Partial<Block>)}
+            />
+          </div>
+          <div>
+            <div className="block-edit-label">링크</div>
+            {block.links.map((link, i) => (
+              <div key={i} className="block-row" style={{ marginBottom: "4px" }}>
+                <input
+                  defaultValue={link.label}
+                  placeholder="라벨"
+                  onBlur={(e) => {
+                    const links = block.links.map((lk, j) =>
+                      j === i ? { ...lk, label: e.target.value } : lk
+                    );
+                    onUpdate({ links } as Partial<Block>);
+                  }}
+                />
+                <input
+                  defaultValue={link.url}
+                  placeholder="https://..."
+                  style={{ flex: 2 }}
+                  onBlur={(e) => {
+                    const links = block.links.map((lk, j) =>
+                      j === i ? { ...lk, url: e.target.value } : lk
+                    );
+                    onUpdate({ links } as Partial<Block>);
+                  }}
+                />
+                <button
+                  className="block-row-del"
+                  onClick={() => onUpdate({ links: block.links.filter((_, j) => j !== i) } as Partial<Block>)}
+                >✕</button>
+              </div>
+            ))}
+            <button
+              className="block-add-item-btn"
+              onClick={() => onUpdate({ links: [...block.links, { label: "", url: "" }] } as Partial<Block>)}
+            >+ 링크 추가</button>
+          </div>
+        </div>
+      );
+    case "affiliate":
+      return (
+        <div className="block-edit-form">
+          <div>
+            <div className="block-edit-label">제목</div>
+            <input defaultValue={block.title} placeholder="제품명" onBlur={(e) => onUpdate({ title: e.target.value } as Partial<Block>)} />
+          </div>
+          <div>
+            <div className="block-edit-label">URL</div>
+            <input defaultValue={block.url} placeholder="https://..." onBlur={(e) => onUpdate({ url: e.target.value } as Partial<Block>)} />
+          </div>
+          <div>
+            <div className="block-edit-label">UTM Source</div>
+            <input defaultValue={block.utmSource ?? ""} placeholder="opentree" onBlur={(e) => onUpdate({ utmSource: e.target.value || undefined } as Partial<Block>)} />
+          </div>
+          <div>
+            <div className="block-edit-label">UTM Medium</div>
+            <input defaultValue={block.utmMedium ?? ""} placeholder="affiliate" onBlur={(e) => onUpdate({ utmMedium: e.target.value || undefined } as Partial<Block>)} />
+          </div>
+          <div>
+            <div className="block-edit-label">UTM Campaign</div>
+            <input defaultValue={block.utmCampaign ?? ""} placeholder="campaign" onBlur={(e) => onUpdate({ utmCampaign: e.target.value || undefined } as Partial<Block>)} />
+          </div>
+        </div>
+      );
+    case "sponsored":
+      return (
+        <div className="block-edit-form">
+          <div>
+            <div className="block-edit-label">제목</div>
+            <input defaultValue={block.title} placeholder="스폰서 제목" onBlur={(e) => onUpdate({ title: e.target.value } as Partial<Block>)} />
+          </div>
+          <div>
+            <div className="block-edit-label">URL</div>
+            <input defaultValue={block.url} placeholder="https://..." onBlur={(e) => onUpdate({ url: e.target.value } as Partial<Block>)} />
+          </div>
+        </div>
+      );
+    case "custom-html":
+      return (
+        <div className="block-edit-form">
+          <div>
+            <div className="block-edit-label">HTML</div>
+            <textarea
+              defaultValue={block.html}
+              placeholder="<div>...</div>"
+              rows={5}
+              onBlur={(e) => onUpdate({ html: e.target.value } as Partial<Block>)}
             />
           </div>
         </div>

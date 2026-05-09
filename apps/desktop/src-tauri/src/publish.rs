@@ -30,6 +30,23 @@ pub fn delete_token(provider: &str) -> Result<(), String> {
     }
 }
 
+// ── Asset helpers ─────────────────────────────────────────────────────────────
+
+pub fn load_project_assets(project_path: &str) -> Vec<(String, Vec<u8>)> {
+    let dir = std::path::Path::new(project_path).join("assets");
+    if !dir.exists() { return Vec::new(); }
+    std::fs::read_dir(&dir)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter(|e| e.path().is_file())
+        .filter_map(|e| {
+            let name = e.file_name().to_string_lossy().to_string();
+            std::fs::read(e.path()).ok().map(|b| (format!("assets/{name}"), b))
+        })
+        .collect()
+}
+
 // ── Shared types ─────────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -58,6 +75,7 @@ pub struct DnsRecord {
 struct VercelFile {
     file: String,
     data: String,
+    encoding: String,
 }
 
 #[derive(Serialize)]
@@ -99,12 +117,20 @@ pub async fn deploy_vercel(
     config: &Config,
     token: &str,
     project_name: &str,
+    project_path: &str,
 ) -> Result<DeployResult, String> {
     let output = build(config).map_err(|e| format!("빌드 오류: {e}"))?;
-    let files = vec![
-        VercelFile { file: "index.html".to_string(), data: output.index_html },
-        VercelFile { file: "favicon.svg".to_string(), data: output.favicon_svg },
+    let mut files = vec![
+        VercelFile { file: "index.html".to_string(), data: output.index_html, encoding: "utf-8".to_string() },
+        VercelFile { file: "favicon.svg".to_string(), data: output.favicon_svg, encoding: "utf-8".to_string() },
     ];
+    for (rel_path, bytes) in load_project_assets(project_path) {
+        files.push(VercelFile {
+            file: rel_path,
+            data: base64::engine::general_purpose::STANDARD.encode(&bytes),
+            encoding: "base64".to_string(),
+        });
+    }
     let body = VercelDeployBody {
         name: project_name.to_string(),
         files,
@@ -223,6 +249,18 @@ fn sha256_hex(data: &[u8]) -> String {
     format!("{:x}", h.finalize())
 }
 
+fn ext_to_mime(path: &str) -> &'static str {
+    let ext = path.rsplit('.').next().unwrap_or("").to_lowercase();
+    match ext.as_str() {
+        "jpg" | "jpeg" => "image/jpeg",
+        "png" => "image/png",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "svg" => "image/svg+xml",
+        _ => "application/octet-stream",
+    }
+}
+
 pub async fn verify_cloudflare(token: &str, account_id: &str) -> Result<(), String> {
     let resp = reqwest::Client::new()
         .get(format!(
@@ -242,6 +280,7 @@ pub async fn deploy_cloudflare(
     config: &Config,
     conn: &CfConnection,
     project_name: &str,
+    project_path: &str,
 ) -> Result<DeployResult, String> {
     let output = build(config).map_err(|e| format!("빌드 오류: {e}"))?;
     let client = reqwest::Client::new();
@@ -255,25 +294,25 @@ pub async fn deploy_cloudflare(
     let html_hash = sha256_hex(&html_bytes);
     let svg_hash = sha256_hex(&svg_bytes);
 
-    let manifest = serde_json::json!({
+    let assets = load_project_assets(project_path);
+    let mut manifest = serde_json::json!({
         "index.html": html_hash,
         "favicon.svg": svg_hash,
     });
-
-    let form = reqwest::multipart::Form::new()
-        .text("manifest", serde_json::to_string(&manifest).unwrap())
-        .part(
-            html_hash,
-            reqwest::multipart::Part::bytes(html_bytes)
-                .mime_str("text/html")
-                .unwrap(),
-        )
-        .part(
-            svg_hash,
-            reqwest::multipart::Part::bytes(svg_bytes)
-                .mime_str("image/svg+xml")
-                .unwrap(),
-        );
+    let mut parts: Vec<(String, Vec<u8>, &'static str)> = vec![
+        (html_hash, html_bytes, "text/html"),
+        (svg_hash, svg_bytes, "image/svg+xml"),
+    ];
+    for (rel_path, bytes) in &assets {
+        let hash = sha256_hex(bytes);
+        manifest[rel_path.as_str()] = serde_json::Value::String(hash.clone());
+        parts.push((hash, bytes.clone(), ext_to_mime(rel_path)));
+    }
+    let mut form = reqwest::multipart::Form::new()
+        .text("manifest", serde_json::to_string(&manifest).unwrap());
+    for (hash, bytes, mime) in parts {
+        form = form.part(hash, reqwest::multipart::Part::bytes(bytes).mime_str(mime).unwrap());
+    }
 
     let resp = client
         .post(format!(
@@ -419,6 +458,7 @@ pub async fn verify_github(token: &str) -> Result<(), String> {
 pub async fn deploy_github_pages(
     config: &Config,
     conn: &GhConnection,
+    project_path: &str,
 ) -> Result<DeployResult, String> {
     let output = build(config).map_err(|e| format!("빌드 오류: {e}"))?;
     let client = reqwest::Client::new();
@@ -428,6 +468,9 @@ pub async fn deploy_github_pages(
     ensure_gh_repo(&client, token, repo).await?;
     put_gh_file(&client, token, repo, "index.html", output.index_html.as_bytes()).await?;
     put_gh_file(&client, token, repo, "favicon.svg", output.favicon_svg.as_bytes()).await?;
+    for (rel_path, bytes) in load_project_assets(project_path) {
+        put_gh_file(&client, token, repo, &rel_path, &bytes).await?;
+    }
     enable_gh_pages(&client, token, repo).await?;
 
     let owner = repo.split('/').next().unwrap_or("");

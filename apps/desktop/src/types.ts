@@ -14,7 +14,13 @@ export type Block =
   | { id: string; type: "profile"; enabled: boolean }
   | { id: string; type: "link"; enabled: boolean; title: string; url: string }
   | { id: string; type: "heading"; enabled: boolean; text: string }
-  | { id: string; type: "text"; enabled: boolean; content: string };
+  | { id: string; type: "text"; enabled: boolean; content: string }
+  | { id: string; type: "socials"; enabled: boolean; items: { platform: string; url: string }[] }
+  | { id: string; type: "image"; enabled: boolean; assetPath: string; alt: string; url?: string }
+  | { id: string; type: "footer"; enabled: boolean; text: string; links: { label: string; url: string }[] }
+  | { id: string; type: "affiliate"; enabled: boolean; title: string; url: string; utmSource?: string; utmMedium?: string; utmCampaign?: string }
+  | { id: string; type: "sponsored"; enabled: boolean; title: string; url: string }
+  | { id: string; type: "custom-html"; enabled: boolean; html: string };
 
 export interface Config {
   schemaVersion: number;

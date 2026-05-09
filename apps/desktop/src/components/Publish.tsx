@@ -21,6 +21,7 @@ interface DomainStatus {
 
 interface Props {
   store: ReturnType<typeof useAppStore>;
+  projectPath: string;
 }
 
 type Provider = "vercel" | "cloudflare" | "github";
@@ -31,7 +32,7 @@ const PROVIDERS: { id: Provider; label: string }[] = [
   { id: "github", label: "GitHub Pages" },
 ];
 
-export default function Publish({ store }: Props) {
+export default function Publish({ store, projectPath }: Props) {
   const { config } = store;
   const [provider, setProvider] = useState<Provider>("vercel");
   const [connected, setConnected] = useState<Record<Provider, boolean>>({
@@ -89,15 +90,17 @@ export default function Publish({ store }: Props) {
         res = await invoke("deploy_vercel", {
           config,
           projectName: projectName.trim() || "opentree-site",
+          projectPath,
         });
         if (res.state !== "READY") pollVercel(res.id);
       } else if (provider === "cloudflare") {
         res = await invoke("deploy_cloudflare", {
           config,
           projectName: projectName.trim() || "opentree-site",
+          projectPath,
         });
       } else {
-        res = await invoke("deploy_github_pages", { config });
+        res = await invoke("deploy_github_pages", { config, projectPath });
       }
       setResult(res);
     } catch (e) {
