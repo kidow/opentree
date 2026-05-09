@@ -140,7 +140,7 @@ function BlockEditor({ block, profile, onUpdate }: { block: Block; profile: Prof
             <input
               defaultValue={profile.name}
               placeholder="이름"
-              onChange={(e) => onUpdate({ } as Partial<Block>)}
+              onChange={() => {}}
               onBlur={(e) => {
                 // profile fields are edited via updateProfile in parent
                 // dispatch via custom event for simplicity
