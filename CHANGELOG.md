@@ -17,6 +17,31 @@ The format is intentionally simple:
 - Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Remove import-from-JSON feature — no clear use case without legacy CLI
 
+### Testing — UI unit tests (Vitest + Testing Library)
+
+- Add Vitest with jsdom environment + Testing Library + jest-dom
+  matchers + @tauri-apps/api/mocks. 43 unit tests across 5 files:
+  - `i18n.test.ts` (7) — `t()` lookups, fallback to key, language
+    switching, `useT` / `useLang` reactivity, localStorage persistence
+  - `store.test.ts` (11) — store mutators (profile, blocks, theme),
+    undo/redo traversal, `updateSchedule` set + clear,
+    `markSaved`, wholesale `update`
+  - `AddBlockModal.test.tsx` (8) — every block type listed, default
+    payload per type (Link/Form/Collection/Commerce/Support),
+    onClose, unique UUIDs
+  - `BlockCard.test.tsx` (11) — labels (Profile/Link/Image/
+    Affiliate/Collection/Music), disabled styling, link editor
+    onUpdate, toggle, remove, schedule editor onScheduleChange
+  - `Stats.test.tsx` (6) — disabled state, missing-token state,
+    KPI rendering from `fetch_plausible_stats` (visitors / pageviews
+    / bounce / duration), period switching re-fetches, error
+    rendering, refresh button
+- Test setup polyfills `localStorage` (vitest 4 jsdom backend
+  doesn't seed it), stubs `crypto.randomUUID` for deterministic
+  ids, mocks `@tauri-apps/plugin-dialog`
+- `package.json` scripts: `test` / `test:watch` / `typecheck`
+- CI `frontend` job runs `npm run typecheck` and `npm test`
+
 ### Testing — opentree-core integration tests
 
 - Add 54 integration tests across 5 files in `crates/opentree-core/tests/`:

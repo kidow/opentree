@@ -43,4 +43,8 @@ jobs:
 
       - name: Type check (tsc --noEmit)
         working-directory: apps/desktop
-        run: npx tsc --noEmit
+        run: npm run typecheck
+
+      - name: Vitest (UI unit tests)
+        working-directory: apps/desktop
+        run: npm test
