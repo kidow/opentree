@@ -4,15 +4,13 @@ title: Troubleshooting
 description: Common deploy errors, token validation failures, and how to resolve them.
 ---
 
-If publish fails, the app shows the exact provider error in the Publish tab. The most common ones — and what to do about them — are below. The app surfaces error strings in Korean; the literal text is quoted so you can search by it.
+If publish fails, the app shows the exact provider error in the Publish tab. The most common ones — and what to do about them — are below.
 
 ## Token validation errors
 
 These appear immediately after you paste a token in **Settings → Connections**. They mean the token call returned a non-success HTTP status.
 
 ### Invalid Vercel token
-
-The app shows: `유효하지 않은 Vercel 토큰입니다.`
 
 The token failed `GET /v2/user`. Causes:
 
@@ -24,9 +22,7 @@ Generate a new token at [vercel.com/account/tokens](https://vercel.com/account/t
 
 ### Invalid Cloudflare token or Account ID
 
-The app shows: `유효하지 않은 Cloudflare 토큰 또는 Account ID입니다.`
-
-The token failed `GET /accounts/{account_id}/pages/projects`. Causes:
+The token failed `GET /accounts/<account_id>/pages/projects`. Causes:
 
 - The token doesn't have **Account · Cloudflare Pages · Edit** permission.
 - The Account ID doesn't match the account the token was issued for.
@@ -35,8 +31,6 @@ The token failed `GET /accounts/{account_id}/pages/projects`. Causes:
 Re-issue the token at [dash.cloudflare.com/profile/api-tokens](https://dash.cloudflare.com/profile/api-tokens) with the right permission.
 
 ### Invalid GitHub token
-
-The app shows: `유효하지 않은 GitHub 토큰입니다.`
 
 The token failed `GET /user`. Causes:
 
@@ -50,9 +44,7 @@ Issue a new token at [github.com/settings/tokens](https://github.com/settings/to
 
 ### Vercel API error
 
-The app shows: `Vercel 오류 (<status>): <message>`
-
-The Vercel API rejected the deploy request. The status code tells you what went wrong:
+The Vercel API rejected the deploy request. The app shows the HTTP status and the error message returned by Vercel. Common status codes:
 
 - **`400`** — usually a bad project name (must be lowercase, no spaces, no special chars).
 - **`403`** — token lost permission for the project, or you hit a plan limit.
@@ -60,9 +52,7 @@ The Vercel API rejected the deploy request. The status code tells you what went 
 
 ### File upload error (GitHub Pages)
 
-The app shows: `파일 업로드 오류 (<path>): <text>`
-
-GitHub Pages couldn't write the listed file. Common causes:
+GitHub Pages couldn't write a file. The app shows the failed file path and the underlying error. Common causes:
 
 - The repository is empty and has no default branch yet — push any initial commit (even an empty README) to the repo first, then retry.
 - The repository was renamed; update **Settings → Connections → GitHub Pages** with the new `owner/repo`.
@@ -70,16 +60,12 @@ GitHub Pages couldn't write the listed file. Common causes:
 
 ### Build error
 
-The app shows: `빌드 오류: <message>`
-
-The build step failed before any upload happened. The message contains the underlying error from the Rust core. Most often:
+The build step failed before any upload happened. The error message contains the underlying failure from the Rust core. Most often:
 
 - A block has an invalid value (e.g. an empty link URL). Open the block and fix the field.
 - The avatar file referenced in `profile.avatarUrl` was moved or deleted. Re-import it via the profile editor.
 
 ### Network error
-
-The app shows: `네트워크 오류: <message>`
 
 The HTTP request never completed. Check your internet connection. If you're behind a corporate proxy, deploys to provider APIs may be blocked — try a different network.
 

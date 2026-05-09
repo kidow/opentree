@@ -28,7 +28,7 @@ To add or update a token, open **Settings → Connections**.
 
 1. Open **Settings → Connections → Vercel**.
 2. Paste the token. The app calls `GET /v2/user` to verify it's valid.
-3. If the token is wrong, you'll see "유효하지 않은 Vercel 토큰입니다."
+3. If the token is wrong, you'll see an "Invalid Vercel token" error.
 
 ### 3. Publish
 
@@ -58,7 +58,7 @@ In the Cloudflare dashboard, open any zone or the right sidebar of the Pages sec
 1. Open **Settings → Connections → Cloudflare Pages**.
 2. Paste the **token** and **Account ID**.
 3. The app calls `GET /accounts/{account_id}/pages/projects` to verify both are valid.
-4. If either is wrong, you'll see "유효하지 않은 Cloudflare 토큰 또는 Account ID입니다."
+4. If either is wrong, you'll see an "Invalid Cloudflare token or Account ID" error.
 
 ### 4. Publish
 
@@ -88,7 +88,7 @@ You'll need a repository to host the Pages site. The app pushes built files to i
 1. Open **Settings → Connections → GitHub Pages**.
 2. Paste the **token** and the `owner/repo` (e.g. `kidow/my-bio`).
 3. The app calls `GET /user` to verify the token.
-4. If the token is wrong: "유효하지 않은 GitHub 토큰입니다."
+4. If the token is wrong, you'll see an "Invalid GitHub token" error.
 
 ### 4. Publish
 
