@@ -1,53 +1,66 @@
 # Releasing opentree
 
-This project publishes the `opentree-cli` package to npm.
+This project distributes the `opentree` desktop app as signed installers via GitHub Releases:
+
+- **macOS**: `.dmg` (arm64 + x86_64)
+- **Windows**: `.msi` (WiX) + NSIS `.exe`
+- Linux: not built
 
 ## Versioning Rules
 
 - Use Semantic Versioning.
-- `patch`: bug fixes, docs-only corrections that affect shipped guidance, and internal quality improvements with no public behavior break.
-- `minor`: backward-compatible CLI features, new flags, new generated output defaults, or additive JSON fields.
-- `major`: breaking CLI behavior, removed flags, incompatible JSON contract changes, or a new required config schema generation.
-- Config schema breaking changes should increment both the npm major version and `schemaVersion`.
+- `patch`: bug fixes, UI polish, no behavior break.
+- `minor`: new block types, new features, additive config fields.
+- `major`: breaking config schema changes, removed features, incompatible `schemaVersion` bump.
+- Config schema breaking changes should increment both the app major version and `schemaVersion`.
 
 ## Release Checklist
 
-1. Update `CHANGELOG.md`.
-2. Run `npm run release:check`.
-3. Choose the next version with `npm version patch`, `npm version minor`, or `npm version major`.
-4. Review the created tag such as `v0.1.1`.
-5. Push the commit and tag with `git push && git push --tags`.
-6. Confirm the GitHub Actions release workflow finishes.
-7. Verify the published package on npm.
+1. Update `CHANGELOG.md` — move Unreleased bullets into a new version section.
+2. Bump version in `apps/desktop/src-tauri/tauri.conf.json` and `apps/desktop/src-tauri/Cargo.toml`.
+3. Commit: `chore: bump desktop version to vX.Y.Z`.
+4. Tag: `git tag desktop-vX.Y.Z && git push && git push --tags`.
+5. Confirm `.github/workflows/desktop-release.yml` runs on the matrix (macOS arm64, macOS x86_64, Windows x86_64) and attaches all artifacts to a draft release.
+6. Review the draft on the [Releases page](https://github.com/kidow/opentree/releases) and publish.
 
 ## Publishing
 
-Manual local publishing remains possible:
+Tag-driven automation is the preferred path:
 
-```bash
-npm run release:check
-npm publish --access public
-```
+1. Push the `desktop-vX.Y.Z` tag.
+2. `desktop-release.yml` runs `tauri-action` per platform: `tauri build`, sign (if secrets present), and upload artifacts.
+3. Workflow can also be triggered via `workflow_dispatch` against an existing tag.
 
-The preferred path is tag-driven automation:
-
-1. Bump the version locally.
-2. Update `CHANGELOG.md`.
-3. Push the version tag.
-4. Let `.github/workflows/release.yml` run tests and publish to npm.
+The npm-package release workflow (`release.yml`) is separate and triggers on `v*.*.*` tags.
 
 ## Release Notes Process
 
 - Draft notes in the `Unreleased` section of `CHANGELOG.md`.
 - Collapse those bullets into the new version section on release day.
-- Keep notes user-facing: what changed, what was fixed, and any behavior that needs attention.
+- Keep notes user-facing: what changed, what was fixed, any behavior that needs attention.
 
 ## Required Secrets
 
-- `NPM_TOKEN`: token with permission to publish `opentree-cli`.
+All secrets are optional — the workflow will produce unsigned builds if they're missing. Codesigning and notarization unlock distribution-grade artifacts.
+
+**Updater signing** (Tauri auto-update verification)
+- `TAURI_SIGNING_PRIVATE_KEY`
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+
+**macOS** (Developer ID + notarization)
+- `APPLE_CERTIFICATE` (base64 `.p12`)
+- `APPLE_CERTIFICATE_PASSWORD`
+- `APPLE_SIGNING_IDENTITY` (e.g. `Developer ID Application: Name (TEAMID)`)
+- `APPLE_ID`
+- `APPLE_PASSWORD` (app-specific password)
+- `APPLE_TEAM_ID`
+
+**Windows** (Authenticode)
+- `WINDOWS_CERTIFICATE` (base64-encoded PFX)
+- `WINDOWS_CERTIFICATE_PASSWORD`
 
 ## Failure Handling
 
-- If `npm run release:check` fails, do not publish.
-- If npm publish succeeds but the GitHub release step fails, rerun only the workflow after confirming the package version is already live.
-- Never overwrite an existing published version. Cut a new patch release instead.
+- If a build step fails, fix the issue and re-push the tag after deleting it: `git tag -d desktop-vX.Y.Z && git push origin :refs/tags/desktop-vX.Y.Z`.
+- Never reuse a published tag. Cut a new patch release instead.
+- For platform-specific failures, the matrix is `fail-fast: false` so successful platforms still upload their artifacts.
