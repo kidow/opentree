@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -16,6 +17,17 @@ pub struct Config {
     pub connections: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub analytics: Option<AnalyticsConfig>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub schedules: HashMap<String, Schedule>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Schedule {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub publish_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unpublish_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -427,7 +439,7 @@ pub struct Theme {
 impl Config {
     pub fn default_config() -> Self {
         Config {
-            schema_version: 9,
+            schema_version: 10,
             profile: Profile { name: String::new(), bio: None, avatar_url: None },
             blocks: vec![
                 Block::Profile { id: Uuid::new_v4().to_string(), enabled: true },
@@ -455,6 +467,7 @@ impl Config {
             domain: None,
             connections: Vec::new(),
             analytics: None,
+            schedules: HashMap::new(),
         }
     }
 

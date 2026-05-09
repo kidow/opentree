@@ -71,6 +71,11 @@ export interface AnalyticsConfig {
   selfHostUrl?: string;
 }
 
+export interface Schedule {
+  publishAt?: string;
+  unpublishAt?: string;
+}
+
 export interface Config {
   schemaVersion: number;
   profile: Profile;
@@ -80,4 +85,5 @@ export interface Config {
   domain?: string;
   connections: string[];
   analytics?: AnalyticsConfig;
+  schedules?: Record<string, Schedule>;
 }

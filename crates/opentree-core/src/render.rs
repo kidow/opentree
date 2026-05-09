@@ -29,17 +29,46 @@ pub fn render_page(config: &Config) -> String {
                 main id="content" {
                     @for block in &config.blocks {
                         @if block.enabled() {
-                            (render_block(block, config))
+                            (render_scheduled_wrapper(block, config))
                         }
                     }
                 }
                 @if !analytics_body.is_empty() {
                     script { (PreEscaped(analytics_body)) }
                 }
+                @if has_schedules(config) {
+                    script { (PreEscaped(schedule_runtime_js())) }
+                }
             }
         }
     };
     markup.into_string()
+}
+
+fn render_scheduled_wrapper(block: &Block, config: &Config) -> maud::Markup {
+    let sched = config.schedules.get(block.id());
+    match sched {
+        Some(s) if s.publish_at.is_some() || s.unpublish_at.is_some() => {
+            let publish = s.publish_at.as_deref();
+            let unpublish = s.unpublish_at.as_deref();
+            html! {
+                div class="scheduled"
+                    data-schedule-publish=[publish]
+                    data-schedule-unpublish=[unpublish] {
+                    (render_block(block, config))
+                }
+            }
+        }
+        _ => render_block(block, config),
+    }
+}
+
+fn has_schedules(config: &Config) -> bool {
+    config.schedules.values().any(|s| s.publish_at.is_some() || s.unpublish_at.is_some())
+}
+
+fn schedule_runtime_js() -> &'static str {
+    r#"(function(){function tick(){var now=Date.now();document.querySelectorAll('.scheduled').forEach(function(el){var p=el.dataset.schedulePublish?Date.parse(el.dataset.schedulePublish):null;var u=el.dataset.scheduleUnpublish?Date.parse(el.dataset.scheduleUnpublish):null;var v=true;if(p&&now<p)v=false;if(u&&now>=u)v=false;el.classList.toggle('scheduled-hidden',!v);});}tick();setInterval(tick,60000);})();"#
 }
 
 fn render_google_font_link(config: &Config) -> String {
@@ -766,6 +795,9 @@ body.layout-featured #content .profile + * + .link-card {{
     font-size: 1.1rem;
     box-shadow: 0 4px 20px color-mix(in srgb, {accent} 25%, transparent);
 }}
+
+.scheduled {{ display: contents; }}
+.scheduled.scheduled-hidden {{ display: none !important; }}
 
 @media (prefers-reduced-motion: reduce) {{
     *, *::before, *::after {{

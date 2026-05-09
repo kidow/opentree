@@ -43,6 +43,11 @@ function summarizeCall(call: ToolCall): string {
     case "toggle_block": return `블록 ${a.enabled ? "활성화" : "비활성화"} (id: ${String(a.id ?? "").slice(0, 8)}…)`;
     case "update_theme": return `테마 변경 (${Object.keys(a).join(", ")})`;
     case "update_profile": return `프로필 변경 (${Object.keys(a).join(", ")})`;
+    case "set_schedule": {
+      const p = a.publishAt ? `→ ${a.publishAt}` : "";
+      const u = a.unpublishAt ? `~ ${a.unpublishAt}` : "";
+      return `스케줄 설정 (id: ${String(a.id ?? "").slice(0, 8)}…) ${p} ${u}`.trim();
+    }
     default: return call.name;
   }
 }
@@ -96,6 +101,19 @@ function applyCalls(config: Config, calls: ToolCall[]): Config {
       }
       case "update_profile": {
         next = { ...next, profile: { ...next.profile, ...(a as Partial<typeof next.profile>) } };
+        break;
+      }
+      case "set_schedule": {
+        const id = a.id as string;
+        const publishAt = a.publishAt as string | undefined;
+        const unpublishAt = a.unpublishAt as string | undefined;
+        const schedules = { ...(next.schedules ?? {}) };
+        if (!publishAt && !unpublishAt) {
+          delete schedules[id];
+        } else {
+          schedules[id] = { publishAt, unpublishAt };
+        }
+        next = { ...next, schedules };
         break;
       }
     }

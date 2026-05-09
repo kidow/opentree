@@ -116,6 +116,15 @@ fn tool_defs() -> Vec<(&'static str, &'static str, serde_json::Value)> {
                 "avatarUrl": {"type": "string"}
             }
         })),
+        ("set_schedule", "Set or clear a publish/unpublish schedule for a block. ISO8601 strings (e.g. 2026-11-29T00:00:00Z). Pass null or omit to clear.", serde_json::json!({
+            "type": "object",
+            "properties": {
+                "id": {"type": "string"},
+                "publishAt": {"type": ["string", "null"]},
+                "unpublishAt": {"type": ["string", "null"]}
+            },
+            "required": ["id"]
+        })),
     ]
 }
 

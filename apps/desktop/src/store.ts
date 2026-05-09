@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import type { Block, Config, Profile, Theme } from "./types";
+import type { Block, Config, Profile, Schedule, Theme } from "./types";
 
 const MAX_HISTORY = 50;
 
@@ -67,6 +67,18 @@ export function useAppStore(initial: Config | null) {
     mutate((c) => ({ ...c, blocks }));
   }, [mutate]);
 
+  const updateSchedule = useCallback((blockId: string, schedule: Schedule | null) => {
+    mutate((c) => {
+      const next = { ...(c.schedules ?? {}) };
+      if (!schedule || (!schedule.publishAt && !schedule.unpublishAt)) {
+        delete next[blockId];
+      } else {
+        next[blockId] = schedule;
+      }
+      return { ...c, schedules: next };
+    });
+  }, [mutate]);
+
   const undo = useCallback(() => {
     setConfig((c) => {
       const prev = historyRef.current.pop();
@@ -112,6 +124,7 @@ export function useAppStore(initial: Config | null) {
     updateBlock,
     removeBlock,
     reorderBlocks,
+    updateSchedule,
     undo,
     redo,
     markSaved,

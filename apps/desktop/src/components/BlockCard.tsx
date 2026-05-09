@@ -3,18 +3,35 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { Block, Profile } from "../types";
+import type { Block, Profile, Schedule } from "../types";
 
 interface Props {
   block: Block;
   profile: Profile;
   projectPath: string;
+  schedule?: Schedule;
   onUpdate: (patch: Partial<Block>) => void;
+  onScheduleChange: (schedule: Schedule | null) => void;
   onRemove?: () => void;
   onToggle: () => void;
 }
 
-export default function BlockCard({ block, profile, projectPath, onUpdate, onRemove, onToggle }: Props) {
+function isoToLocal(iso: string | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 16);
+}
+
+function localToIso(local: string): string | undefined {
+  if (!local) return undefined;
+  const d = new Date(local);
+  if (isNaN(d.getTime())) return undefined;
+  return d.toISOString();
+}
+
+export default function BlockCard({ block, profile, projectPath, schedule, onUpdate, onScheduleChange, onRemove, onToggle }: Props) {
   const [editing, setEditing] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: block.id, disabled: block.type === "profile" });
@@ -51,7 +68,47 @@ export default function BlockCard({ block, profile, projectPath, onUpdate, onRem
           </button>
         )}
       </div>
-      {editing && <BlockEditor block={block} profile={profile} projectPath={projectPath} onUpdate={onUpdate} />}
+      {editing && (
+        <>
+          <BlockEditor block={block} profile={profile} projectPath={projectPath} onUpdate={onUpdate} />
+          {block.type !== "profile" && (
+            <div className="block-edit-form" style={{ borderTop: "1px solid var(--border)", paddingTop: 10 }}>
+              <div className="block-edit-label" style={{ fontWeight: 600, marginBottom: 4 }}>스케줄 (선택)</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                <div>
+                  <div className="block-edit-label">공개 시작 (publishAt)</div>
+                  <input
+                    type="datetime-local"
+                    defaultValue={isoToLocal(schedule?.publishAt)}
+                    onBlur={(e) => onScheduleChange({
+                      publishAt: localToIso(e.target.value),
+                      unpublishAt: schedule?.unpublishAt,
+                    })}
+                  />
+                </div>
+                <div>
+                  <div className="block-edit-label">공개 종료 (unpublishAt)</div>
+                  <input
+                    type="datetime-local"
+                    defaultValue={isoToLocal(schedule?.unpublishAt)}
+                    onBlur={(e) => onScheduleChange({
+                      publishAt: schedule?.publishAt,
+                      unpublishAt: localToIso(e.target.value),
+                    })}
+                  />
+                </div>
+              </div>
+              {schedule && (schedule.publishAt || schedule.unpublishAt) && (
+                <button
+                  className="block-add-item-btn"
+                  style={{ color: "#dc2626", marginTop: 4 }}
+                  onClick={() => onScheduleChange(null)}
+                >스케줄 제거</button>
+              )}
+            </div>
+          )}
+        </>
+      )}
       <style>{`
         .block-card {
           background: var(--surface);

@@ -17,6 +17,24 @@ The format is intentionally simple:
 - Remove `apps/legacy-cli` — all functionality superseded by Rust core and Tauri desktop
 - Remove import-from-JSON feature — no clear use case without legacy CLI
 
+### Phase 13 — Link Scheduling
+
+- Add `schedules` field to Config: map of block id → `{publishAt, unpublishAt}`
+  (ISO8601 UTC strings)
+- Per-block schedule editor in BlockCard (datetime-local inputs for
+  publish start / end, plus 제거 button)
+- Render wraps scheduled blocks in `<div class="scheduled" data-schedule-publish=… data-schedule-unpublish=…>` (CSS `display: contents` keeps layout intact)
+- Inject runtime JS that re-evaluates schedules every 60s and toggles
+  `.scheduled-hidden` on the wrapper — handles user's open browser
+  past the publish/unpublish boundary
+- AI Chat gains `set_schedule` tool (id + publishAt/unpublishAt)
+- Bump `schemaVersion` to 10
+
+Deferred from roadmap (13.2): provider cron auto-setup
+(`scheduled-rebuild.yml` for GH Pages, Vercel `crons`, CF Worker).
+Without cron, blocks reveal at next manual Publish OR via client-side
+hide while page is open.
+
 ### Phase 12 — Theme Expansion
 
 - Extend Theme schema: optional `borderColor` / `mutedColor` /

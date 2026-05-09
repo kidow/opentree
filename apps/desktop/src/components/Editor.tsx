@@ -63,7 +63,9 @@ export default function Editor({ store }: Props) {
                 block={block}
                 profile={config.profile}
                 projectPath={store.projectPath ?? ""}
+                schedule={config.schedules?.[block.id]}
                 onUpdate={(patch) => store.updateBlock(block.id, patch)}
+                onScheduleChange={(s) => store.updateSchedule(block.id, s)}
                 onRemove={
                   block.type !== "profile"
                     ? () => store.removeBlock(block.id)
