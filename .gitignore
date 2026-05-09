@@ -5,3 +5,7 @@ dist
 .omc
 plan
 .claude/settings.local.json
+
+# Rust
+target/
+Cargo.lock
