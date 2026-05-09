@@ -3,7 +3,7 @@
   "private": true,
   "workspaces": [
     "apps/legacy-cli",
-    "apps/docs"
+    "apps/web"
   ],
   "scripts": {
     "test:legacy": "npm test --workspace=apps/legacy-cli",

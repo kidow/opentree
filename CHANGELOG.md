@@ -29,6 +29,12 @@ The format is intentionally simple:
 - Fix light mode header theming
 - Remove Ask AI floating action from layout
 
+### Web Landing
+
+- Add `apps/web` — Astro + Tailwind + Inter + MDX landing site scaffold
+- Register `apps/web` in root npm workspaces, remove stale `apps/docs` reference
+- Delete legacy `docs/` directory (CLI-era artifact)
+
 ## v0.1.0 - 2026-03-08
 
 Initial release notes:
