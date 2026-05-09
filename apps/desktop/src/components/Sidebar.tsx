@@ -6,9 +6,13 @@ interface Props {
   onTabChange: (tab: Tab) => void;
   onSave: () => void;
   onExport: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
 }
 
-export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExport }: Props) {
+export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExport, canUndo, canRedo, onUndo, onRedo }: Props) {
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
@@ -30,6 +34,10 @@ export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExpor
         </button>
       </nav>
       <div className="sidebar-actions">
+        <div className="undo-redo-row">
+          <button className="undo-redo-btn" onClick={onUndo} disabled={!canUndo} title="실행 취소 (⌘Z)">↩</button>
+          <button className="undo-redo-btn" onClick={onRedo} disabled={!canRedo} title="다시 실행 (⌘⇧Z)">↪</button>
+        </div>
         <button className="sidebar-save-btn" onClick={onSave} disabled={!dirty}>
           저장 {dirty ? "•" : ""}
         </button>
@@ -108,6 +116,19 @@ export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExpor
           color: var(--text);
         }
         .sidebar-export-btn:hover { background: var(--bg); }
+        .undo-redo-row {
+          display: flex; gap: 4px;
+        }
+        .undo-redo-btn {
+          flex: 1; padding: 6px;
+          border-radius: 6px;
+          font-size: 15px;
+          border: 1px solid var(--border);
+          color: var(--text);
+          transition: background 0.1s;
+        }
+        .undo-redo-btn:hover:not(:disabled) { background: var(--bg); }
+        .undo-redo-btn:disabled { opacity: 0.3; cursor: default; }
       `}</style>
     </aside>
   );

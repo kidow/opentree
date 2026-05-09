@@ -21,13 +21,13 @@ export default function App() {
   const dirtyRef = useRef(store.dirty);
   useEffect(() => { dirtyRef.current = store.dirty; }, [store.dirty]);
 
-  // Cmd+S 저장
+  // 키보드 단축키
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-        e.preventDefault();
-        handleSave();
-      }
+      if (!(e.metaKey || e.ctrlKey)) return;
+      if (e.key === "s") { e.preventDefault(); handleSave(); }
+      else if (e.key === "z" && !e.shiftKey) { e.preventDefault(); store.undo(); }
+      else if ((e.key === "z" && e.shiftKey) || e.key === "y") { e.preventDefault(); store.redo(); }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -113,6 +113,10 @@ export default function App() {
         onTabChange={setActiveTab}
         onSave={handleSave}
         onExport={handleExport}
+        canUndo={store.canUndo}
+        canRedo={store.canRedo}
+        onUndo={store.undo}
+        onRedo={store.redo}
       />
       {activeTab === "links" ? (
         <Editor store={store} />
