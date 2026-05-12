@@ -95,6 +95,7 @@ describe("Settings", () => {
     const store = setupStore(makeConfig());
     render(<Settings store={store.current} projectPath="/tmp/proj" />);
 
+    await user.click(screen.getByRole("tab", { name: "사이트" }));
     await waitFor(() => screen.getByText(/Site URL/));
     const input = screen.getByPlaceholderText("https://yourname.vercel.app");
     await user.type(input, "https://opentree.example.com");
@@ -110,7 +111,8 @@ describe("Settings", () => {
     const store = setupStore(makeConfig());
     render(<Settings store={store.current} projectPath="/tmp/proj" />);
 
-    await waitFor(() => screen.getByText("Analytics"));
+    await user.click(screen.getByRole("tab", { name: "분석" }));
+    await waitFor(() => screen.getByText("Provider"));
     const provider = screen.getByRole("combobox") as HTMLSelectElement;
     await user.selectOptions(provider, "umami");
 
@@ -124,7 +126,8 @@ describe("Settings", () => {
     const store = setupStore(makeConfig());
     render(<Settings store={store.current} projectPath="/tmp/proj" />);
 
-    await waitFor(() => screen.getByText("Locale Variants (다국어 페이지)"));
+    await user.click(screen.getByRole("tab", { name: "다국어" }));
+    await waitFor(() => screen.getByText(/각 variant는 추가 locale/));
     expect(store.current.config?.localeVariants?.length ?? 0).toBe(0);
     await user.click(screen.getByRole("button", { name: /Locale 추가/ }));
     expect(store.current.config?.localeVariants?.length).toBe(1);
@@ -135,15 +138,21 @@ describe("Settings", () => {
     const store = setupStore(makeConfig());
     render(<Settings store={store.current} projectPath="/tmp/proj" />);
 
+    await user.click(screen.getByRole("tab", { name: "언어" }));
     await waitFor(() => screen.getByText(/한국어/));
     await user.click(screen.getByRole("button", { name: "English" }));
     expect(window.localStorage.getItem("opentree-lang")).toBe("en");
   });
 
   it("displays project path and schema version under '프로젝트' / '앱 정보'", async () => {
+    const user = userEvent.setup();
     const store = setupStore(makeConfig());
     render(<Settings store={store.current} projectPath="/tmp/my-project" />);
+
+    await user.click(screen.getByRole("tab", { name: "프로젝트" }));
     await waitFor(() => screen.getByText("/tmp/my-project"));
+
+    await user.click(screen.getByRole("tab", { name: "정보" }));
     expect(screen.getByText("14")).toBeInTheDocument();
   });
 });

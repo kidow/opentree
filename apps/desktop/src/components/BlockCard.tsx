@@ -112,8 +112,9 @@ export default function BlockCard({ block, profile, projectPath, schedule, onUpd
       <style>{`
         .block-card {
           background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 10px;
+          border: 0;
+          border-bottom: 1px solid var(--border);
+          border-radius: 0;
           overflow: hidden;
         }
         .block-card > :first-child, .block-body, .block-actions {

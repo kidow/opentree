@@ -62,7 +62,8 @@ export default function PhonePreview({ config }: Props) {
       </div>
       <style>{`
         .preview-panel {
-          border-left: 1px solid var(--border);
+          height: 100%;
+          min-height: 0;
           background: var(--bg);
           display: flex;
           align-items: center;

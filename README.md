@@ -127,7 +127,7 @@ opentree/
 
 ## Docs
 
-[opentree.vercel.app](https://opentree.vercel.app) — Getting started, download, changelog.
+[opentree.vercel.app](https://opentree-omega.vercel.app) — Getting started, download, changelog.
 
 ## License
 

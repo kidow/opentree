@@ -89,6 +89,8 @@ export default function Editor({ store }: Props) {
         .editor {
           display: flex;
           flex-direction: column;
+          height: 100%;
+          min-height: 0;
           overflow: hidden;
           background: var(--bg);
         }
@@ -96,9 +98,11 @@ export default function Editor({ store }: Props) {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 20px 24px 16px;
+          height: 52px;
+          padding: 0 24px;
           border-bottom: 1px solid var(--border);
           background: var(--surface);
+          box-sizing: border-box;
         }
         .editor-title {
           font-size: 18px;
@@ -123,11 +127,12 @@ export default function Editor({ store }: Props) {
         }
         .editor-blocks {
           flex: 1;
+          min-height: 0;
           overflow-y: auto;
-          padding: 16px 24px;
+          padding: 0;
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 0;
         }
       `}</style>
     </main>

@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -5,6 +9,27 @@
 }
 
 :root {
+  --ui-background: 0 0% 100%;
+  --ui-foreground: 0 0% 3.9%;
+  --ui-card: 0 0% 100%;
+  --ui-card-foreground: 0 0% 3.9%;
+  --ui-popover: 0 0% 100%;
+  --ui-popover-foreground: 0 0% 3.9%;
+  --ui-primary: 0 0% 9%;
+  --ui-primary-foreground: 0 0% 98%;
+  --ui-secondary: 0 0% 96.1%;
+  --ui-secondary-foreground: 0 0% 9%;
+  --ui-muted: 0 0% 96.1%;
+  --ui-muted-foreground: 0 0% 45.1%;
+  --ui-accent: 0 0% 96.1%;
+  --ui-accent-foreground: 0 0% 9%;
+  --ui-destructive: 0 84.2% 60.2%;
+  --ui-destructive-foreground: 0 0% 98%;
+  --ui-border: 0 0% 89.8%;
+  --ui-input: 0 0% 89.8%;
+  --ui-ring: 0 0% 3.9%;
+  --radius: 0.75rem;
+
   --sidebar-width: 220px;
   --preview-width: 320px;
   --bg: #f5f5f5;
@@ -50,4 +75,9 @@ input, textarea {
 
 input:focus, textarea:focus {
   border-color: var(--accent);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
 }

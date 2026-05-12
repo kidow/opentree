@@ -71,6 +71,7 @@ describe("Design", () => {
     const user = userEvent.setup();
     const store = setupStore(makeConfig());
     render(<Design store={store.current} />);
+    await user.click(screen.getByRole("tab", { name: "버튼 스타일" }));
     await user.click(screen.getByRole("button", { name: "Pill" }));
     expect(store.current.config?.theme.buttonStyle).toBe("pill");
   });
@@ -79,6 +80,7 @@ describe("Design", () => {
     const user = userEvent.setup();
     const store = setupStore(makeConfig());
     render(<Design store={store.current} />);
+    await user.click(screen.getByRole("tab", { name: "레이아웃" }));
     await user.click(screen.getByRole("button", { name: /Featured/ }));
     expect(store.current.config?.theme.layout).toBe("featured");
   });
@@ -87,6 +89,7 @@ describe("Design", () => {
     const user = userEvent.setup();
     const store = setupStore(makeConfig());
     render(<Design store={store.current} />);
+    await user.click(screen.getByRole("tab", { name: "배경" }));
     await user.click(screen.getByRole("button", { name: "gradient" }));
     expect(store.current.config?.theme.background?.type).toBe("gradient");
 
@@ -104,15 +107,18 @@ describe("Design", () => {
     const user = userEvent.setup();
     const store = setupStore(makeConfig());
     render(<Design store={store.current} />);
+    await user.click(screen.getByRole("tab", { name: "폰트" }));
     const input = screen.getByPlaceholderText("Inter");
     await user.type(input, "Pretendard");
     fireEvent.blur(input);
     expect(store.current.config?.theme.fontFamily).toBe("Pretendard");
   });
 
-  it("custom CSS textarea writes to theme.customCss on blur", () => {
+  it("custom CSS textarea writes to theme.customCss on blur", async () => {
+    const user = userEvent.setup();
     const store = setupStore(makeConfig());
     render(<Design store={store.current} />);
+    await user.click(screen.getByRole("tab", { name: "Custom CSS" }));
     const ta = screen.getByPlaceholderText(/letter-spacing/) as HTMLTextAreaElement;
     fireEvent.change(ta, { target: { value: ".x{display:block}" } });
     fireEvent.blur(ta);
@@ -123,6 +129,7 @@ describe("Design", () => {
     const user = userEvent.setup();
     const store = setupStore(makeConfig());
     render(<Design store={store.current} />);
+    await user.click(screen.getByRole("tab", { name: "Bundle" }));
     await user.click(screen.getByRole("button", { name: "내보내기" }));
     const ta = screen.getByPlaceholderText(/accentColor/);
     expect((ta as HTMLTextAreaElement).value).toContain("\"accentColor\"");
@@ -133,6 +140,7 @@ describe("Design", () => {
     const user = userEvent.setup();
     const store = setupStore(makeConfig());
     render(<Design store={store.current} />);
+    await user.click(screen.getByRole("tab", { name: "Bundle" }));
     const ta = screen.getByPlaceholderText(/accentColor/) as HTMLTextAreaElement;
     const payload = JSON.stringify({
       accentColor: "#333333",
@@ -154,6 +162,7 @@ describe("Design", () => {
     const user = userEvent.setup();
     const store = setupStore(makeConfig());
     render(<Design store={store.current} />);
+    await user.click(screen.getByRole("tab", { name: "Bundle" }));
     const ta = screen.getByPlaceholderText(/accentColor/) as HTMLTextAreaElement;
     fireEvent.change(ta, { target: { value: "not-json" } });
     await user.click(screen.getByRole("button", { name: "적용" }));
@@ -166,6 +175,7 @@ describe("Design", () => {
     const user = userEvent.setup();
     const store = setupStore(makeConfig());
     const { rerender } = render(<Design store={store.current} />);
+    await user.click(screen.getByRole("tab", { name: "배경" }));
     await user.click(screen.getByRole("button", { name: "image" }));
     rerender(<Design store={store.current} />);
     const open = await screen.findByRole("button", { name: /Unsplash/ });
@@ -194,6 +204,7 @@ describe("Design", () => {
     const user = userEvent.setup();
     const store = setupStore(makeConfig());
     const { rerender } = render(<Design store={store.current} />);
+    await user.click(screen.getByRole("tab", { name: "배경" }));
     await user.click(screen.getByRole("button", { name: "image" }));
     rerender(<Design store={store.current} />);
     const open = await screen.findByRole("button", { name: /Unsplash/ });

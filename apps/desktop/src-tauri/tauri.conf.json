@@ -12,6 +12,8 @@
     "windows": [
       {
         "title": "Opentree",
+        "hiddenTitle": true,
+        "titleBarStyle": "Overlay",
         "width": 1200,
         "height": 780,
         "minWidth": 900,

@@ -8,22 +8,14 @@ interface Props {
   onTabChange: (tab: Tab) => void;
   onSave: () => void;
   onExport: () => void;
-  canUndo: boolean;
-  canRedo: boolean;
-  onUndo: () => void;
-  onRedo: () => void;
   chatOpen: boolean;
   onToggleChat: () => void;
 }
 
-export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExport, canUndo, canRedo, onUndo, onRedo, chatOpen, onToggleChat }: Props) {
+export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExport, chatOpen, onToggleChat }: Props) {
   const t = useT();
   return (
     <aside className="sidebar">
-      <div className="sidebar-logo">
-        <span className="sidebar-logo-text">Opentree</span>
-        {dirty && <span className="dirty-dot" title="저장되지 않은 변경사항" />}
-      </div>
       <nav className="sidebar-nav">
         <button
           className={`sidebar-nav-item ${activeTab === "links" ? "active" : ""}`}
@@ -64,10 +56,6 @@ export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExpor
         >
           {chatOpen ? t("action.closeChat") : t("action.aiChat")}
         </button>
-        <div className="undo-redo-row">
-          <button className="undo-redo-btn" onClick={onUndo} disabled={!canUndo} title="실행 취소 (⌘Z)">↩</button>
-          <button className="undo-redo-btn" onClick={onRedo} disabled={!canRedo} title="다시 실행 (⌘⇧Z)">↪</button>
-        </div>
         <button className="sidebar-save-btn" onClick={onSave} disabled={!dirty}>
           {t("action.save")} {dirty ? "•" : ""}
         </button>
@@ -79,32 +67,13 @@ export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExpor
         .sidebar {
           display: flex;
           flex-direction: column;
-          border-right: 1px solid var(--border);
+          height: 100%;
+          min-height: 0;
           background: var(--surface);
-          padding: 16px 12px;
+          padding: 52px 12px 16px;
           gap: 8px;
         }
-        .sidebar-logo {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          padding: 4px 8px 12px;
-          border-bottom: 1px solid var(--border);
-          margin-bottom: 4px;
-        }
-        .sidebar-logo-text {
-          font-weight: 700;
-          font-size: 15px;
-          letter-spacing: -0.02em;
-        }
-        .dirty-dot {
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
-          background: #f59e0b;
-          display: inline-block;
-        }
-        .sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+        .sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 2px; min-height: 0; }
         .sidebar-nav-item {
           width: 100%;
           text-align: left;
@@ -146,19 +115,6 @@ export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExpor
           color: var(--text);
         }
         .sidebar-export-btn:hover { background: var(--bg); }
-        .undo-redo-row {
-          display: flex; gap: 4px;
-        }
-        .undo-redo-btn {
-          flex: 1; padding: 6px;
-          border-radius: 6px;
-          font-size: 15px;
-          border: 1px solid var(--border);
-          color: var(--text);
-          transition: background 0.1s;
-        }
-        .undo-redo-btn:hover:not(:disabled) { background: var(--bg); }
-        .undo-redo-btn:disabled { opacity: 0.3; cursor: default; }
         .sidebar-chat-btn {
           padding: 8px;
           border-radius: 6px;

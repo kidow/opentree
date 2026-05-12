@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { useAppStore } from "../store";
+import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 
 interface DeployResult {
   url: string;
@@ -173,20 +174,16 @@ export default function Publish({ store, projectPath }: Props) {
         <h2 className="publish-title">Publish</h2>
       </div>
       <div className="publish-body">
-
-        {/* Provider tabs */}
-        <div className="provider-tabs">
-          {PROVIDERS.map((p) => (
-            <button
-              key={p.id}
-              className={`provider-tab${provider === p.id ? " active" : ""}${connected[p.id] ? " connected" : ""}`}
-              onClick={() => setProvider(p.id)}
-            >
-              {p.label}
-              {connected[p.id] && <span className="tab-dot" />}
-            </button>
-          ))}
-        </div>
+        <Tabs value={provider} onValueChange={(v) => setProvider(v as Provider)} className="publish-tabs">
+          <TabsList variant="line" className="publish-tabs-list">
+            {PROVIDERS.map((p) => (
+              <TabsTrigger key={p.id} value={p.id}>
+                {p.label}
+                {connected[p.id] && <span className="publish-tab-dot" />}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
         {!connected[provider] ? (
           <div className="not-connected">
@@ -309,20 +306,27 @@ export default function Publish({ store, projectPath }: Props) {
 
       </div>
       <style>{`
-        .publish { display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
-        .publish-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
+        .publish { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; background: var(--bg); }
+        .publish-header {
+          height: 52px;
+          padding: 0 24px;
+          border-bottom: 1px solid var(--border);
+          background: var(--surface);
+          box-sizing: border-box;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
         .publish-title { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
-        .publish-body { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
-        .provider-tabs { display: flex; gap: 6px; }
-        .provider-tab { padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; border: 1px solid var(--border); color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
-        .provider-tab.active { background: var(--accent); color: white; border-color: var(--accent); }
-        .provider-tab:not(.active):hover { background: var(--surface); }
-        .tab-dot { width: 6px; height: 6px; border-radius: 50%; background: #16a34a; }
-        .provider-tab.active .tab-dot { background: white; }
+        .publish-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0; display: flex; flex-direction: column; gap: 0; }
+        .publish-tabs { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+        .publish-tabs-list { padding: 0 24px; }
+        .publish-tab-dot { width: 6px; height: 6px; border-radius: 50%; background: #16a34a; }
+        [data-state="active"] .publish-tab-dot { background: currentColor; }
         .not-connected { padding: 32px 0; text-align: center; color: var(--text-muted); font-size: 13px; }
         .pub-section { display: flex; flex-direction: column; gap: 10px; }
         .pub-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); }
-        .pub-field { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+        .pub-field { background: var(--surface); border: 1px solid var(--border); border-radius: 0; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
         .pub-label { font-size: 13px; font-weight: 600; }
         .pub-hint { font-size: 11px; color: var(--text-muted); }
         .pub-field input { font-size: 13px; }
@@ -330,7 +334,7 @@ export default function Publish({ store, projectPath }: Props) {
         .deploy-btn:disabled { opacity: 0.4; cursor: default; }
         .deploy-btn:hover:not(:disabled) { opacity: 0.85; }
         .pub-error { padding: 12px 14px; background: #fef2f2; color: #dc2626; font-size: 13px; border-radius: 8px; border: 1px solid #fecaca; }
-        .pub-result-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+        .pub-result-card { background: var(--surface); border: 1px solid var(--border); border-radius: 0; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
         .result-state { font-size: 14px; font-weight: 700; }
         .result-state[data-state="READY"] { color: #16a34a; }
         .result-state[data-state="ERROR"] { color: #dc2626; }
@@ -344,7 +348,7 @@ export default function Publish({ store, projectPath }: Props) {
         .domain-check-btn { border: 1px solid var(--border); color: var(--text); }
         .domain-check-btn:hover:not(:disabled) { background: var(--bg); }
         .domain-error { font-size: 12px; color: #dc2626; }
-        .dns-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+        .dns-card { background: var(--surface); border: 1px solid var(--border); border-radius: 0; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
         .dns-status { font-size: 13px; font-weight: 600; }
         .dns-status.ok { color: #16a34a; }
         .dns-status.pending { color: #d97706; }

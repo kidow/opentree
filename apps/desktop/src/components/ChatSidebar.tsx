@@ -298,7 +298,7 @@ export default function ChatSidebar({ store }: Props) {
       </div>
 
       <style>{`
-        .chat-sidebar { display: flex; flex-direction: column; background: var(--surface); border-left: 1px solid var(--border); }
+        .chat-sidebar { display: flex; flex-direction: column; height: 100%; min-height: 0; background: var(--surface); }
         .chat-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border); }
         .chat-title { font-size: 14px; font-weight: 700; }
         .chat-provider { font-size: 12px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { useAppStore } from "../store";
+import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 
 interface PlausibleStats {
   visitors: number;
@@ -89,15 +90,13 @@ export default function Stats({ store }: Props) {
         )}
         {enabled && tokenConnected && (
           <>
-            <div className="stats-period">
-              {PERIODS.map((p) => (
-                <button
-                  key={p.id}
-                  className={`stats-period-btn${period === p.id ? " active" : ""}`}
-                  onClick={() => setPeriod(p.id)}
-                >{p.label}</button>
-              ))}
-            </div>
+            <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)} className="stats-period-tabs">
+              <TabsList variant="line" className="stats-period-tabs-list">
+                {PERIODS.map((p) => (
+                  <TabsTrigger key={p.id} value={p.id}>{p.label}</TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
 
             {error && <div className="stats-error">⚠ {error}</div>}
 
@@ -156,26 +155,34 @@ export default function Stats({ store }: Props) {
         )}
       </div>
       <style>{`
-        .stats { display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
-        .stats-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
+        .stats { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; background: var(--bg); }
+        .stats-header {
+          height: 52px;
+          padding: 0 24px;
+          border-bottom: 1px solid var(--border);
+          background: var(--surface);
+          box-sizing: border-box;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
         .stats-title { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
         .stats-refresh { padding: 7px 14px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); border-radius: 6px; color: var(--text); }
         .stats-refresh:hover:not(:disabled) { background: var(--bg); }
         .stats-refresh:disabled { opacity: 0.4; cursor: default; }
-        .stats-body { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; }
+        .stats-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0; display: flex; flex-direction: column; gap: 0; }
         .stats-empty { padding: 48px 0; text-align: center; color: var(--text-muted); font-size: 13px; }
         .stats-empty-msg { font-size: 12px; color: var(--text-muted); padding: 16px 0; text-align: center; }
-        .stats-period { display: flex; gap: 4px; }
-        .stats-period-btn { padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); color: var(--text-muted); }
-        .stats-period-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+        .stats-period-tabs { display: flex; flex-direction: column; }
+        .stats-period-tabs-list { padding: 0 24px; }
         .stats-error { padding: 12px 14px; background: #fef2f2; color: #dc2626; font-size: 13px; border-radius: 8px; border: 1px solid #fecaca; }
         .stats-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
-        .stats-kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 4px; }
+        .stats-kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 0; padding: 14px; display: flex; flex-direction: column; gap: 4px; }
         .stats-kpi-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; }
         .stats-kpi-value { font-size: 22px; font-weight: 700; }
         .stats-section { display: flex; flex-direction: column; gap: 10px; }
         .stats-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); }
-        .stats-table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+        .stats-table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface); border: 1px solid var(--border); border-radius: 0; overflow: hidden; }
         .stats-table th { text-align: left; color: var(--text-muted); font-weight: 500; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
         .stats-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
         .stats-table tr:last-child td { border-bottom: 0; }

@@ -1,6 +1,92 @@
 .app-layout {
-  display: grid;
-  grid-template-columns: var(--sidebar-width) 1fr var(--preview-width);
-  height: 100vh;
+  height: 100%;
+  width: 100%;
   overflow: hidden;
+}
+
+.app-panel {
+  min-width: 0;
+  height: 100%;
+}
+
+.layout-resize-handle {
+  position: relative;
+  background: transparent;
+  cursor: col-resize;
+  touch-action: none;
+  width: 1px;
+}
+
+.layout-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -7px;
+  right: -7px;
+}
+
+.layout-resize-handle::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: 0 auto;
+  width: 1px;
+  background: var(--border);
+}
+
+.layout-resize-handle:hover::before,
+.layout-resize-handle:active::before {
+  background: #475569;
+}
+
+.tabs-list {
+  display: flex;
+}
+
+.tabs-list-line {
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  padding-top: 8px;
+  overflow-x: auto;
+}
+
+.tabs-list-default {
+  gap: 6px;
+}
+
+.tabs-trigger {
+  appearance: none;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  white-space: nowrap;
+}
+
+.tabs-list-line .tabs-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px 12px;
+  line-height: 1;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.tabs-list-line .tabs-trigger[data-state="active"] {
+  color: var(--text);
+  border-bottom-color: var(--text);
+}
+
+.tabs-content {
+  outline: none;
+}
+
+.tabs-content[hidden] {
+  display: none !important;
 }
