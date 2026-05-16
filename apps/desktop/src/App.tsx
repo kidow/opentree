@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getVersion } from "@tauri-apps/api/app";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "./store";
 import type { Config } from "./types";
@@ -8,16 +9,21 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "./componen
 import Sidebar from "./components/Sidebar";
 import Editor from "./components/Editor";
 import Design from "./components/Design";
-import Settings from "./components/Settings";
 import Publish from "./components/Publish";
 import Stats from "./components/Stats";
 import ChatSidebar from "./components/ChatSidebar";
 import PhonePreview from "./components/PhonePreview";
-import Welcome from "./components/Welcome";
 import CloseConfirmDialog from "./components/CloseConfirmDialog";
+import StatusBar, { type SaveState } from "./components/StatusBar";
+import SettingsModal from "./components/SettingsModal";
+import FeedbackModal from "./components/FeedbackModal";
+import { addRecent, getRecents, basename, type RecentProject } from "./lib/recents";
+import { checkForUpdate, installAndRestart, shouldCheck, markChecked } from "./lib/updater";
+import type { Update } from "@tauri-apps/plugin-updater";
+import { useT } from "./i18n";
 import "./App.css";
 
-type Tab = "links" | "design" | "publish" | "settings" | "stats";
+type Tab = "links" | "design" | "publish" | "stats";
 
 const SIDEBAR_MIN_WIDTH = 180;
 const SIDEBAR_MAX_WIDTH = 320;
@@ -25,28 +31,83 @@ const PREVIEW_MIN_WIDTH = 260;
 const PREVIEW_MAX_WIDTH = 640;
 const CENTER_MIN_WIDTH = 320;
 const CENTER_MAX_WIDTH = 980;
-const RECENT_PROJECT_PATH_KEY = "opentree.recentProjectPath";
+const AUTOSAVE_DEBOUNCE_MS = 1500;
 
 export default function App() {
   const store = useAppStore(null);
+  const t = useT();
   const [activeTab, setActiveTab] = useState<Tab>("links");
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [booting, setBooting] = useState(true);
+  const [appVersion, setAppVersion] = useState("");
+  const [recents, setRecents] = useState<RecentProject[]>([]);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [update, setUpdate] = useState<Update | null>(null);
+  const [updateInstalling, setUpdateInstalling] = useState(false);
   const dirtyRef = useRef(store.dirty);
   useEffect(() => { dirtyRef.current = store.dirty; }, [store.dirty]);
+
+  const persist = useCallback(async (): Promise<boolean> => {
+    if (!store.config || !store.projectPath) return false;
+    try {
+      await invoke("save_config", { path: store.projectPath, config: store.config });
+      store.markSaved();
+      setLastSavedAt(Date.now());
+      setSaveError(null);
+      setSaveState("saved");
+      return true;
+    } catch (e) {
+      setSaveError(String(e));
+      setSaveState("error");
+      return false;
+    }
+  }, [store]);
+
+  const loadProject = useCallback(async (path: string) => {
+    let config: Config;
+    try {
+      config = await invoke("load_config", { path });
+    } catch {
+      try {
+        config = await invoke("default_config");
+      } catch {
+        return;
+      }
+    }
+    store.setConfig(config);
+    store.setProjectPath(path);
+    store.markSaved();
+    setRecents(addRecent(path));
+    setSaveState("idle");
+    setLastSavedAt(null);
+    setSaveError(null);
+  }, [store]);
+
+  // 디바운스 자동 저장
+  useEffect(() => {
+    if (!store.dirty || !store.config || !store.projectPath) return;
+    setSaveState("saving");
+    const id = window.setTimeout(() => { void persist(); }, AUTOSAVE_DEBOUNCE_MS);
+    return () => window.clearTimeout(id);
+  }, [store.config, store.dirty, store.projectPath, persist]);
 
   // 키보드 단축키
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return;
-      if (e.key === "s") { e.preventDefault(); handleSave(); }
+      if (e.key === "s") { e.preventDefault(); void persist(); }
+      else if (e.key === ",") { e.preventDefault(); setSettingsOpen(true); }
       else if (e.key === "z" && !e.shiftKey) { e.preventDefault(); store.undo(); }
       else if ((e.key === "z" && e.shiftKey) || e.key === "y") { e.preventDefault(); store.redo(); }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [store.config, store.projectPath]);
+  }, [store.undo, store.redo, persist]);
 
   // 창 닫기 경고
   useEffect(() => {
@@ -70,79 +131,51 @@ export default function App() {
     return () => window.removeEventListener("profile-update", handler);
   }, [store.updateProfile]);
 
+  // 업데이트 감지: 시작 시 1회 + 창 포커스 시 (30분 쓰로틀)
   useEffect(() => {
-    const loadRecentProject = async () => {
-      const recentPath = window.localStorage.getItem(RECENT_PROJECT_PATH_KEY);
-      if (!recentPath) {
-        setBooting(false);
-        return;
-      }
-
-      try {
-        const config: Config = await invoke("load_config", { path: recentPath });
-        store.setConfig(config);
-        store.setProjectPath(recentPath);
-        store.markSaved();
-      } catch {
-        try {
-          const config: Config = await invoke("default_config");
-          store.setConfig(config);
-          store.setProjectPath(recentPath);
-          store.markSaved();
-        } catch {
-          window.localStorage.removeItem(RECENT_PROJECT_PATH_KEY);
-        }
-      } finally {
-        setBooting(false);
-      }
+    const runCheck = async (force: boolean) => {
+      if (!force && !shouldCheck()) return;
+      markChecked();
+      const u = await checkForUpdate();
+      if (u) setUpdate(u);
     };
+    void runCheck(true);
+    const onFocus = () => { void runCheck(false); };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
 
-    void loadRecentProject();
-  }, [store.markSaved, store.setConfig, store.setProjectPath]);
-
-  const setRecentProjectPath = useCallback((path: string) => {
-    window.localStorage.setItem(RECENT_PROJECT_PATH_KEY, path);
+  useEffect(() => {
+    void getVersion().then(setAppVersion).catch(() => setAppVersion(""));
+    const list = getRecents();
+    setRecents(list);
+    const recentPath = list[0]?.path;
+    if (!recentPath) {
+      setBooting(false);
+      return;
+    }
+    void loadProject(recentPath).finally(() => setBooting(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleOpen = useCallback(async () => {
-    const selected = await open({
-      directory: true,
-      multiple: false,
-      title: "프로젝트 폴더 선택",
-    });
+    const selected = await open({ directory: true, multiple: false, title: t("statusbar.openFolder") });
     if (!selected || typeof selected !== "string") return;
+    await loadProject(selected);
+  }, [loadProject, t]);
 
-    try {
-      const config: Config = await invoke("load_config", { path: selected });
-      store.setConfig(config);
-      store.setProjectPath(selected);
-      setRecentProjectPath(selected);
-      store.markSaved();
-    } catch {
-      const config: Config = await invoke("default_config");
-      store.setConfig(config);
-      store.setProjectPath(selected);
-      setRecentProjectPath(selected);
-      store.markSaved();
+  const handleSwitchProject = useCallback(async (path: string) => {
+    if (store.dirty && store.config && store.projectPath) {
+      try {
+        await invoke("save_config", { path: store.projectPath, config: store.config });
+      } catch { /* keep going — switching anyway */ }
     }
-  }, [setRecentProjectPath, store.markSaved, store.setConfig, store.setProjectPath]);
-
-  const handleSave = useCallback(async () => {
-    if (!store.config || !store.projectPath) return;
-    await invoke("save_config", {
-      path: store.projectPath,
-      config: store.config,
-    });
-    store.markSaved();
-  }, [store]);
+    await loadProject(path);
+  }, [loadProject, store]);
 
   const handleExport = useCallback(async () => {
     if (!store.config) return;
-    const dest = await open({
-      directory: true,
-      multiple: false,
-      title: "내보낼 폴더 선택",
-    });
+    const dest = await open({ directory: true, multiple: false, title: "내보낼 폴더 선택" });
     if (!dest || typeof dest !== "string") return;
     await invoke("export_site", { config: store.config, dest, projectPath: store.projectPath });
   }, [store]);
@@ -152,16 +185,25 @@ export default function App() {
     await getCurrentWindow().destroy();
   }, []);
 
+  const handleInstallUpdate = useCallback(async () => {
+    if (!update) return;
+    setUpdateInstalling(true);
+    try {
+      await installAndRestart(update);
+    } catch {
+      setUpdateInstalling(false);
+    }
+  }, [update]);
+
   if (booting) {
     return null;
   }
 
-  if (!store.config || !store.projectPath) {
-    return <Welcome onOpen={handleOpen} />;
-  }
+  const hasProject = !!store.config && !!store.projectPath;
+  const projectName = store.projectPath ? basename(store.projectPath) : null;
 
   return (
-    <>
+    <div className="app-root">
       <ResizablePanelGroup orientation="horizontal" className="app-layout">
         <ResizablePanel
           defaultSize={220}
@@ -173,10 +215,11 @@ export default function App() {
             dirty={store.dirty}
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            onSave={handleSave}
+            onSave={() => { void persist(); }}
             onExport={handleExport}
             chatOpen={chatOpen}
             onToggleChat={() => setChatOpen((v) => !v)}
+            disabled={!hasProject}
           />
         </ResizablePanel>
         <ResizableHandle />
@@ -185,30 +228,67 @@ export default function App() {
           maxSize={CENTER_MAX_WIDTH}
           className="app-panel app-center-panel"
         >
-          {activeTab === "links" && <Editor store={store} />}
-          {activeTab === "design" && <Design store={store} />}
-          {activeTab === "publish" && <Publish store={store} projectPath={store.projectPath!} />}
-          {activeTab === "stats" && <Stats store={store} />}
-          {activeTab === "settings" && (
-            <Settings store={store} projectPath={store.projectPath!} />
+          {!hasProject && (
+            <div className="app-empty">
+              <p className="app-empty-text">{t("empty.noProject")}</p>
+              <button className="app-empty-btn" onClick={handleOpen}>
+                {t("statusbar.openFolder")}
+              </button>
+            </div>
           )}
+          {hasProject && activeTab === "links" && <Editor store={store} />}
+          {hasProject && activeTab === "design" && <Design store={store} />}
+          {hasProject && activeTab === "publish" && <Publish store={store} projectPath={store.projectPath!} />}
+          {hasProject && activeTab === "stats" && <Stats store={store} />}
         </ResizablePanel>
-        <ResizableHandle />
-        <ResizablePanel
-          defaultSize={480}
-          minSize={PREVIEW_MIN_WIDTH}
-          maxSize={PREVIEW_MAX_WIDTH}
-          className="app-panel app-preview-panel"
-        >
-          {chatOpen ? <ChatSidebar store={store} /> : <PhonePreview config={store.config} />}
-        </ResizablePanel>
+        {hasProject && (
+          <>
+            <ResizableHandle />
+            <ResizablePanel
+              defaultSize={480}
+              minSize={PREVIEW_MIN_WIDTH}
+              maxSize={PREVIEW_MAX_WIDTH}
+              className="app-panel app-preview-panel"
+            >
+              {chatOpen ? <ChatSidebar store={store} /> : <PhonePreview config={store.config!} />}
+            </ResizablePanel>
+          </>
+        )}
       </ResizablePanelGroup>
+
+      <StatusBar
+        appVersion={appVersion}
+        projectName={projectName}
+        currentPath={store.projectPath}
+        recents={recents}
+        saveState={saveState}
+        lastSavedAt={lastSavedAt}
+        saveError={saveError}
+        updateVersion={update?.version ?? null}
+        updateInstalling={updateInstalling}
+        onSwitchProject={handleSwitchProject}
+        onOpenFolder={handleOpen}
+        onNewProject={handleOpen}
+        onRetrySave={() => { void persist(); }}
+        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenFeedback={() => setFeedbackOpen(true)}
+        onInstallUpdate={() => { void handleInstallUpdate(); }}
+      />
+
+      <SettingsModal
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        store={store}
+        projectPath={store.projectPath ?? undefined}
+      />
+      <FeedbackModal open={feedbackOpen} onOpenChange={setFeedbackOpen} />
+
       {showCloseConfirm && (
         <CloseConfirmDialog
           onConfirm={handleForceClose}
           onCancel={() => setShowCloseConfirm(false)}
         />
       )}
-    </>
+    </div>
   );
 }

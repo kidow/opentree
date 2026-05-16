@@ -38,6 +38,10 @@
   --text: #111111;
   --text-muted: #888888;
   --accent: #111111;
+  --brand-green: #15703f;
+  --brand-green-dark: #0e5530;
+  --brand-green-soft: #e6f4ec;
+  --brand-green-fg: #ffffff;
 }
 
 html, body, #root {

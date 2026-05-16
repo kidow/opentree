@@ -7,7 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 interface Props {
   store: ReturnType<typeof useAppStore>;
-  projectPath: string;
+  projectPath?: string;
+  /** When true, the component is rendered inside the Settings modal (no own header). */
+  inModal?: boolean;
 }
 
 type Provider = "vercel" | "cloudflare" | "github" | "plausible" | "anthropic" | "openai" | "unsplash";
@@ -109,7 +111,7 @@ function ProviderCard({
   );
 }
 
-export default function Settings({ store, projectPath }: Props) {
+export default function Settings({ store, projectPath, inModal = false }: Props) {
   const { config } = store;
   const t = useT();
   const [lang, setLang] = useLang();
@@ -184,13 +186,13 @@ export default function Settings({ store, projectPath }: Props) {
     if (next !== config.siteUrl) store.update({ ...config, siteUrl: next });
   };
 
-  if (!config) return null;
-
   return (
     <main className="settings">
-      <div className="settings-header">
-        <h2 className="settings-title">{t("settings.title")}</h2>
-      </div>
+      {!inModal && (
+        <div className="settings-header">
+          <h2 className="settings-title">{t("settings.title")}</h2>
+        </div>
+      )}
       <div className="settings-body">
         <Tabs value={settingsTab} onValueChange={(v) => setSettingsTab(v as SettingsTab)} className="settings-tabs">
           <TabsList variant="line" className="settings-tabs-list">
@@ -273,6 +275,12 @@ export default function Settings({ store, projectPath }: Props) {
           </TabsContent>
 
           <TabsContent value="analytics" className="settings-panel">
+            {!config ? (
+              <div className="settings-field">
+                <p className="settings-hint">{t("settings.needProject")}</p>
+              </div>
+            ) : (
+            <>
             <div className="settings-field">
               <label className="settings-label">Provider</label>
               <p className="settings-hint">
@@ -353,9 +361,17 @@ export default function Settings({ store, projectPath }: Props) {
                 )}
               </>
             )}
+            </>
+            )}
           </TabsContent>
 
           <TabsContent value="seo" className="settings-panel">
+            {!config ? (
+              <div className="settings-field">
+                <p className="settings-hint">{t("settings.needProject")}</p>
+              </div>
+            ) : (
+            <>
             <div className="settings-field">
               <label className="settings-label">{t("seo.metaTitle")}</label>
               <p className="settings-hint">{t("seo.metaTitleHint")}</p>
@@ -409,9 +425,16 @@ export default function Settings({ store, projectPath }: Props) {
                 }}
               />
             </div>
+            </>
+            )}
           </TabsContent>
 
           <TabsContent value="variants" className="settings-panel">
+            {!config ? (
+              <div className="settings-field">
+                <p className="settings-hint">{t("settings.needProject")}</p>
+              </div>
+            ) : (
             <div className="settings-field">
               <p className="settings-hint">
                 각 variant는 추가 locale의 페이지를 <code>/{`{path}`}/index.html</code>에 생성합니다. Profile 오버라이드만 UI에서 편집 가능.
@@ -515,6 +538,7 @@ export default function Settings({ store, projectPath }: Props) {
                 + Locale 추가
               </button>
             </div>
+            )}
           </TabsContent>
 
           <TabsContent value="language" className="settings-panel">
@@ -541,6 +565,11 @@ export default function Settings({ store, projectPath }: Props) {
           </TabsContent>
 
           <TabsContent value="site" className="settings-panel">
+            {!config ? (
+              <div className="settings-field">
+                <p className="settings-hint">{t("settings.needProject")}</p>
+              </div>
+            ) : (
             <div className="settings-field">
               <label className="settings-label">Site URL</label>
               <p className="settings-hint">배포 후 실제 URL. sitemap.xml, og 태그에 사용됩니다.</p>
@@ -552,12 +581,13 @@ export default function Settings({ store, projectPath }: Props) {
                 onBlur={handleSiteUrlBlur}
               />
             </div>
+            )}
           </TabsContent>
 
           <TabsContent value="project" className="settings-panel">
             <div className="settings-field">
               <label className="settings-label">프로젝트 폴더</label>
-              <div className="settings-path">{projectPath}</div>
+              <div className="settings-path">{projectPath ?? t("settings.needProject")}</div>
             </div>
           </TabsContent>
 
@@ -568,7 +598,7 @@ export default function Settings({ store, projectPath }: Props) {
             </div>
             <div className="settings-info-row">
               <span className="settings-info-key">Schema version</span>
-              <span className="settings-info-val">{config.schemaVersion}</span>
+              <span className="settings-info-val">{config?.schemaVersion ?? "-"}</span>
             </div>
           </TabsContent>
         </Tabs>

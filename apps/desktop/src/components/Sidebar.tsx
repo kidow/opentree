@@ -1,6 +1,6 @@
 import { useT } from "../i18n";
 
-type Tab = "links" | "design" | "settings" | "publish" | "stats";
+type Tab = "links" | "design" | "publish" | "stats";
 
 interface Props {
   dirty: boolean;
@@ -10,56 +10,40 @@ interface Props {
   onExport: () => void;
   chatOpen: boolean;
   onToggleChat: () => void;
+  disabled?: boolean;
 }
 
-export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExport, chatOpen, onToggleChat }: Props) {
+const TABS: Tab[] = ["links", "design", "publish", "stats"];
+
+export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExport, chatOpen, onToggleChat, disabled = false }: Props) {
   const t = useT();
   return (
     <aside className="sidebar">
       <nav className="sidebar-nav">
-        <button
-          className={`sidebar-nav-item ${activeTab === "links" ? "active" : ""}`}
-          onClick={() => onTabChange("links")}
-        >
-          {t("tab.links")}
-        </button>
-        <button
-          className={`sidebar-nav-item ${activeTab === "design" ? "active" : ""}`}
-          onClick={() => onTabChange("design")}
-        >
-          {t("tab.design")}
-        </button>
-        <button
-          className={`sidebar-nav-item ${activeTab === "publish" ? "active" : ""}`}
-          onClick={() => onTabChange("publish")}
-        >
-          {t("tab.publish")}
-        </button>
-        <button
-          className={`sidebar-nav-item ${activeTab === "stats" ? "active" : ""}`}
-          onClick={() => onTabChange("stats")}
-        >
-          {t("tab.stats")}
-        </button>
-        <button
-          className={`sidebar-nav-item ${activeTab === "settings" ? "active" : ""}`}
-          onClick={() => onTabChange("settings")}
-        >
-          {t("tab.settings")}
-        </button>
+        {TABS.map((tab) => (
+          <button
+            key={tab}
+            className={`sidebar-nav-item ${activeTab === tab ? "active" : ""}`}
+            onClick={() => onTabChange(tab)}
+            disabled={disabled}
+          >
+            {t(`tab.${tab}`)}
+          </button>
+        ))}
       </nav>
       <div className="sidebar-actions">
         <button
           className={`sidebar-chat-btn${chatOpen ? " active" : ""}`}
           onClick={onToggleChat}
           title="AI Chat"
+          disabled={disabled}
         >
           {chatOpen ? t("action.closeChat") : t("action.aiChat")}
         </button>
-        <button className="sidebar-save-btn" onClick={onSave} disabled={!dirty}>
+        <button className="sidebar-save-btn" onClick={onSave} disabled={disabled || !dirty}>
           {t("action.save")} {dirty ? "•" : ""}
         </button>
-        <button className="sidebar-export-btn" onClick={onExport}>
+        <button className="sidebar-export-btn" onClick={onExport} disabled={disabled}>
           {t("action.export")}
         </button>
       </div>
@@ -87,6 +71,12 @@ export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExpor
           background: var(--bg);
           color: var(--text);
           font-weight: 600;
+        }
+        .sidebar-nav-item:disabled,
+        .sidebar-chat-btn:disabled,
+        .sidebar-export-btn:disabled {
+          opacity: 0.35;
+          cursor: default;
         }
         .sidebar-actions {
           display: flex;

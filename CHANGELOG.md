@@ -10,6 +10,44 @@ The format is intentionally simple:
 
 ## Unreleased
 
+### Desktop App — Bottom status bar
+
+- Add a persistent bottom status bar across the whole window
+- Left: project switcher, app version, autosave status
+  - Project switcher dropdown — current project (checked), up to 5 recent
+    projects, plus "New project" and "Open folder". Recent projects are
+    stored in `localStorage` (`opentree.recentProjects`)
+  - App version (from Tauri `getVersion()`); click opens the GitHub
+    releases page in the external browser
+  - Autosave status — `Saving...` / `Saved just now` → `N min ago` /
+    `Save failed` (red, click to retry). Hover tooltip; on failure the
+    tooltip shows the error reason
+- Right: Feedback and Settings
+  - Feedback opens a "Share feedback" modal; "Go to Issues" opens the
+    GitHub issues list in the external browser
+  - Settings moved out of the left sidebar into a modal dialog, opened
+    from the status bar or with the `⌘,` shortcut
+- Replace manual-only save with debounced autosave (1.5s after edits);
+  `⌘S` still forces an immediate save
+- Remove the Welcome screen — the app always shows the editor layout.
+  With no project open the left sidebar is disabled, the center panel
+  shows an "Open folder" button, and the preview panel is hidden
+- Add `ui/tooltip.tsx` (Radix tooltip)
+
+### Desktop App — In-app updates
+
+- Add the Tauri updater + process plugins for in-app auto-update
+- Update checks run on startup and whenever the window regains focus,
+  throttled to at most once per 30 minutes
+- When a newer signed release is found, an "Update Now" button appears
+  in the status bar (left of Feedback); clicking it downloads, installs
+  and relaunches the app
+- `tauri.conf.json` gains an `updater` plugin block (GitHub
+  `latest.json` endpoint + public key) and `createUpdaterArtifacts`
+- Updates are cryptographically signed — the release pipeline signs
+  artifacts with `TAURI_SIGNING_PRIVATE_KEY`. Unsigned builds cannot
+  self-update; in-app updates apply from the next signed release on
+
 ### Desktop App (Tauri)
 
 - Add Rust workspace and `opentree-core` crate — foundation for native binary
