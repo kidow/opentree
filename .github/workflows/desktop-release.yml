@@ -64,23 +64,45 @@ jobs:
         working-directory: apps/desktop
         run: npm install --package-lock=false
 
-      - name: Build and upload (Tauri)
-        uses: tauri-apps/tauri-action@v0
+      # Code signing is optional. The Tauri bundler treats an env var that is
+      # *defined but empty* as "signing requested" and then fails on the empty
+      # certificate. So we only export signing vars when the secret is non-empty
+      # — an undefined env var is what makes the bundler skip signing cleanly.
+      - name: Configure signing (skipped when secrets absent)
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Windows Authenticode signing (optional — provide cert via secrets to enable)
           WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-          # macOS signing + notarization (optional)
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Updater signing (optional)
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          for var in WINDOWS_CERTIFICATE WINDOWS_CERTIFICATE_PASSWORD \
+                     APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY \
+                     APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID \
+                     TAURI_SIGNING_PRIVATE_KEY TAURI_SIGNING_PRIVATE_KEY_PASSWORD; do
+            val="${!var}"
+            if [ -n "$val" ]; then
+              {
+                echo "${var}<<__SIGN_EOF__"
+                echo "$val"
+                echo "__SIGN_EOF__"
+              } >> "$GITHUB_ENV"
+              echo "Signing var ${var}: set"
+            else
+              echo "Signing var ${var}: absent (skipped)"
+            fi
+          done
+
+      - name: Build and upload (Tauri)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: apps/desktop
           tagName: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}

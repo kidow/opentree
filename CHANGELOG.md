@@ -254,6 +254,10 @@ the gap between manual publishes.
   - Updater signing: `TAURI_SIGNING_PRIVATE_KEY`,
     `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
   - All optional — workflow runs unsigned if secrets missing
+- Fix release pipeline: signing env vars are now only exported when the
+  matching secret is non-empty. Previously an empty `APPLE_CERTIFICATE`
+  was passed as a defined-but-empty env var, which made the macOS Tauri
+  bundler attempt (and fail) `security import` on an empty certificate
 - Custom URL scheme registration (`opentree://`) deferred — current AI
   Chat uses API key paste, not OAuth; no callback target needed
 - Manual UI verification on Windows is left to release reviewer
