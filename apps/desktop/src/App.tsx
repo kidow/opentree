@@ -13,6 +13,8 @@ import Publish from "./components/Publish";
 import Stats from "./components/Stats";
 import ChatSidebar from "./components/ChatSidebar";
 import PhonePreview from "./components/PhonePreview";
+import PreviewControls from "./components/PreviewControls";
+import { loadViewMode, VIEW_MODE_STORAGE_KEY, type ViewMode } from "./components/ViewModeToggle";
 import CloseConfirmDialog from "./components/CloseConfirmDialog";
 import StatusBar, { type SaveState } from "./components/StatusBar";
 import SettingsModal from "./components/SettingsModal";
@@ -31,6 +33,8 @@ const PREVIEW_MIN_WIDTH = 260;
 const PREVIEW_MAX_WIDTH = 640;
 const CENTER_MIN_WIDTH = 320;
 const CENTER_MAX_WIDTH = 980;
+const CHAT_MIN_WIDTH = 280;
+const CHAT_MAX_WIDTH = 480;
 const AUTOSAVE_DEBOUNCE_MS = 1500;
 
 export default function App() {
@@ -39,6 +43,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>("links");
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode);
   const [booting, setBooting] = useState(true);
   const [appVersion, setAppVersion] = useState("");
   const [recents, setRecents] = useState<RecentProject[]>([]);
@@ -51,6 +56,10 @@ export default function App() {
   const [updateInstalling, setUpdateInstalling] = useState(false);
   const dirtyRef = useRef(store.dirty);
   useEffect(() => { dirtyRef.current = store.dirty; }, [store.dirty]);
+
+  useEffect(() => {
+    localStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode);
+  }, [viewMode]);
 
   const persist = useCallback(async (): Promise<boolean> => {
     if (!store.config || !store.projectPath) return false;
@@ -204,6 +213,7 @@ export default function App() {
 
   return (
     <div className="app-root">
+      <div data-tauri-drag-region className="app-titlebar-drag" />
       <ResizablePanelGroup orientation="horizontal" className="app-layout">
         <ResizablePanel
           defaultSize={220}
@@ -217,8 +227,6 @@ export default function App() {
             onTabChange={setActiveTab}
             onSave={() => { void persist(); }}
             onExport={handleExport}
-            chatOpen={chatOpen}
-            onToggleChat={() => setChatOpen((v) => !v)}
             disabled={!hasProject}
           />
         </ResizablePanel>
@@ -250,8 +258,29 @@ export default function App() {
               maxSize={PREVIEW_MAX_WIDTH}
               className="app-panel app-preview-panel"
             >
-              {chatOpen ? <ChatSidebar store={store} /> : <PhonePreview config={store.config!} />}
+              <div className="relative h-full min-h-0">
+                <PreviewControls
+                  viewMode={viewMode}
+                  onViewModeChange={setViewMode}
+                  chatOpen={chatOpen}
+                  onToggleChat={() => setChatOpen((v) => !v)}
+                />
+                <PhonePreview config={store.config!} viewMode={viewMode} />
+              </div>
             </ResizablePanel>
+            {chatOpen && (
+              <>
+                <ResizableHandle />
+                <ResizablePanel
+                  defaultSize={340}
+                  minSize={CHAT_MIN_WIDTH}
+                  maxSize={CHAT_MAX_WIDTH}
+                  className="app-panel app-chat-panel"
+                >
+                  <ChatSidebar store={store} />
+                </ResizablePanel>
+              </>
+            )}
           </>
         )}
       </ResizablePanelGroup>

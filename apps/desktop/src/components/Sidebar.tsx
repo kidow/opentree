@@ -8,14 +8,12 @@ interface Props {
   onTabChange: (tab: Tab) => void;
   onSave: () => void;
   onExport: () => void;
-  chatOpen: boolean;
-  onToggleChat: () => void;
   disabled?: boolean;
 }
 
 const TABS: Tab[] = ["links", "design", "publish", "stats"];
 
-export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExport, chatOpen, onToggleChat, disabled = false }: Props) {
+export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExport, disabled = false }: Props) {
   const t = useT();
   return (
     <aside className="sidebar">
@@ -32,14 +30,6 @@ export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExpor
         ))}
       </nav>
       <div className="sidebar-actions">
-        <button
-          className={`sidebar-chat-btn${chatOpen ? " active" : ""}`}
-          onClick={onToggleChat}
-          title="AI Chat"
-          disabled={disabled}
-        >
-          {chatOpen ? t("action.closeChat") : t("action.aiChat")}
-        </button>
         <button className="sidebar-save-btn" onClick={onSave} disabled={disabled || !dirty}>
           {t("action.save")} {dirty ? "•" : ""}
         </button>
@@ -73,7 +63,6 @@ export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExpor
           font-weight: 600;
         }
         .sidebar-nav-item:disabled,
-        .sidebar-chat-btn:disabled,
         .sidebar-export-btn:disabled {
           opacity: 0.35;
           cursor: default;
@@ -105,17 +94,6 @@ export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExpor
           color: var(--text);
         }
         .sidebar-export-btn:hover { background: var(--bg); }
-        .sidebar-chat-btn {
-          padding: 8px;
-          border-radius: 6px;
-          font-size: 12px;
-          font-weight: 600;
-          border: 1px solid var(--border);
-          color: var(--text);
-          background: linear-gradient(135deg, rgba(168,85,247,0.08), rgba(59,130,246,0.08));
-        }
-        .sidebar-chat-btn:hover { background: linear-gradient(135deg, rgba(168,85,247,0.16), rgba(59,130,246,0.16)); }
-        .sidebar-chat-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
       `}</style>
     </aside>
   );

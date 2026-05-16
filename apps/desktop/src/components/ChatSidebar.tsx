@@ -301,7 +301,7 @@ export default function ChatSidebar({ store }: Props) {
         .chat-sidebar { display: flex; flex-direction: column; height: 100%; min-height: 0; background: var(--surface); }
         .chat-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border); }
         .chat-title { font-size: 14px; font-weight: 700; }
-        .chat-provider { font-size: 12px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); }
+        .chat-provider { position: relative; z-index: 120; font-size: 12px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); }
         .chat-messages { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; }
         .chat-hint { font-size: 12px; color: var(--text-muted); padding: 12px; background: var(--bg); border-radius: 8px; }
         .chat-hint ul { margin-top: 6px; padding-left: 16px; }

@@ -10,6 +10,22 @@ The format is intentionally simple:
 
 ## Unreleased
 
+### Desktop App — Preview phone/desktop toggle
+
+- Add a phone/desktop view toggle to the right-side preview panel
+  (top-right corner)
+- Desktop view shows a browser-window mockup, so the custom page
+  background is visible alongside the centered content column
+- The selected view mode is remembered across app restarts
+- Move the AI Chat toggle out of the left sidebar into an icon button
+  in the preview panel's top-right control row; AI Chat now opens as a
+  separate panel beside the preview instead of replacing it
+
+### Desktop App — Draggable window
+
+- Add a drag zone along the top edge of the window so it can be
+  repositioned by dragging the title-bar area
+
 ### Desktop App — Bottom status bar
 
 - Add a persistent bottom status bar across the whole window

@@ -5,6 +5,16 @@
   overflow: hidden;
 }
 
+/* macOS titlebar drag zone — interactive controls in this band opt out via z-index > 100 */
+.app-titlebar-drag {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  z-index: 100;
+}
+
 .app-layout {
   flex: 1;
   min-height: 0;
