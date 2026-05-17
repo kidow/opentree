@@ -10,6 +10,37 @@ The format is intentionally simple:
 
 ## Unreleased
 
+### Desktop App — Channels (social media connect)
+
+- Add a `Channels` tab for connecting social accounts and viewing
+  creator-only performance data (private, not shown on the public page)
+- Phase 1: YouTube, read-only. Connect with a YouTube Data API v3 key
+  plus a channel URL — no OAuth, no app review required
+- Shows subscriber / total-view / video counts, a subscriber-trend
+  sparkline, and the latest videos
+- Metrics are snapshotted once per day into an app-global
+  `channels.json`; auto-refresh on open (throttled to 6h) plus a
+  manual refresh button. API keys are stored in the OS keychain
+- Add a beginner-friendly setup guide (`docs/channels`) covering
+  Google Cloud project creation, enabling the YouTube Data API,
+  creating an API key, and connecting in the app; wired into the
+  docs sidebar, index cards, and search index
+
+### Web — Provider connection guides
+
+- Add beginner-friendly, step-by-step guides for connecting Vercel,
+  Cloudflare Pages, and GitHub Pages (`docs/connect/*`)
+- Each guide covers token creation, connecting in the app, publishing,
+  and custom domains, with screenshot placeholders for a later pass
+- Remove the combined `docs/deploy` page; its content is now split
+  across the three per-provider guides
+- Update docs sidebar, index cards, and search index accordingly
+
+### Desktop App — Remove redundant save button
+
+- Remove the sidebar "저장" (Save) button; saving is already handled by
+  debounced autosave, the Cmd/Ctrl+S shortcut, and on window close
+
 ### Desktop App — Preview phone/desktop toggle
 
 - Add a phone/desktop view toggle to the right-side preview panel

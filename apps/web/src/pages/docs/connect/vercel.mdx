@@ -1,0 +1,68 @@
+---
+layout: ../../../layouts/DocsLayout.astro
+title: Connect Vercel
+description: Step-by-step guide to connecting Vercel and publishing your Opentree site. Written for non-developers.
+---
+
+This guide walks you through connecting **Vercel** so you can publish your site. It takes about **5 minutes**, and you only do it **once**. After that, publishing is a single click.
+
+New here and not sure which host to pick? **Start with Vercel** — it is the simplest of the three.
+
+## What is a token?
+
+To publish, Opentree needs permission to put your site on Vercel for you. That permission comes as a **token** — think of it as a one-time pass you create on Vercel and hand to the app. The app keeps the pass in your computer's secure storage (the macOS Keychain) and never shares it with anyone.
+
+You stay in full control: your site goes to **your own Vercel account**, and you can cancel the pass any time from Vercel.
+
+## Step 1 — Create a token on Vercel
+
+1. Open [vercel.com/account/tokens](https://vercel.com/account/tokens) in your browser. Sign in if asked.
+2. Click the **Create Token** button.
+
+{/* screenshot: vercel-01-token-page — Vercel "Tokens" page with the "Create Token" button highlighted */}
+
+3. Give the token a name you'll recognize later, such as `opentree`.
+4. Leave the scope and expiration at their defaults — the defaults are fine for personal sites.
+5. Click **Create**.
+
+{/* screenshot: vercel-02-create-dialog — The Create Token dialog with name filled in */}
+
+6. Vercel now shows the token — a long string of letters and numbers. Click to **copy** it.
+
+> **Important:** This is the only time Vercel shows the token. Copy it now. If you lose it, just delete it on Vercel and create a new one — no harm done.
+
+{/* screenshot: vercel-03-token-value — The generated token with the copy button */}
+
+## Step 2 — Connect it in Opentree
+
+1. In Opentree, open **Settings** (the gear icon, or press `⌘,`).
+2. Go to the **Connections** tab.
+3. Find the **Vercel** section and paste your token into the box.
+4. Click **Connect**.
+
+{/* screenshot: vercel-04-settings-connect — Opentree Settings, Connections tab, Vercel section */}
+
+The app checks that the token works. If it does, the Vercel section shows as connected. If you see an "Invalid Vercel token" message, the token was copied incorrectly — create a new one and try again.
+
+## Step 3 — Publish your site
+
+1. Open the **Publish** tab.
+2. Choose **Vercel**.
+3. Type a **project name** — lowercase letters, numbers, and hyphens only (for example `my-links`). This becomes part of your site's web address.
+4. Click **Publish**.
+
+{/* screenshot: vercel-05-publish — The Publish tab with Vercel selected */}
+
+The first publish creates the project and gives you a free web address ending in `.vercel.app`. Every publish after that updates the same site.
+
+## Step 4 — Use your own domain (optional)
+
+If you own a domain (like `example.com`), you can point it at your site. In the **Publish** tab, enter your domain and click **연결 / Connect**. The app then shows the exact DNS records to add at your domain registrar.
+
+See [Custom domains](/docs/domains) for the full record list and verification details.
+
+## Common problems
+
+- **"Invalid Vercel token"** — the token was not copied fully. Create a new token and paste it again.
+- **Publish button is greyed out** — make sure Vercel shows as connected in Settings first.
+- **Site address not working yet** — give it a minute or two after the first publish.

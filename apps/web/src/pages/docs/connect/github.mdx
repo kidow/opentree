@@ -1,0 +1,76 @@
+---
+layout: ../../../layouts/DocsLayout.astro
+title: Connect GitHub Pages
+description: Step-by-step guide to connecting GitHub Pages and publishing your Opentree site. Written for non-developers.
+---
+
+This guide walks you through connecting **GitHub Pages** so you can publish your site. It takes about **5 minutes**, and you only do it **once**. After that, publishing is a single click.
+
+You'll need a free [GitHub](https://github.com) account. If you don't have one, create it first.
+
+## What is a token?
+
+To publish, Opentree needs permission to put your site on GitHub for you. That permission comes as a **token** — think of it as a one-time pass you create on GitHub and hand to the app. The app keeps the pass in your computer's secure storage (the macOS Keychain) and never shares it with anyone.
+
+Your site goes to **your own GitHub account**, and you can cancel the pass any time from GitHub.
+
+## Step 1 — Create a personal access token
+
+1. Open [github.com/settings/tokens](https://github.com/settings/tokens). Sign in if asked.
+2. Click **Generate new token** → **Generate new token (classic)**.
+
+{/* screenshot: github-01-token-page — GitHub "Personal access tokens" page with the Generate button */}
+
+3. Under **Note**, type a name such as `opentree`.
+4. Under **Expiration**, pick whatever you like (a longer period means fewer renewals).
+5. Under **Select scopes**, tick the **`repo`** checkbox — this lets the app upload your site files.
+
+{/* screenshot: github-02-scopes — The token scopes screen with "repo" checked */}
+
+6. Scroll down and click **Generate token**.
+7. GitHub shows the token — a string starting with `ghp_`. Click to **copy** it.
+
+> **Important:** This is the only time GitHub shows the token. Copy it now. If you lose it, delete it on GitHub and create a new one.
+
+## Step 2 — Decide on a repository name
+
+GitHub stores your site in a **repository** (a project folder). You don't have to create it yourself — Opentree creates it automatically on the first publish.
+
+Just decide on a name in the form `your-username/site-name`, for example `jane/my-links`. Use your real GitHub username for the first part.
+
+## Step 3 — Connect it in Opentree
+
+1. In Opentree, open **Settings** (the gear icon, or press `⌘,`).
+2. Go to the **Connections** tab.
+3. Find the **GitHub Pages** section.
+4. Paste the **token** into the first box.
+5. Type your **repository** name (`your-username/site-name`) into the second box.
+6. Click **Connect**.
+
+{/* screenshot: github-03-settings-connect — Opentree Settings, Connections tab, GitHub section */}
+
+The app checks that the token works. If you see an "Invalid GitHub token" message, the token was copied incorrectly — create a new one and try again.
+
+## Step 4 — Publish your site
+
+1. Open the **Publish** tab.
+2. Choose **GitHub Pages**.
+3. Click **Publish**.
+
+{/* screenshot: github-04-publish — The Publish tab with GitHub Pages selected */}
+
+On the first publish the app creates the repository, uploads your site, and turns on GitHub Pages. Your site's address is `https://your-username.github.io/site-name/`. Every publish after that updates the same site.
+
+> The very first publish can take a minute or two while GitHub sets up the site. Later publishes are faster.
+
+## Step 5 — Use your own domain (optional)
+
+If you own a domain, enter it in the **Publish** tab and click **연결 / Connect**. The app tells GitHub about your domain and shows the DNS records to add at your registrar.
+
+See [Custom domains](/docs/domains) for the full details.
+
+## Common problems
+
+- **"Invalid GitHub token"** — the token was not copied fully. Create a new token and paste it again.
+- **Publish fails mentioning permissions** — make sure the **`repo`** scope was ticked when you created the token.
+- **Site shows a 404 right after publishing** — wait a minute or two; GitHub needs a moment to build the site the first time.

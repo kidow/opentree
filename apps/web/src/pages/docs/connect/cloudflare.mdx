@@ -1,0 +1,76 @@
+---
+layout: ../../../layouts/DocsLayout.astro
+title: Connect Cloudflare Pages
+description: Step-by-step guide to connecting Cloudflare Pages and publishing your Opentree site. Written for non-developers.
+---
+
+This guide walks you through connecting **Cloudflare Pages** so you can publish your site. It takes about **5 minutes**, and you only do it **once**. After that, publishing is a single click.
+
+Cloudflare needs **two pieces of information**: an API token and an Account ID. Both come from the Cloudflare dashboard.
+
+## What is a token?
+
+To publish, Opentree needs permission to put your site on Cloudflare for you. That permission comes as a **token** — think of it as a one-time pass you create on Cloudflare and hand to the app. The app keeps the pass in your computer's secure storage (the macOS Keychain) and never shares it with anyone.
+
+Your site goes to **your own Cloudflare account**, and you can cancel the pass any time from Cloudflare.
+
+## Step 1 — Create an API token
+
+1. Open [dash.cloudflare.com/profile/api-tokens](https://dash.cloudflare.com/profile/api-tokens). Sign in if asked.
+2. Click **Create Token**.
+
+{/* screenshot: cloudflare-01-token-page — Cloudflare "API Tokens" page with the "Create Token" button */}
+
+3. Scroll to **Create Custom Token** and click **Get started**.
+4. Give the token a name such as `opentree`.
+5. Under **Permissions**, set one row to: **Account** · **Cloudflare Pages** · **Edit**.
+6. Under **Account Resources**, choose the account you want to publish to.
+
+{/* screenshot: cloudflare-02-custom-token — The custom token form with Pages · Edit permission set */}
+
+7. Click **Continue to summary**, then **Create Token**.
+8. Cloudflare shows the token — a long string of letters and numbers. Click to **copy** it.
+
+> **Important:** This is the only time Cloudflare shows the token. Copy it now. If you lose it, delete it on Cloudflare and create a new one.
+
+## Step 2 — Find your Account ID
+
+1. Go to the Cloudflare dashboard home and open **Workers & Pages** (or **Compute**) from the left menu.
+2. Your **Account ID** is shown in the right sidebar — a 32-character string. Click to copy it.
+
+{/* screenshot: cloudflare-03-account-id — The Account ID shown in the dashboard sidebar */}
+
+## Step 3 — Connect it in Opentree
+
+1. In Opentree, open **Settings** (the gear icon, or press `⌘,`).
+2. Go to the **Connections** tab.
+3. Find the **Cloudflare Pages** section.
+4. Paste the **token** into the first box and the **Account ID** into the second.
+5. Click **Connect**.
+
+{/* screenshot: cloudflare-04-settings-connect — Opentree Settings, Connections tab, Cloudflare section */}
+
+The app checks that both values work. If you see an "Invalid Cloudflare token or Account ID" message, one of the two was copied incorrectly — check both and try again.
+
+## Step 4 — Publish your site
+
+1. Open the **Publish** tab.
+2. Choose **Cloudflare Pages**.
+3. Type a **project name** — lowercase letters, numbers, and hyphens only (for example `my-links`).
+4. Click **Publish**.
+
+{/* screenshot: cloudflare-05-publish — The Publish tab with Cloudflare Pages selected */}
+
+The first publish creates the project and gives you a free web address ending in `.pages.dev`. Every publish after that updates the same site.
+
+## Step 5 — Use your own domain (optional)
+
+If your domain is already managed by Cloudflare, adding it to the Pages project sets up the DNS automatically. If your domain is elsewhere, you point a record at your `.pages.dev` address.
+
+See [Custom domains](/docs/domains) for the full details.
+
+## Common problems
+
+- **"Invalid Cloudflare token or Account ID"** — one of the two was copied incorrectly. The Account ID is exactly 32 characters; the token is much longer.
+- **Token works but publish fails** — check the token has the **Cloudflare Pages · Edit** permission for the right account.
+- **Publish button is greyed out** — make sure Cloudflare shows as connected in Settings first.
