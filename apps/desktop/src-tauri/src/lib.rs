@@ -1,13 +1,14 @@
 mod ai;
 mod asset;
+mod channels;
 mod publish;
 
 use opentree_core::{
     build::{build_with_time, write_output},
     config::Config,
 };
-use std::path::Path;
-use tauri::command;
+use std::path::{Path, PathBuf};
+use tauri::{command, AppHandle, Manager};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 fn now_iso() -> String {
@@ -258,6 +259,46 @@ async fn check_domain(
     }
 }
 
+// ── Channels (소셜 미디어 연동) ────────────────────────────────────────────────
+
+fn channels_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map_err(|e| format!("앱 데이터 경로 오류: {e}"))
+}
+
+#[command]
+fn channels_list(app: AppHandle) -> Result<channels::ChannelStore, String> {
+    Ok(channels::load_store(&channels_dir(&app)?))
+}
+
+#[command]
+async fn channels_connect_youtube(
+    app: AppHandle,
+    api_key: String,
+    channel_url: String,
+) -> Result<channels::ChannelStore, String> {
+    let dir = channels_dir(&app)?;
+    channels::connect_youtube(&dir, &api_key, &channel_url).await
+}
+
+#[command]
+async fn channels_refresh(
+    app: AppHandle,
+    account_id: String,
+) -> Result<channels::ChannelStore, String> {
+    let dir = channels_dir(&app)?;
+    channels::refresh_channel(&dir, &account_id).await
+}
+
+#[command]
+fn channels_disconnect(
+    app: AppHandle,
+    account_id: String,
+) -> Result<channels::ChannelStore, String> {
+    channels::disconnect_channel(&channels_dir(&app)?, &account_id)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -286,6 +327,10 @@ pub fn run() {
             fetch_plausible_stats,
             chat_send,
             unsplash_search,
+            channels_list,
+            channels_connect_youtube,
+            channels_refresh,
+            channels_disconnect,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application")

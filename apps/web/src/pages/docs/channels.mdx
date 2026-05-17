@@ -1,0 +1,90 @@
+---
+layout: ../../layouts/DocsLayout.astro
+title: Connect channels
+description: Step-by-step guide to connecting your YouTube channel to Opentree so you can track subscribers, views, and your latest videos. Written for non-developers.
+---
+
+The **Channels** tab lets you connect your social accounts and see how they are doing — right inside Opentree. This data is **private**: only you see it, and it never appears on your public page.
+
+The first platform is **YouTube**. Connecting it takes about **5 minutes** and you only do it **once**. It is completely free.
+
+## What you get
+
+Once connected, the Channels tab shows, for your channel:
+
+- **Subscribers**, **total views**, and **video count**
+- A **subscriber trend** line — Opentree saves one snapshot per day, so the line fills in over time
+- Your **latest videos** with thumbnails
+
+## What is an API key?
+
+To read your channel's public numbers, Opentree asks YouTube's data service on your behalf. That service needs a **key** — a free pass you create in your own Google account and paste into the app.
+
+The app keeps the key in your computer's secure storage (the macOS Keychain) and never shares it. You stay in control: the key only reads **public** YouTube data, and you can delete it any time from Google.
+
+> You do **not** need to log in to YouTube, and you do **not** need an app review. A plain API key is enough because subscriber counts and video lists are public information.
+
+## Step 1 — Create a Google Cloud project
+
+1. Open [console.cloud.google.com](https://console.cloud.google.com/) in your browser. Sign in with the Google account you want to use.
+2. At the top of the page, click the **project picker** (it may say "Select a project").
+3. Click **New Project**.
+
+{/* screenshot: channels-01-new-project — Google Cloud project picker with the "New Project" button highlighted */}
+
+4. Give it a name you'll recognize, such as `opentree`, and click **Create**.
+5. Wait a few seconds, then make sure the new project is selected in the project picker.
+
+## Step 2 — Turn on the YouTube Data API
+
+1. In the search bar at the top, type `YouTube Data API v3` and open it from the results.
+2. Click the **Enable** button.
+
+{/* screenshot: channels-02-enable-api — The "YouTube Data API v3" page with the "Enable" button */}
+
+If the button says **Manage** instead of **Enable**, it is already on — continue to the next step.
+
+## Step 3 — Create the API key
+
+1. In the search bar, type `Credentials` and open the **Credentials** page.
+2. Click **Create Credentials** near the top, then choose **API key**.
+
+{/* screenshot: channels-03-create-key — The Credentials page with "Create Credentials → API key" */}
+
+3. Google shows your new key — a long string of letters and numbers. Click to **copy** it.
+
+> Keep the key to yourself. If it ever leaks, delete it on this page and create a new one — no harm done.
+
+## Step 4 — Find your channel URL
+
+You need the web address of the channel you want to track. The easiest one to use is your **handle URL**, which looks like:
+
+```
+https://www.youtube.com/@yourhandle
+```
+
+Open YouTube, go to your channel, and copy the address from the browser's address bar. A `https://www.youtube.com/channel/UC...` address works too.
+
+## Step 5 — Connect it in Opentree
+
+1. In Opentree, open the **Channels** tab from the left sidebar.
+2. In the **YouTube 채널 연결 / Connect YouTube channel** card, paste your **API key** into the first box.
+3. Paste your **channel URL** into the second box.
+4. Click **연결 / Connect**.
+
+{/* screenshot: channels-04-connect — Opentree Channels tab, the connect form filled in */}
+
+The app looks up your channel and, if everything checks out, shows your subscriber count, view count, latest videos, and adds the channel to the tab.
+
+## Using the Channels tab
+
+- **Refresh** — Opentree refreshes automatically when you open the app (at most once every 6 hours). To update right now, click **새로고침 / Refresh** on the channel card.
+- **Trend line** — the subscriber trend needs at least two days of data. Keep the app around and the line grows on its own.
+- **Disconnect** — click **연결 해제 / Disconnect** to remove the channel and its stored data. This also deletes the saved API key.
+
+## Common problems
+
+- **"API 키가 거부되었습니다" / API key rejected** — open the Google Cloud Console and confirm the **YouTube Data API v3** is enabled for the same project the key belongs to.
+- **"채널을 찾을 수 없습니다" / Channel not found** — double-check the channel URL. Use the `@handle` form or the `/channel/UC...` form.
+- **"이미 연결된 채널입니다" / Already connected** — that channel is already in the list. Use **Refresh** instead.
+- **Numbers look out of date** — click **Refresh**. YouTube's public counts themselves update on a delay, so small differences from the YouTube app are normal.

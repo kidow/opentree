@@ -1,19 +1,17 @@
 import { useT } from "../i18n";
 
-type Tab = "links" | "design" | "publish" | "stats";
+type Tab = "links" | "design" | "publish" | "stats" | "channels";
 
 interface Props {
-  dirty: boolean;
   activeTab: Tab;
   onTabChange: (tab: Tab) => void;
-  onSave: () => void;
   onExport: () => void;
   disabled?: boolean;
 }
 
-const TABS: Tab[] = ["links", "design", "publish", "stats"];
+const TABS: Tab[] = ["links", "design", "publish", "stats", "channels"];
 
-export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExport, disabled = false }: Props) {
+export default function Sidebar({ activeTab, onTabChange, onExport, disabled = false }: Props) {
   const t = useT();
   return (
     <aside className="sidebar">
@@ -30,9 +28,6 @@ export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExpor
         ))}
       </nav>
       <div className="sidebar-actions">
-        <button className="sidebar-save-btn" onClick={onSave} disabled={disabled || !dirty}>
-          {t("action.save")} {dirty ? "•" : ""}
-        </button>
         <button className="sidebar-export-btn" onClick={onExport} disabled={disabled}>
           {t("action.export")}
         </button>
@@ -71,19 +66,6 @@ export default function Sidebar({ dirty, activeTab, onTabChange, onSave, onExpor
           display: flex;
           flex-direction: column;
           gap: 6px;
-        }
-        .sidebar-save-btn {
-          padding: 8px;
-          border-radius: 6px;
-          font-size: 13px;
-          font-weight: 600;
-          background: var(--accent);
-          color: white;
-          transition: opacity 0.15s;
-        }
-        .sidebar-save-btn:disabled {
-          opacity: 0.35;
-          cursor: default;
         }
         .sidebar-export-btn {
           padding: 8px;

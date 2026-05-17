@@ -11,6 +11,7 @@ import Editor from "./components/Editor";
 import Design from "./components/Design";
 import Publish from "./components/Publish";
 import Stats from "./components/Stats";
+import Channels from "./components/Channels";
 import ChatSidebar from "./components/ChatSidebar";
 import PhonePreview from "./components/PhonePreview";
 import PreviewControls from "./components/PreviewControls";
@@ -25,7 +26,7 @@ import type { Update } from "@tauri-apps/plugin-updater";
 import { useT } from "./i18n";
 import "./App.css";
 
-type Tab = "links" | "design" | "publish" | "stats";
+type Tab = "links" | "design" | "publish" | "stats" | "channels";
 
 const SIDEBAR_MIN_WIDTH = 180;
 const SIDEBAR_MAX_WIDTH = 320;
@@ -222,10 +223,8 @@ export default function App() {
           className="app-panel app-sidebar-panel"
         >
           <Sidebar
-            dirty={store.dirty}
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            onSave={() => { void persist(); }}
             onExport={handleExport}
             disabled={!hasProject}
           />
@@ -248,6 +247,7 @@ export default function App() {
           {hasProject && activeTab === "design" && <Design store={store} />}
           {hasProject && activeTab === "publish" && <Publish store={store} projectPath={store.projectPath!} />}
           {hasProject && activeTab === "stats" && <Stats store={store} />}
+          {hasProject && activeTab === "channels" && <Channels />}
         </ResizablePanel>
         {hasProject && (
           <>
